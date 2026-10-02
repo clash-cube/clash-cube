@@ -1,0 +1,75 @@
+/* The palette and type of magpie (github.com/yetone/magpie), the surface
+   MihomoBar's look follows: one quiet surface, controls that read as native. */
+:root {
+  --bg: #f4f4f6;
+  --card: #ffffff;
+  --card-2: #f9f9fb;
+  --pill: #f1f1f4;
+  --pill-hover: #e9e9ee;
+  --seg-thumb: var(--card);
+  --seg-edge: 0 1px 2px rgba(0, 0, 0, .14), 0 0 0 .5px rgba(0, 0, 0, .08);
+  --ctl-fg: #63636b;
+  --line: #e3e3e8;
+  --line-2: #ececf0;
+  --fg: #1c1c21;
+  --fg-2: #4b4b53;
+  --muted: #85858d;
+  --faint: #b9b9c2;
+  --accent: #4f46e5;
+  --accent-soft: #eeedfd;
+  --accent-fg: #ffffff;
+  --sel: #ecebfb;
+  --green: #189a58;
+  --green-soft: #e4f6ec;
+  --red: #d64545;
+  --red-soft: #fbe9e9;
+  --amber: #b45309;
+  --amber-soft: #fbf0df;
+  --pop-bg: rgba(255, 255, 255, .94);
+  --shadow: 0 16px 44px rgba(20, 22, 30, .16), 0 2px 8px rgba(20, 22, 30, .06), 0 0 0 .5px rgba(20, 22, 30, .1);
+  --card-edge: 0 0 0 1px var(--line);
+  --skel: #ececf0;
+  --skel-hi: #e2e2e8;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif;
+  --code: ui-monospace, "SF Mono", Menlo, monospace;
+  --up: #0ea5e9;
+  --down: #4f46e5;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --spring: cubic-bezier(.16, 1, .3, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1a1a1e; --card: #232327; --card-2: #1f1f23; --pill: #2d2d33; --pill-hover: #36363d;
+    --seg-thumb: rgba(255, 255, 255, .15); --seg-edge: inset 0 .5px 0 rgba(255, 255, 255, .08), 0 1px 2px rgba(0, 0, 0, .3);
+    --line: #333339; --line-2: #2c2c32; --fg: #ededf1; --fg-2: #b9b9c1; --muted: #8b8b94; --faint: #56565f; --ctl-fg: #a1a1aa;
+    --accent: #a5b4fc; --accent-soft: #2b2c47; --accent-fg: #14142a; --sel: #33345a;
+    --green: #6fd99b; --green-soft: #1e3a2b; --red: #f28b82; --red-soft: #45272a; --amber: #f2b544; --amber-soft: #3f3220;
+    --pop-bg: rgba(38, 38, 43, .96);
+    --shadow: 0 16px 44px rgba(0, 0, 0, .55), 0 2px 8px rgba(0, 0, 0, .3), 0 0 0 .5px rgba(255, 255, 255, .1);
+    --skel: #2a2a30; --skel-hi: #34343b;
+    --up: #7dd3fc; --down: #a5b4fc;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1a1a1e; --card: #232327; --card-2: #1f1f23; --pill: #2d2d33; --pill-hover: #36363d;
+  --seg-thumb: rgba(255, 255, 255, .15); --seg-edge: inset 0 .5px 0 rgba(255, 255, 255, .08), 0 1px 2px rgba(0, 0, 0, .3);
+  --line: #333339; --line-2: #2c2c32; --fg: #ededf1; --fg-2: #b9b9c1; --muted: #8b8b94; --faint: #56565f; --ctl-fg: #a1a1aa;
+  --accent: #a5b4fc; --accent-soft: #2b2c47; --accent-fg: #14142a; --sel: #33345a;
+  --green: #6fd99b; --green-soft: #1e3a2b; --red: #f28b82; --red-soft: #45272a; --amber: #f2b544; --amber-soft: #3f3220;
+  --pop-bg: rgba(38, 38, 43, .96);
+  --shadow: 0 16px 44px rgba(0, 0, 0, .55), 0 2px 8px rgba(0, 0, 0, .3), 0 0 0 .5px rgba(255, 255, 255, .1);
+  --skel: #2a2a30; --skel-hi: #34343b;
+  --up: #7dd3fc; --down: #a5b4fc;
+}
+
+/* the panel sits on a frosted backdrop: its surfaces are tints of it */
+.is-panel body { --panel-tint: color-mix(in srgb, var(--bg) 90%, transparent); background: var(--panel-tint); }
+@media (prefers-color-scheme: light) {
+  :root.is-panel:not([data-theme="dark"]) body { --bg: #f2f2f5; --card: #ffffff; --pill: #ffffff; --pill-hover: #f4f4f7; --line: rgba(0, 0, 0, .07); --line-2: rgba(0, 0, 0, .06); --card-edge: 0 0 0 1px rgba(0, 0, 0, .05), 0 1px 2px rgba(0, 0, 0, .04); --faint: #9a9aa3; }
+}
+:root.is-panel[data-theme="light"] body { --bg: #f2f2f5; --card: #ffffff; --pill: #ffffff; --pill-hover: #f4f4f7; --line: rgba(0, 0, 0, .07); --line-2: rgba(0, 0, 0, .06); --card-edge: 0 0 0 1px rgba(0, 0, 0, .05), 0 1px 2px rgba(0, 0, 0, .04); --faint: #9a9aa3; }
+@media (prefers-color-scheme: dark) {
+  :root.is-panel:not([data-theme="light"]) body { --bg: #1b1c20; --card: #25262c; --pill: #2e2f36; --pill-hover: #383942; --line: rgba(255, 255, 255, .07); --line-2: rgba(255, 255, 255, .06); --muted: #9c9ca6; --faint: #7c7c87; --card-edge: inset 0 0 0 1px rgba(255, 255, 255, .06); }
+}
+:root.is-panel[data-theme="dark"] body { --bg: #1b1c20; --card: #25262c; --pill: #2e2f36; --pill-hover: #383942; --line: rgba(255, 255, 255, .07); --line-2: rgba(255, 255, 255, .06); --muted: #9c9ca6; --faint: #7c7c87; --card-edge: inset 0 0 0 1px rgba(255, 255, 255, .06); }

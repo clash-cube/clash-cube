@@ -1,0 +1,6 @@
+bin/
+frontend/node_modules/
+internal/gui/dist/*
+!internal/gui/dist/.gitkeep
+.task/
+.DS_Store

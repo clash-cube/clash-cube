@@ -1,0 +1,84 @@
+version: '3'
+
+vars:
+  APP_NAME: MihomoBar
+  BIN: mihomobar
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  TAGS: with_gvisor
+  MIHOMO_VERSION:
+    sh: cd third_party/mihomo && echo "alpha-$(git rev-parse --short HEAD)"
+  LDFLAGS: -X main.version={{.VERSION}} -X github.com/metacubex/mihomo/constant.Version={{.MIHOMO_VERSION}}
+
+env:
+  CGO_ENABLED: 1
+  CGO_CFLAGS: -mmacosx-version-min=12.0
+  CGO_LDFLAGS: -mmacosx-version-min=12.0
+  MACOSX_DEPLOYMENT_TARGET: "12.0"
+
+tasks:
+  deps:
+    summary: Fetch the mihomo submodule and frontend packages
+    cmds:
+      - git submodule update --init --recursive
+      - cd frontend && pnpm install
+
+  bindings:
+    summary: Generate the TypeScript bindings for the Go services
+    sources: ["internal/gui/*.go", "internal/backend/*.go", "internal/mihomoapi/*.go", "internal/profiles/*.go", "internal/settings/*.go"]
+    cmds:
+      - wails3 generate bindings -f '-tags {{.TAGS}}' -clean=true -ts -i -d frontend/bindings
+
+  frontend:
+    summary: Build the frontend into internal/gui/dist
+    deps: [bindings]
+    dir: frontend
+    cmds:
+      - pnpm run build
+
+  build:
+    summary: Build bin/mihomobar
+    deps: [frontend]
+    cmds:
+      - go build -tags {{.TAGS}},production -trimpath -buildvcs=false -ldflags="-w -s {{.LDFLAGS}}" -o bin/{{.BIN}} .
+
+  build:dev:
+    summary: Build bin/mihomobar with devtools and no frontend minify
+    cmds:
+      - task: bindings
+      - cd frontend && pnpm run build:dev
+      - go build -tags {{.TAGS}} -buildvcs=false -gcflags=all=-l -ldflags="{{.LDFLAGS}}" -o bin/{{.BIN}} .
+
+  run:
+    summary: Build (dev) and run, opening the main window
+    deps: [build:dev]
+    cmds:
+      - MIHOMOBAR_SHOW=main ./bin/{{.BIN}}
+
+  dev:
+    summary: Vite with hot reload against a Go build
+    cmds:
+      - wails3 dev -config ./build/config.yml -port 9245
+
+  app:
+    summary: Bundle bin/MihomoBar.app (ad-hoc signed)
+    deps: [build]
+    cmds:
+      - scripts/bundle.sh "{{.VERSION}}"
+
+  dmg:
+    summary: Package bin/MihomoBar.dmg
+    deps: [app]
+    cmds:
+      - rm -f bin/{{.APP_NAME}}.dmg
+      - hdiutil create -volname {{.APP_NAME}} -srcfolder bin/{{.APP_NAME}}.app -ov -format UDZO bin/{{.APP_NAME}}.dmg
+
+  test:
+    cmds:
+      - go test ./internal/...
+      - cd frontend && pnpm run typecheck
+
+  sync-replaces:
+    summary: Copy mihomo's go.mod replace directives into ours
+    cmds:
+      - scripts/sync-replaces.sh

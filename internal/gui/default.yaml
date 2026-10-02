@@ -1,0 +1,41 @@
+# MihomoBar's starter profile: everything goes direct until a subscription is
+# imported.
+mixed-port: 7890
+mode: rule
+log-level: info
+ipv6: false
+unified-delay: true
+tcp-concurrent: true
+geodata-mode: false
+geo-auto-update: false
+find-process-mode: strict
+profile:
+  store-selected: true
+  store-fake-ip: true
+sniffer:
+  enable: true
+  sniff:
+    HTTP: { ports: [80, 8080-8880], override-destination: true }
+    TLS: { ports: [443, 8443] }
+    QUIC: { ports: [443, 8443] }
+dns:
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter: ["*.lan", "*.local", "+.msftconnecttest.com", "+.msftncsi.com", "localhost.ptlogin2.qq.com", "time.*.com", "ntp.*.com"]
+  default-nameserver: [223.5.5.5, 119.29.29.29]
+  nameserver: ["https://dns.alidns.com/dns-query", "https://doh.pub/dns-query"]
+tun:
+  enable: false
+  stack: mixed
+  auto-route: true
+  auto-detect-interface: true
+  dns-hijack: ["any:53", "tcp://any:53"]
+proxies: []
+proxy-groups:
+  - name: Proxy
+    type: select
+    proxies: [DIRECT]
+rules:
+  - MATCH,Proxy

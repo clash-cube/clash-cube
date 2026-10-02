@@ -1,0 +1,4 @@
+[submodule "third_party/mihomo"]
+	path = third_party/mihomo
+	url = https://github.com/Demogorgon314/mihomo.git
+	branch = openconnect-support
