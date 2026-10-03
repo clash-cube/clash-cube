@@ -4,9 +4,14 @@ const s = (size = 16) => ({ width: size, height: size, viewBox: "0 0 16 16", fil
 
 export const Logo = ({ size = 18 }: P) => (
   <svg width={size} height={size} viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinejoin="round">
+    {/* the faces, each its own so a light can go round them (.logo.spin) */}
+    <g fill="currentColor" stroke="none">
+      <path className="face-top" d="M11 2.2 18.6 6.6 11 11 3.4 6.6Z" opacity={0} />
+      <path className="face-right" d="M11 11 18.6 6.6v8.8L11 19.8Z" />
+      <path className="face-left" d="M3.4 6.6 11 11v8.8l-7.6-4.4Z" opacity={0} />
+    </g>
     <path d="M11 2.2 18.6 6.6v8.8L11 19.8 3.4 15.4V6.6Z" />
     <path d="M3.8 6.8 11 11l7.2-4.2M11 11v8.4" />
-    <path d="M11 11 18.2 6.8v8.4L11 19.4Z" fill="currentColor" stroke="none" />
   </svg>
 );
 // Lucide's "settings" icon, drawn on a 24px grid.

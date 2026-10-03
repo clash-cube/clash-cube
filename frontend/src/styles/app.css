@@ -23,8 +23,14 @@ code, .mono { font-family: var(--code); font-size: 11.5px; }
 .top .seg, .top button, .top .pill-status { --wails-draggable: no-drag; }
 .brand { display: flex; align-items: center; gap: 7px; font-weight: 600; letter-spacing: .01em; }
 .brand .logo { width: 18px; height: 18px; color: var(--fg); display: inline-flex; }
-.brand .logo.spin svg { animation: cube-turn .9s var(--ease-out); }
-@keyframes cube-turn { 0% { transform: rotate(0); } 40% { transform: rotate(-12deg) scale(.92); } 100% { transform: rotate(0); } }
+/* a light once round the cube, clockwise, left, top, right, as the tray
+   icon's: each face lights fast and fades slow, and the light ends home on
+   the right face, which it left as it set out */
+.logo.spin .face-left { animation: face-lit .35s var(--ease-out) both; }
+.logo.spin .face-top { animation: face-lit .35s var(--ease-out) .11s both; }
+.logo.spin .face-right { animation: face-home .57s var(--ease-out); }
+@keyframes face-lit { 0% { opacity: 0; } 29% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes face-home { 0% { opacity: 1; } 39% { opacity: 0; } 56% { opacity: 1; } 100% { opacity: 1; } }
 .top .seg { position: absolute; left: 50%; top: calc(50% + 1px); transform: translate(-50%, -50%); }
 .actions { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .icon {

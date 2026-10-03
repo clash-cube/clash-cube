@@ -30,11 +30,13 @@ export function Panel() {
 
   useFit([top, body, foot]);
 
-  // the panel opens fresh: groups folded, from the top
+  // the panel opens fresh: groups folded, from the top, and the logo's
+  // light going round once
+  const [opened, setOpened] = useState(0);
   useEffect(() => {
-    const onHide = () => { if (document.hidden) setOpen(""); };
-    document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
+    const onVis = () => { if (document.hidden) setOpen(""); else setOpened((n) => n + 1); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
   const shown = (groups ?? []).filter((g) => !g.hidden && g.name !== "GLOBAL");
@@ -42,7 +44,7 @@ export function Panel() {
   return (
     <div className="app panel">
       <div className="ptop" ref={top}>
-        <span className="plogo"><Logo size={16} /></span>
+        <span className={"plogo logo" + (opened ? " spin" : "")} key={opened}><Logo size={20} /></span>
         <div className="pstatus">
           <div className="pname">{running ? state?.profileName : coreLabel()}</div>
           <div className="pspeed num">{running ? <>↑ {speed(traffic.up)} · ↓ {speed(traffic.down)}</> : state?.coreError || " "}</div>
