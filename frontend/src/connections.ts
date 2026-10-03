@@ -13,14 +13,16 @@ export const ruleOf = (c: Connection) => c.rulePayload ? `${c.rule}(${c.rulePayl
 export const chainOf = (c: Connection) => (c.chains ?? []).slice().reverse().join(" → ");
 export const address = (host: string, port: string) => host ? `${host.includes(":") ? `[${host}]` : host}${port ? ":" + port : ""}` : "—";
 
-export function filterConnections(conns: Conn[], query: string, network: string): Conn[] {
+export function filterConnections(conns: Conn[], query: string, network: string,
+  sources: ReadonlySet<string> = new Set(), labels: Record<string, string> = {}): Conn[] {
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   return conns.filter((c) => {
     const m = c.metadata;
+    if (sources.size && !sources.has(m.sourceIP)) return false;
     if (network !== "all" && m.network.toLowerCase() !== network) return false;
     const values = [c.id, m.host, m.sniffHost, m.destinationIP, m.destinationPort, m.remoteDestination,
       m.sourceIP, m.sourcePort, address(m.sourceIP, m.sourcePort), address(hostOf(c), m.destinationPort),
-      m.network, m.type, processName(c), m.processPath, c.rule, c.rulePayload, ...(c.chains ?? [])]
+      labels[m.sourceIP], m.network, m.type, processName(c), m.processPath, c.rule, c.rulePayload, ...(c.chains ?? [])]
       .map((v) => (v || "").toLowerCase());
     return words.every((word) => values.some((v) => v.includes(word)));
   });

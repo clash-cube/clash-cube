@@ -8,6 +8,7 @@ import { Switch } from "./components/Switch";
 import { Sparkline } from "./components/Sparkline";
 import { Bolt, Chevron, Gear, Logo, Power, Refresh, Window } from "./components/Icons";
 import { Fold } from "./components/Fold";
+import { AppIcon } from "./components/AppIcon";
 import { coreLabel, restartCore, setMode, setSystemProxy, setTun, startCore } from "./actions";
 import { speed, delayClass } from "./format";
 import { useGroups } from "./useGroups";
@@ -163,21 +164,6 @@ function TopClients() {
       ))}
     </div>
   );
-}
-
-// an icon is fetched once per app, and kept
-const icons = new Map<string, Promise<string>>();
-
-function AppIcon({ path }: { path: string }) {
-  const [src, setSrc] = useState("");
-  useEffect(() => {
-    let p = icons.get(path);
-    if (!p) icons.set(path, (p = App.AppIcon(path)));
-    let live = true;
-    p.then((s) => live && setSrc(s), () => {});
-    return () => { live = false; };
-  }, [path]);
-  return src ? <img className="pcicon" src={src} alt="" /> : <span className="pcicon" />;
 }
 
 // useFit keeps the panel window as tall as the parts' natural height; a

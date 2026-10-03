@@ -246,6 +246,11 @@ type Metadata struct {
 	Process     string `json:"process"`
 	ProcessPath string `json:"processPath"`
 	RemoteDest  string `json:"remoteDestination"`
+	InboundIP   string `json:"inboundIP"`
+	InboundPort string `json:"inboundPort"`
+	InboundName string `json:"inboundName"`
+	InboundUser string `json:"inboundUser"`
+	DNSMode     string `json:"dnsMode"`
 }
 
 type Connection struct {
@@ -257,6 +262,20 @@ type Connection struct {
 	Chains      []string  `json:"chains"`
 	Rule        string    `json:"rule"`
 	RulePayload string    `json:"rulePayload"`
+	RawJSON     string    `json:"rawJSON"`
+}
+
+// Preserve the core's complete record for inspection, including fields that
+// this client does not yet model. History keeps the last observed record.
+func (c *Connection) UnmarshalJSON(data []byte) error {
+	type record Connection
+	var v record
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	v.RawJSON = string(data)
+	*c = Connection(v)
+	return nil
 }
 
 type Connections struct {

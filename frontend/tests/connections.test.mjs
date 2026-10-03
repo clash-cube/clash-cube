@@ -9,6 +9,18 @@ const conn = (id, overrides = {}) => ({ id, metadata: { network: "tcp", type: "H
   start: new Date(0).toISOString(), upload: 0, download: 0, chains: ["node", "group"], rule: "Domain", rulePayload: "example.test", ...overrides });
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 
+test("source selection intersects protocol and label search, including archived connections", () => {
+  const tracker = new ConnectionTracker();
+  tracker.collect([conn("a"), conn("b", { metadata: { ...conn("").metadata, sourceIP: "192.168.1.6" } })], 1000);
+  tracker.collect([], 2000);
+  const labels = { "192.168.1.5": "Office Mac" };
+  const selected = new Set(["192.168.1.5"]);
+  assert.deepEqual(filterConnections(tracker.snapshot.closed, "office curl", "tcp", selected, labels).map((c) => c.id), ["a"]);
+  assert.equal(filterConnections(tracker.snapshot.closed, "office", "udp", selected, labels).length, 0);
+  assert.equal(filterConnections(tracker.snapshot.closed, "", "all", new Set(["missing"]), labels).length, 0);
+  assert.equal(filterConnections(tracker.snapshot.closed, "", "all", new Set(), labels).length, 2);
+});
+
 test("history preserves last counters, freezes ended duration and keeps only 500 records", () => {
   const tracker = new ConnectionTracker();
   tracker.collect([conn("upload")], 1000);

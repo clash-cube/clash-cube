@@ -10,6 +10,7 @@ export interface Connection {
     "chains": string[] | null;
     "rule": string;
     "rulePayload": string;
+    "rawJSON": string;
 }
 
 export interface Connections {
@@ -41,6 +42,11 @@ export interface Metadata {
     "process": string;
     "processPath": string;
     "remoteDestination": string;
+    "inboundIP": string;
+    "inboundPort": string;
+    "inboundName": string;
+    "inboundUser": string;
+    "dnsMode": string;
 }
 
 export interface Rule {
