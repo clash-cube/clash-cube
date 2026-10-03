@@ -56,7 +56,7 @@ cd frontend && npx tsc    # type check
   regenerate the bindings with `wails3 task bindings`. They live in
   `frontend/bindings` and are committed.
 - Run development instances on a separate home and port. Never use the
-  user's real data (`~/Library/Application Support/MihomoBar`):
+  user's real data directory (the default, under Application Support):
   `MIHOMOBAR_HOME=/tmp/mbhome ./bin/mihomobar`. Set that home's `mixedPort`
   to something other than 7890.
 - Debug switches: `MIHOMOBAR_SHOW=main|panel|menu` opens a window or the tray

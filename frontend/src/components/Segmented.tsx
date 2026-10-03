@@ -2,8 +2,8 @@ import { useLayoutEffect, useRef } from "react";
 
 type Option<T extends string> = { value: T; label: string };
 
-// A segmented control whose thumb glides to the chosen option,
-// rather than each option lighting up on its own.
+// A segmented control whose one thumb glides to the chosen option, rather
+// than each option lighting up on its own.
 export function Segmented<T extends string>({ options, value, onChange, className = "" }: {
   options: Option<T>[];
   value: T;

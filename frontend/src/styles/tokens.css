@@ -1,5 +1,4 @@
-/* The palette and type of magpie (github.com/yetone/magpie), the surface
-   MihomoBar's look follows: one quiet surface, controls that read as native. */
+/* The palette, type and motion: one quiet surface, controls that read as native. */
 :root {
   --bg: #f4f4f6;
   --card: #ffffff;

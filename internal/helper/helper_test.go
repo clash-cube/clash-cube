@@ -122,7 +122,7 @@ func TestHelperRefusesOtherUsers(t *testing.T) {
 
 func TestPlistIsValid(t *testing.T) {
 	f := filepath.Join(t.TempDir(), "p.plist")
-	os.WriteFile(f, []byte(plist(501, "/Users/a b/Library/Application Support/MihomoBar & co")), 0o644)
+	os.WriteFile(f, []byte(plist(501, "/tmp/a b/Application Support/MihomoBar & co")), 0o644)
 	if out, err := execOut("plutil", "-lint", f); err != nil {
 		t.Fatalf("%s", out)
 	}

@@ -229,7 +229,7 @@ third_party/mihomo/         子模块
 - 没有 Developer ID：helper 通过 osascript 授权安装，安装后不在 Gatekeeper 的评估范围内（安装时由 root 拷贝到 `/Library/PrivilegedHelperTools`，并清除 quarantine 属性）。
 
 ## 9. 调研记录（摘要）
-- **作为库调用**：实测，`hub.Parse(bytes)` 加 `/version` 正常，同一进程内连续加载两次也正常。带 gvisor 的二进制约 60MB。
+- **作为库调用**：实测`hub.Parse(bytes)` 加 `/version` 正常，同一进程内连续加载两次也正常。带 gvisor 的二进制约 60MB。
 - **cgo**：darwin 上只有 `tailscale/certstore` 用到 cgo，关掉 cgo 时有替代实现；openconnect 不用 cgo。
 - **`replace` 不会被依赖方继承**：使用方必须复制那 5 条，否则 `go mod tidy` 报 `unknown revision`。
 - **`init()` 副作用**：logrus 默认输出到 stdout；`statistic` 包会启动一个 1s ticker；系统 DNS 兜底为 114/8.8.8.8。GUI 和 core 是同一个二进制，所以 GUI 进程也会执行这些 init()。不过它们只是一个空转的 ticker 和几个全局变量，影响可以忽略；GUI 从不调用 hub/executor。
