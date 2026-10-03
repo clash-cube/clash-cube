@@ -22,6 +22,7 @@ declare module "@wailsio/runtime" {
             "memory": mihomoapi$0.Memory;
             "navigate": string;
             "profiles": profiles$0.Profile[] | null;
+            "proxy-latency": backend$0.LatencyEvent;
             "state": backend$0.State;
             "traffic": mihomoapi$0.Traffic;
         }

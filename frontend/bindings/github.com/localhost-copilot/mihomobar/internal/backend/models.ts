@@ -149,6 +149,25 @@ export interface HelperStatus {
 }
 
 /**
+ * LatencyEvent describes one test operation. Pending contains display names,
+ * including group aliases; Delays contains only the newly completed results.
+ */
+export interface LatencyEvent {
+    "key": string;
+    "running": boolean;
+    "pending": string[] | null;
+    "delays": { [_ in string]?: number } | null;
+    "total": number;
+    "completed": number;
+    "failed": number;
+}
+
+export interface LatencyResult {
+    "total": number;
+    "failed": number;
+}
+
+/**
  * ProxyEgress is where proxied traffic leaves: the address Cloudflare sees
  * a request through the core come from, and the chain it took.
  */

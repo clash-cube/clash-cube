@@ -127,7 +127,7 @@ third_party/mihomo/         子模块
 | 服务 | 方法 |
 |---|---|
 | `AppService` | `State()`、`Start/Stop/Restart()`、`SetMode`、`SetSystemProxy`、`SetTun`、`ShowMain(view)`、`HidePanel`、`FitPanel(h, ms)`、`Quit` |
-| `ProxyService` | `Groups()`、`Select(group, name)`、`Delay(name)`、`GroupDelay(group)` |
+| `ProxyService` | `Groups()`、`Select(group, name)`、`TestLatency(kind, name)`（node/group/provider/all） |
 | `ProfileService` | `List()`、`Import(url\|file)`、`Update(id)`、`UpdateAll()`、`Remove(id)`、`Use(id)`、`Reveal()` |
 | `ConnService` | `Close(id)`、`CloseAll()` |
 | `RuleService` | `Rules()` |
@@ -243,6 +243,7 @@ third_party/mihomo/         子模块
 - **出站模式**（Direct / Global / Rule）是凌驾于规则之上的全局开关，与 mihomo 的 `mode` 一一对应。主窗口和托盘都把它放在最显眼的位置。
 - **系统代理**与**增强模式（TUN）**是两个独立开关，可以同时开启。图标状态要反映“当前是否真的在接管流量”。
 - **代理组延迟**取当前选中成员的延迟；测速结果可以排序；HTTPS 测速不计入 TLS 握手时间（mihomo `unified-delay` 已经支持）。
+- **手动测速**对齐 zashboard 默认 Dashboard 模式：页面、面板和原生菜单统一使用设置中的全局测速 URL；Go 后端共享 5 个请求槽位并合并重复的在途请求。单节点测试跟随嵌套组当前选中的节点，超时 5 秒；Selector、LoadBalance、Smart 组和 Provider 逐节点测试，超时 2 秒；其他组调用核心整组测速接口，超时 5 秒，以更新核心的健康状态和自动选择。“全部测速”覆盖核心和 Provider 的非组节点，按名称去重，排除 Reject、RejectDrop 和 Block，不受当前搜索过滤影响。`proxy-latency` 事件同步进度和逐节点结果，结束后各界面重新获取核心数据。未提供独立测速 URL 模式。
 - **托管配置不可编辑，新配置不合法就不加载**：我们已经做到“更新后先 `core -t` 校验，失败就保留旧配置”。
 
 ### 10.2 托盘：左键面板 + 右键原生菜单

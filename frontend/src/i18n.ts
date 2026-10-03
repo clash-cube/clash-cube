@@ -19,6 +19,8 @@ const zh: Record<string, string> = {
   "Installs a privileged helper on first use": "首次开启时会安装特权助手",
   "Current profile": "当前配置", "Open Dashboard": "打开主界面", "Quit": "退出",
   "Top Clients": "活跃应用", "No active apps": "暂无活跃应用",
+  "Testing {done}/{total}": "测速中 {done}/{total}",
+  "Tested {total}: {success} succeeded, {failed} failed": "已测 {total} 个：成功 {success}，失败 {failed}",
   "Test": "测速", "Testing…": "测速中…", "Test all": "全部测速", "Sort by latency": "按延迟排序", "Default order": "默认顺序", "One column": "单栏", "Search groups and nodes": "搜索代理组或节点", "No matches": "没有匹配", "Nothing is named like “{q}”.": "没有名称包含“{q}”的代理组或节点。", "Two columns": "双栏",
   "Core is not running": "内核未运行", "Start the core to see proxies.": "启动内核后即可查看代理。",
   "No proxy groups": "没有代理组", "This profile has no proxy groups.": "此配置没有代理组。",

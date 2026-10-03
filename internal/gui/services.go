@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"sort"
@@ -143,26 +142,21 @@ type Member struct {
 
 // ProxyService is the core's proxies, groups, connections and rules.
 type ProxyService struct {
-	h       *host
-	testing sync.Map // group → struct{}
+	h *host
 
 	meterMu sync.Mutex
 	meter   backend.ClientMeter // for TopClients
 	meterAt time.Time
-
-	ownerMu sync.Mutex
-	owner   map[string]string // a provider's proxy → the provider, as last listed
 }
 
 // providerProxies is every provider's proxies by name, which /proxies
-// leaves out; it notes whose each is, as Delay needs to know.
+// leaves out.
 func (s *ProxyService) providerProxies(ctx context.Context, c *mihomoapi.Client) (map[string]mihomoapi.ProxyProvider, map[string]mihomoapi.Proxy, error) {
 	pvs, err := c.ProxyProviders(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 	byName := map[string]mihomoapi.Proxy{}
-	owner := map[string]string{}
 	for _, p := range pvs {
 		// the core's own, for groups' proxies: those /proxies has
 		if p.VehicleType == "Compatible" {
@@ -170,19 +164,9 @@ func (s *ProxyService) providerProxies(ctx context.Context, c *mihomoapi.Client)
 		}
 		for _, m := range p.Proxies {
 			byName[m.Name] = m
-			owner[m.Name] = p.Name
 		}
 	}
-	s.ownerMu.Lock()
-	s.owner = owner
-	s.ownerMu.Unlock()
 	return pvs, byName, nil
-}
-
-func (s *ProxyService) ownerOf(name string) string {
-	s.ownerMu.Lock()
-	defer s.ownerMu.Unlock()
-	return s.owner[name]
 }
 
 func (s *ProxyService) client() (*mihomoapi.Client, error) { return s.h.b.Client() }
@@ -210,6 +194,11 @@ func (s *ProxyService) Groups() ([]Group, error) {
 	}
 	// a group that uses a provider lists its proxies by name only
 	_, fromProviders, _ := s.providerProxies(context.Background(), c)
+	for name, p := range fromProviders {
+		if _, ok := all[name]; !ok {
+			all[name] = p
+		}
+	}
 	var order []string
 	if g, ok := all["GLOBAL"]; ok {
 		order = append(order, g.All...)
@@ -223,11 +212,9 @@ func (s *ProxyService) Groups() ([]Group, error) {
 		}
 		g := Group{Name: p.Name, Type: p.Type, Now: p.Now, Hidden: p.Hidden, Icon: p.Icon, TestURL: p.TestURL}
 		for _, m := range p.All {
-			mp, ok := all[m]
-			if !ok {
-				mp = fromProviders[m]
-			}
-			g.Members = append(g.Members, Member{Name: m, Type: mp.Type, UDP: mp.UDP, Delay: lastDelay(mp), Group: len(mp.All) > 0})
+			mp := all[m]
+			selected := all[backend.SelectedProxy(all, m)]
+			g.Members = append(g.Members, Member{Name: m, Type: mp.Type, UDP: mp.UDP, Delay: lastDelay(selected), Group: len(mp.All) > 0})
 		}
 		out = append(out, g)
 	}
@@ -308,69 +295,14 @@ func (s *ProxyService) Select(group, name string) error {
 	return nil
 }
 
-func (s *ProxyService) testURL(u string) string {
-	if u != "" {
-		return u
-	}
-	return settings.Load().TestURL
-}
-
-// Delay tests one proxy, a provider's too: ms, or -1 when it failed.
-func (s *ProxyService) Delay(name, testURL string) (int, error) {
-	c, err := s.client()
-	if err != nil {
-		return 0, err
-	}
-	return s.delay(c, name, s.testURL(testURL))
-}
-
-func (s *ProxyService) delay(c *mihomoapi.Client, name, testURL string) (int, error) {
-	ctx := context.Background()
-	d, err := c.Delay(ctx, name, testURL, 5*time.Second)
-	var ae *mihomoapi.APIError
-	// /proxies doesn't know a provider's proxies; its provider does
-	if errors.As(err, &ae) && ae.Status == http.StatusNotFound {
-		owner := s.ownerOf(name)
-		if owner == "" {
-			_, _, _ = s.providerProxies(ctx, c)
-			owner = s.ownerOf(name)
+// TestLatency shares scheduling, progress and results across all surfaces.
+func (s *ProxyService) TestLatency(kind, name string) (backend.LatencyResult, error) {
+	return s.h.b.TestLatency(kind, name, func(e backend.LatencyEvent) {
+		(sink{h: s.h}).emit("proxy-latency", e)
+		if s.h.menu != nil {
+			s.h.menu.latencyChanged(e)
 		}
-		if owner != "" {
-			d, err = c.ProviderProxyDelay(ctx, owner, name, testURL, 5*time.Second)
-		}
-	}
-	if errors.As(err, &ae) {
-		return -1, nil
-	}
-	return d, err
-}
-
-// GroupDelay tests every member of a group: name → ms, -1 failed.
-func (s *ProxyService) GroupDelay(group, testURL string) (map[string]int, error) {
-	if _, busy := s.testing.LoadOrStore(group, struct{}{}); busy {
-		return nil, errors.New("already testing")
-	}
-	defer s.testing.Delete(group)
-	c, err := s.client()
-	if err != nil {
-		return nil, err
-	}
-	res, err := c.GroupDelay(context.Background(), group, s.testURL(testURL), 5*time.Second)
-	var ae *mihomoapi.APIError
-	if err != nil && !errors.As(err, &ae) {
-		return nil, err
-	}
-	// members that failed are absent from the answer
-	all, _ := c.Proxies(context.Background())
-	out := map[string]int{}
-	for _, m := range all[group].All {
-		if d, ok := res[m]; ok && d > 0 {
-			out[m] = d
-		} else {
-			out[m] = -1
-		}
-	}
-	return out, nil
+	})
 }
 
 func (s *ProxyService) Connections() (mihomoapi.Connections, error) {

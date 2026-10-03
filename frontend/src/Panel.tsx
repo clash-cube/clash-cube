@@ -21,7 +21,7 @@ export function Panel() {
   const state = useStore((s) => s.state);
   const traffic = useStore((s) => s.traffic);
   const history = useStore((s) => s.history);
-  const { groups, select, testGroup, testOne, testing, flash } = useGroups();
+  const { groups, select, testGroup, testOne, testAll, testing, progress, flash } = useGroups();
   const [open, setOpen] = useState<string>("");
   const top = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
@@ -51,7 +51,7 @@ export function Panel() {
           <div className="pspeed num">{running ? <>↑ {speed(traffic.up)} · ↓ {speed(traffic.down)}</> : state?.coreError || " "}</div>
         </div>
         {running && shown.length > 0 && (
-          <button className={"icon" + (shown.some((g) => testing[g.name]) ? " zap" : "")} title={t("Test all")} onClick={() => shown.forEach((g) => !testing[g.name] && testGroup(g))}><Bolt /></button>
+          <button className={"icon" + (progress ? " zap" : "")} disabled={!!testing["all/"]} title={progress || t("Test all")} onClick={testAll}><Bolt /></button>
         )}
         <button className="icon" title={t("Open Dashboard")} onClick={() => App.ShowMain("")}><Window /></button>
         <button className="icon" title={t("Settings")} onClick={() => App.ShowMain("settings")}><Gear /></button>
@@ -203,4 +203,3 @@ function useFit(parts: React.RefObject<HTMLElement | null>[]) {
     return () => { ro.disconnect(); cancelAnimationFrame(raf); };
   }, []);
 }
-

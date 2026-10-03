@@ -7,6 +7,8 @@ export type {
     DNSEgress,
     Egress,
     HelperStatus,
+    LatencyEvent,
+    LatencyResult,
     ProxyEgress,
     State
 } from "./models.js";

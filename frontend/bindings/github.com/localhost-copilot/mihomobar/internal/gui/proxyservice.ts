@@ -33,22 +33,8 @@ export function Connections(): $CancellablePromise<mihomoapi$0.Connections> {
     return $Call.ByID(1837008931);
 }
 
-/**
- * Delay tests one proxy, a provider's too: ms, or -1 when it failed.
- */
-export function Delay(name: string, testURL: string): $CancellablePromise<number> {
-    return $Call.ByID(3819145257, name, testURL);
-}
-
 export function FlushDNS(): $CancellablePromise<void> {
     return $Call.ByID(305162487);
-}
-
-/**
- * GroupDelay tests every member of a group: name → ms, -1 failed.
- */
-export function GroupDelay(group: string, testURL: string): $CancellablePromise<{ [_ in string]?: number } | null> {
-    return $Call.ByID(3806647996, group, testURL);
 }
 
 /**
@@ -72,6 +58,13 @@ export function Rules(): $CancellablePromise<mihomoapi$0.Rule[] | null> {
 
 export function Select(group: string, name: string): $CancellablePromise<void> {
     return $Call.ByID(141765054, group, name);
+}
+
+/**
+ * TestLatency shares scheduling, progress and results across all surfaces.
+ */
+export function TestLatency(kind: string, name: string): $CancellablePromise<backend$0.LatencyResult> {
+    return $Call.ByID(2402573828, kind, name);
 }
 
 /**

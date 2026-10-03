@@ -18,7 +18,7 @@ const TWO_COLUMNS_MIN = 760;
 export function Proxies() {
   const t = useT();
   const core = useStore((s) => s.state?.core);
-  const { groups, providers, select, testGroup, testOne, updateProvider, testing, flash } = useGroups({ providers: true });
+  const { groups, providers, select, testGroup, testProvider, testOne, testAll, updateProvider, testing, progress, flash } = useGroups({ providers: true });
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [sorted, setSorted] = useState(false);
   // ?view=proxies#providers opens on the providers
@@ -65,7 +65,6 @@ export function Proxies() {
   const isOpen = (key: string, dflt: boolean) => (needle ? !folded[key] : open[key] ?? dflt);
   const toggle = (key: string, dflt: boolean) => needle ? setFolded((f) => ({ ...f, [key]: !f[key] })) : setOpen((o) => ({ ...o, [key]: !(o[key] ?? dflt) }));
   const pkey = (p: Provider) => "provider/" + p.name;
-  const testProvider = (p: Provider) => testGroup({ key: pkey(p), testUrl: p.testUrl, members: p.members });
   const updatable = pvs.filter((p) => p.vehicleType !== "Inline");
   const updateAll = async () => {
     setUpdatingAll(true);
@@ -74,7 +73,6 @@ export function Proxies() {
     setUpdatingAll(false);
     if (ok) toast(t("Updated {name}", { name: t("Providers") }));
   };
-  const testingAny = view === "groups" ? shown.some((g) => testing[g.name]) : pvs.some((p) => testing[pkey(p)]);
 
   const wide = width >= TWO_COLUMNS_MIN;
   const cols = twoCols && wide ? 2 : 1;
@@ -96,7 +94,7 @@ export function Proxies() {
           {view === "providers" && updatable.length > 0 && (
             <button className="btn small" disabled={updatingAll} onClick={updateAll}><Refresh size={13} />{updatingAll ? t("Updating…") : t("Update all")}</button>
           )}
-          <button className={"btn small" + (testingAny ? " zap" : "")} onClick={() => (view === "groups" ? groupsShown.forEach((g) => !testing[g.name] && testGroup(g)) : pvsShown.forEach((p) => !testing[pkey(p)] && testProvider(p)))}><Bolt size={13} />{t("Test all")}</button>
+          <button className={"btn small" + (progress ? " zap" : "")} disabled={!!testing["all/"]} onClick={testAll}><Bolt size={13} />{progress || t("Test all")}</button>
         </div>
       </div>
       {needle && (view === "groups" ? groupsShown : pvsShown).length === 0 && <div className="empty-state"><b>{t("No matches")}</b>{t("Nothing is named like “{q}”.", { q: q.trim() })}</div>}

@@ -26,9 +26,11 @@ type trayMenu struct {
 	h  *host
 	mu sync.Mutex
 
-	last    backend.State
-	groups  []Group
-	pending bool // a rebuild is scheduled
+	last          backend.State
+	groups        []Group
+	pending       bool   // a rebuild is scheduled
+	refreshAgain  bool   // changes arrived while a group snapshot was loading
+	groupRevision uint64 // streamed results must not be overwritten by older snapshots
 
 	open  bool          // the menu shows
 	stale bool          // it should be rebuilt once it closes
@@ -39,7 +41,7 @@ type trayMenu struct {
 	quality   int // ms through the proxy (direct in direct mode); 0 unmeasured, -1 failed
 	measured  time.Time
 	measuring bool
-	testing   map[string]bool // groups being tested from the menu
+	testing   map[string]backend.LatencyEvent // active tests from any surface
 
 	// the rows that change while the menu shows; main thread only
 	qualityItem *application.MenuItem
@@ -55,7 +57,7 @@ const topClients = 5
 var theTrayMenu *trayMenu
 
 func newTrayMenu(h *host) *trayMenu {
-	m := &trayMenu{h: h, last: h.b.State(), testing: map[string]bool{}}
+	m := &trayMenu{h: h, last: h.b.State(), testing: map[string]backend.LatencyEvent{}}
 	theTrayMenu = m
 	return m
 }
@@ -139,84 +141,78 @@ type nodeRow struct {
 	item  *application.MenuItem
 }
 
-// nodeTests is how many of a group's nodes are tested at once.
-const nodeTests = 16
+func (m *trayMenu) relabel() { m.rebuild() }
 
-// test tests a group's nodes one by one, a few at a time, so each delay
-// shows in the menu as it comes in rather than when the slowest answers
-// (mihomo's group test answers all at once). The menu stays up meanwhile,
-// and is rebuilt once it closes.
-func (m *trayMenu) test(ps *ProxyService, g Group) {
-	m.mu.Lock()
-	busy := m.testing[g.Name]
-	m.testing[g.Name] = true
-	m.mu.Unlock()
-	if busy {
-		return
-	}
-	m.showTesting(g.Name, true)
-	sem := make(chan struct{}, nodeTests)
-	var wg sync.WaitGroup
-	for _, mem := range g.Members {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			d, err := ps.Delay(mem.Name, g.TestURL)
-			if err != nil {
-				log.Printf("test %s: %v", mem.Name, err)
-			}
-			m.showDelay(g.Name, mem.Name, d, err == nil)
-		}()
-	}
-	wg.Wait()
-	m.mu.Lock()
-	delete(m.testing, g.Name)
-	m.mu.Unlock()
-	m.showTesting(g.Name, false)
-	m.refresh()
-}
-
-// showTesting marks a group's test as running, its nodes waiting, or done.
-func (m *trayMenu) showTesting(group string, testing bool) {
+// latencyChanged keeps an open menu's rows in place while showing shared
+// progress. Cached groups and all occurrences of a node get the same result.
+func (m *trayMenu) latencyChanged(e backend.LatencyEvent) {
 	application.InvokeAsync(func() {
-		if testing {
-			for _, r := range m.nodes[group] {
-				r.item.SetLabel(detail(r.name, badge("none", "···")))
+		m.mu.Lock()
+		m.groupRevision++
+		if e.Running {
+			m.testing[e.Key] = e
+		} else {
+			delete(m.testing, e.Key)
+		}
+		for _, g := range m.groups {
+			for i := range g.Members {
+				if d, ok := e.Delays[g.Members[i].Name]; ok {
+					g.Members[i].Delay = d
+				}
 			}
 		}
-		if it := m.tests[group]; it != nil {
-			it.SetLabel(testLabel(testing))
-		}
-		styleTrayMenu()
-	})
-}
-
-// showDelay puts a node's delay on its row; one the test couldn't measure
-// shows its delay as before.
-func (m *trayMenu) showDelay(group, node string, d int, ok bool) {
-	application.InvokeAsync(func() {
-		rows := m.nodes[group]
-		for i := range rows {
-			if r := &rows[i]; r.name == node {
-				if ok {
+		m.mu.Unlock()
+		for _, rows := range m.nodes {
+			for i := range rows {
+				r := &rows[i]
+				if d, ok := e.Delays[r.name]; ok {
 					r.delay = d
 				}
-				r.item.SetLabel(detail(r.name, delayBadge(r.delay)))
 			}
 		}
-		styleTrayMenu()
+		m.paintLatency()
+		if !e.Running {
+			m.refresh()
+		}
 	})
 }
 
-func (m *trayMenu) relabel() { m.rebuild() }
+// paintLatency runs on the main thread; overlapping tests cannot clear each
+// other's pending indicators.
+func (m *trayMenu) paintLatency() {
+	m.mu.Lock()
+	pending := map[string]bool{}
+	for _, e := range m.testing {
+		for _, name := range e.Pending {
+			pending[name] = true
+		}
+	}
+	for group, it := range m.tests {
+		_, testing := m.testing["group/"+group]
+		it.SetLabel(testLabel(testing))
+	}
+	m.mu.Unlock()
+	for _, rows := range m.nodes {
+		for _, r := range rows {
+			right := delayBadge(r.delay)
+			if pending[r.name] {
+				right = badge("none", "···")
+			}
+			r.item.SetLabel(detail(r.name, right))
+		}
+	}
+	styleTrayMenu()
+}
 
 // update takes a new state; groups are reloaded when the core is up.
 func (m *trayMenu) update(st backend.State) {
 	m.mu.Lock()
 	prev := m.last
 	m.last = st
+	m.groupRevision++
+	if prev.Core != st.Core || prev.Profile != st.Profile {
+		clear(m.testing)
+	}
 	// what the quality says depends on the path traffic takes
 	retest := st.Core == "running" && (prev.Core != "running" || prev.Mode != st.Mode || prev.Profile != st.Profile)
 	if retest {
@@ -233,6 +229,7 @@ func (m *trayMenu) update(st backend.State) {
 func (m *trayMenu) refresh() {
 	m.mu.Lock()
 	if m.pending {
+		m.refreshAgain = true
 		m.mu.Unlock()
 		return
 	}
@@ -240,14 +237,44 @@ func (m *trayMenu) refresh() {
 	m.mu.Unlock()
 	time.AfterFunc(300*time.Millisecond, func() {
 		var groups []Group
-		if m.last.Core == "running" {
+		m.mu.Lock()
+		running := m.last.Core == "running"
+		revision := m.groupRevision
+		m.mu.Unlock()
+		if running {
 			groups, _ = (&ProxyService{h: m.h}).Groups()
 		}
-		m.mu.Lock()
-		m.groups = groups
-		m.pending = false
-		m.mu.Unlock()
-		application.InvokeAsync(m.rebuild)
+		application.InvokeAsync(func() {
+			m.mu.Lock()
+			stale := revision != m.groupRevision
+			again := m.refreshAgain || stale
+			m.pending, m.refreshAgain = false, false
+			if !stale {
+				m.groups = groups
+			}
+			m.mu.Unlock()
+			if again {
+				m.refresh()
+			}
+			if stale {
+				return
+			}
+			// Reconcile the open menu too: core group tests can change the
+			// selected leaf and its history without rebuilding the menu.
+			for _, g := range groups {
+				for _, mem := range g.Members {
+					for i := range m.nodes[g.Name] {
+						r := &m.nodes[g.Name][i]
+						if r.name == mem.Name {
+							r.delay = mem.Delay
+							r.item.SetChecked(r.name == g.Now)
+						}
+					}
+				}
+			}
+			m.rebuild()
+			m.paintLatency()
+		})
 	})
 }
 
@@ -463,16 +490,14 @@ func (m *trayMenu) rebuild() {
 	if running && len(groups) > 0 {
 		menu.AddSeparator()
 		ps := &ProxyService{h: m.h}
-		var shown []Group
 		for _, g := range groups {
 			if g.Hidden || (g.Name == "GLOBAL" && st.Mode != "global") {
 				continue
 			}
-			shown = append(shown, g)
 			sub := menu.AddSubmenu(detail(g.Name, g.Now))
 			// first, and the menu stays up to show the delays coming in
 			m.tests[g.Name] = sub.Add(testLabel(false)).SetTooltip(tr("⌥-click a node to test it alone", "按住 ⌥ 点击节点单独测速")).
-				OnClick(func(*application.Context) { go m.test(ps, g) })
+				OnClick(m.run("test group", func() error { _, err := ps.TestLatency("group", g.Name); return err }))
 			sub.AddSeparator()
 			selectable := g.Type == "Selector"
 			for _, mem := range g.Members {
@@ -483,7 +508,7 @@ func (m *trayMenu) rebuild() {
 				// ⌥-click tests just this node, without switching to it
 				it.OnClick(m.run("select", func() error {
 					if optionHeld() {
-						_, err := ps.Delay(name, g.TestURL)
+						_, err := ps.TestLatency("node", name)
 						return err
 					}
 					if !selectable {
@@ -493,12 +518,10 @@ func (m *trayMenu) rebuild() {
 				}))
 			}
 		}
-		// every group at once, so one needn't open each to test it
-		menu.Add(stay(tr("Test All Latency", "全部测速"))).OnClick(func(*application.Context) {
-			for _, g := range shown {
-				go m.test(ps, g)
-			}
-		})
+		menu.Add(stay(tr("Test All Latency", "全部测速"))).OnClick(m.run("test all", func() error {
+			_, err := ps.TestLatency("all", "")
+			return err
+		}))
 	}
 
 	// how the network does, and who uses it

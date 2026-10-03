@@ -8,6 +8,7 @@ require (
 	github.com/wailsapp/wails/v3 v3.0.0-beta.27
 	go.uber.org/automaxprocs v1.6.0
 	go.yaml.in/yaml/v3 v3.0.5
+	golang.org/x/sync v0.21.0
 	golang.org/x/sys v0.46.0
 )
 
@@ -149,7 +150,6 @@ require (
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/mod v0.37.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
-	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/term v0.44.0 // indirect
 	golang.org/x/text v0.39.0 // indirect
 	golang.org/x/time v0.14.0 // indirect

@@ -15,6 +15,7 @@ func init() {
 	application.RegisterEvent[mihomoapi.Log]("log")
 	application.RegisterEvent[[]profiles.Profile]("profiles")
 	application.RegisterEvent[string]("navigate")
+	application.RegisterEvent[backend.LatencyEvent]("proxy-latency")
 }
 
 // sink turns the backend's changes into events for both pages, and keeps

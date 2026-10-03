@@ -66,6 +66,7 @@ type Backend struct {
 	proxyOwned bool
 	logLevel   string
 	logWatch   context.CancelFunc
+	latency    latencyTester
 }
 
 func New(version, coreVersion string, defaultYAML []byte, sink Sink) *Backend {
