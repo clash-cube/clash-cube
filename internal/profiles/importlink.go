@@ -14,12 +14,12 @@ type ImportRequest struct {
 	Error string `json:"error,omitempty"`
 }
 
-// ParseImportLink accepts Clash's install-config protocol. Error messages omit
+// ParseImportLink accepts Clash and Clash Meta's install-config links. Error messages omit
 // the input because subscription URLs often contain credentials.
 func ParseImportLink(raw string) (ImportRequest, error) {
 	invalid := errors.New("Invalid Clash import link")
 	u, err := url.Parse(raw)
-	if err != nil || !strings.EqualFold(u.Scheme, "clash") || !strings.EqualFold(u.Host, "install-config") ||
+	if err != nil || (!strings.EqualFold(u.Scheme, "clash") && !strings.EqualFold(u.Scheme, "clashmeta")) || !strings.EqualFold(u.Host, "install-config") ||
 		(u.Path != "" && u.Path != "/") || u.User != nil || u.Fragment != "" {
 		return ImportRequest{}, invalid
 	}

@@ -15,7 +15,7 @@
 	<key>CFBundleURLTypes</key>
 	<array><dict>
 		<key>CFBundleURLName</key><string>Clash subscription</string>
-		<key>CFBundleURLSchemes</key><array><string>clash</string></array>
+		<key>CFBundleURLSchemes</key><array><string>clash</string><string>clashmeta</string></array>
 		<key>CFBundleTypeRole</key><string>Viewer</string>
 	</dict></array>
 	<key>NSHighResolutionCapable</key><true/>
