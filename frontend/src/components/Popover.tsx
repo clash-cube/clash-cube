@@ -15,6 +15,8 @@ export function Popover({ anchor, open, onClose, children, align = "start", widt
   const [leaving, setLeaving] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number; ox: number; up: boolean }>({ left: 0, top: 0, ox: 24, up: false });
+  // bumped when the content changes size, so it is placed again
+  const [size, setSize] = useState(0);
 
   useEffect(() => {
     if (open) { setShown(true); setLeaving(false); return; }
@@ -27,15 +29,24 @@ export function Popover({ anchor, open, onClose, children, align = "start", widt
   useLayoutEffect(() => {
     if (!shown || !anchor || !ref.current) return;
     const a = anchor.getBoundingClientRect();
-    const p = ref.current.getBoundingClientRect();
+    // its laid-out size: the pop-in animation scales the box it draws
+    const p = { width: ref.current.offsetWidth, height: ref.current.offsetHeight };
     const w = width ?? p.width;
     let left = align === "end" ? a.right - w : a.left;
     left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
     const below = a.bottom + 6;
     const up = below + p.height > window.innerHeight - 8 && a.top - p.height - 6 > 8;
-    const top = up ? a.top - p.height - 6 : below;
+    // with room neither below nor above, it is held inside the window
+    const top = up ? a.top - p.height - 6 : Math.max(8, Math.min(below, window.innerHeight - p.height - 8));
     setPos({ left, top, ox: a.left + a.width / 2 - left, up });
-  }, [shown, anchor]);
+  }, [shown, anchor, size]);
+
+  useEffect(() => {
+    if (!shown || !ref.current) return;
+    const ro = new ResizeObserver(() => setSize((n) => n + 1));
+    ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, [shown]);
 
   useEffect(() => {
     if (!open) return;

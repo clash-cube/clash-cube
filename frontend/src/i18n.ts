@@ -75,6 +75,12 @@ const zh: Record<string, string> = {
   "Network unavailable": "网络不可用", "Network changed to {name}, router {router}": "网络已切换到 {name}，路由器 {router}",
   "Woke from sleep": "从睡眠中唤醒", "Closed connections and flushed DNS": "已关闭连接并清除 DNS 缓存",
   "{group} switched from {from} to {to}": "{group} 从 {from} 切换到 {to}",
+  "Add rule": "添加规则", "Add rule…": "添加规则…", "Add": "添加", "Type": "类型", "Value": "值", "Policy": "策略",
+  "Rule added: {rule}": "已添加规则：{rule}", "Goes ahead of the profile's rules and stays across profile updates.": "排在配置自带规则之前，更新订阅后仍然保留。",
+  "Edit rule": "编辑规则", "Click to edit": "点击编辑", "Pick…": "选择…", "Search apps": "搜索应用", "Choose app…": "选择应用…", "In connections": "连接中",
+  "Matches the executable's name. Helpers of an app have their own names; PROCESS-PATH-REGEX with the app picked covers them all.": "按可执行文件名匹配。应用的辅助进程名字各不相同；改用 PROCESS-PATH-REGEX 再选择应用，可覆盖整个应用。",
+  "My rules": "我的规则", "Active rules": "生效规则", "Move up": "上移", "Move down": "下移", "Delete": "删除",
+  "Rules you add here, or from a connection, go ahead of the profile's and stay across updates.": "在这里或从连接页添加的规则排在配置自带规则之前，更新订阅后仍然保留。",
 };
 
 export type Vars = Record<string, string | number>;

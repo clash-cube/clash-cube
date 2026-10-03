@@ -21,6 +21,7 @@ import (
 	"github.com/localhost-copilot/mihomobar/internal/runtimecfg"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
 	"github.com/localhost-copilot/mihomobar/internal/sysproxy"
+	"github.com/localhost-copilot/mihomobar/internal/userrules"
 )
 
 // State is what the GUI shows of the app at a glance.
@@ -206,7 +207,7 @@ func (b *Backend) writeRuntime(fresh bool) error {
 			return err
 		}
 	}
-	return runtimecfg.Write(appdir.RuntimeConfig(), body, s, ctl)
+	return runtimecfg.Write(appdir.RuntimeConfig(), body, s, ctl, userrules.List())
 }
 
 // Start runs the core.
@@ -473,4 +474,26 @@ func (b *Backend) autoUpdate() {
 		}
 		<-t.C
 	}
+}
+
+// SetRules replaces the user's rules and has the core take them. Rules the
+// core refuses are not kept: the previous ones are restored.
+func (b *Backend) SetRules(rs []userrules.Rule) error {
+	before := userrules.List()
+	if err := userrules.Save(rs); err != nil {
+		return err
+	}
+	if err := b.Reload(); err != nil {
+		_ = userrules.Save(before)
+		return err
+	}
+	return nil
+}
+
+// AddRule puts r first among the user's rules.
+func (b *Backend) AddRule(r userrules.Rule) error {
+	if err := r.Check(); err != nil {
+		return err
+	}
+	return b.SetRules(userrules.Added(userrules.List(), r))
 }

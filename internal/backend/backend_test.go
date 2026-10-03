@@ -14,6 +14,7 @@ import (
 	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
 	"github.com/localhost-copilot/mihomobar/internal/profiles"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
+	"github.com/localhost-copilot/mihomobar/internal/userrules"
 )
 
 // The test binary is its own core: LocalRunner starts os.Executable() with
@@ -397,4 +398,47 @@ func keys[V any](m map[string]V) []string {
 		k = append(k, n)
 	}
 	return k
+}
+
+// A user rule reaches the running core ahead of the profile's; one the
+// core refuses (a GEOIP code it has no database for is fine, so use an
+// invalid CIDR) is not kept, and the previous rules stay.
+func TestUserRules(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a core")
+	}
+	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
+		t.Fatal(err)
+	}
+	b := New("test", "test", []byte(base), nopSink{make(chan State, 64)})
+	if err := b.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	t.Cleanup(b.Shutdown)
+	c, _ := b.Client()
+
+	if err := b.AddRule(userrules.Rule{Type: "DOMAIN-SUFFIX", Payload: "example.com", Policy: "DIRECT"}); err != nil {
+		t.Fatal(err)
+	}
+	rules, err := c.Rules(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rules) != 2 || rules[0].Type != "DomainSuffix" || rules[0].Payload != "example.com" || rules[0].Proxy != "DIRECT" {
+		t.Fatalf("rules = %+v", rules)
+	}
+
+	if err := b.AddRule(userrules.Rule{Type: "IP-CIDR", Payload: "not-a-cidr", Policy: "DIRECT"}); err == nil {
+		t.Fatal("a broken rule accepted")
+	}
+	if got := userrules.List(); len(got) != 1 || got[0].Payload != "example.com" {
+		t.Errorf("saved rules = %v", got)
+	}
+	if rules, _ = c.Rules(context.Background()); len(rules) != 2 {
+		t.Errorf("core rules = %+v", rules)
+	}
 }

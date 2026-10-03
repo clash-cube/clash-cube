@@ -19,6 +19,7 @@ import (
 	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
 	"github.com/localhost-copilot/mihomobar/internal/profiles"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
+	"github.com/localhost-copilot/mihomobar/internal/userrules"
 )
 
 // AppService is the app and its windows.
@@ -119,6 +120,27 @@ func lanIP() string {
 func (s *AppService) AppIcon(path string) string { return appIcon(path) }
 
 // RevealData opens the app's data folder in Finder.
+// RunningApps is the apps running now, for a process rule to name.
+func (s *AppService) RunningApps() []App { return runningApps() }
+
+// ChooseApp asks for an app or an executable; a cancelled dialog is the
+// zero App.
+func (s *AppService) ChooseApp() (App, error) {
+	path, err := s.h.app.Dialog.OpenFile().
+		SetTitle("Choose an app").
+		SetDirectory("/Applications").
+		CanChooseFiles(true).
+		PromptForSingleSelection()
+	if err != nil || path == "" {
+		return App{}, err
+	}
+	a, ok := appAt(path)
+	if !ok {
+		return App{}, errors.New("not an app or an executable: " + path)
+	}
+	return a, nil
+}
+
 // Events is the recent events, oldest first.
 func (s *AppService) Events() []backend.Event { return s.h.b.Events() }
 func (s *AppService) ClearEvents()            { s.h.b.ClearEvents() }
@@ -382,6 +404,18 @@ func (s *ProxyService) UpdateGeo() error {
 	}
 	return c.UpdateGeo(context.Background())
 }
+
+// UserRules is the rules added in the app, ahead of the profile's.
+func (s *ProxyService) UserRules() []userrules.Rule { return userrules.List() }
+
+// RuleTypes is the rule types a user rule can have.
+func (s *ProxyService) RuleTypes() []string { return userrules.Types }
+
+// SetUserRules replaces them; the core takes them at once.
+func (s *ProxyService) SetUserRules(rs []userrules.Rule) error { return s.h.b.SetRules(rs) }
+
+// AddUserRule puts a rule first.
+func (s *ProxyService) AddUserRule(r userrules.Rule) error { return s.h.b.AddRule(r) }
 
 // ProfileService is the profiles.
 type ProfileService struct{ h *host }

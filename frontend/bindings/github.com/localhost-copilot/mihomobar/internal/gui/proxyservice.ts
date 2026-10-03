@@ -16,10 +16,20 @@ import * as backend$0 from "../backend/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as mihomoapi$0 from "../mihomoapi/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as userrules$0 from "../userrules/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
+
+/**
+ * AddUserRule puts a rule first.
+ */
+export function AddUserRule(r: userrules$0.Rule): $CancellablePromise<void> {
+    return $Call.ByID(3145288484, r);
+}
 
 export function CloseAllConnections(): $CancellablePromise<void> {
     return $Call.ByID(2368338258);
@@ -52,12 +62,26 @@ export function Providers(): $CancellablePromise<$models.Provider[] | null> {
     return $Call.ByID(1937542960);
 }
 
+/**
+ * RuleTypes is the rule types a user rule can have.
+ */
+export function RuleTypes(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(1713390785);
+}
+
 export function Rules(): $CancellablePromise<mihomoapi$0.Rule[] | null> {
     return $Call.ByID(647292905);
 }
 
 export function Select(group: string, name: string): $CancellablePromise<void> {
     return $Call.ByID(141765054, group, name);
+}
+
+/**
+ * SetUserRules replaces them; the core takes them at once.
+ */
+export function SetUserRules(rs: userrules$0.Rule[] | null): $CancellablePromise<void> {
+    return $Call.ByID(2740290300, rs);
 }
 
 /**
@@ -85,4 +109,11 @@ export function UpdateGeo(): $CancellablePromise<void> {
  */
 export function UpdateProvider(name: string): $CancellablePromise<void> {
     return $Call.ByID(2461202334, name);
+}
+
+/**
+ * UserRules is the rules added in the app, ahead of the profile's.
+ */
+export function UserRules(): $CancellablePromise<userrules$0.Rule[] | null> {
+    return $Call.ByID(436634596);
 }

@@ -14,12 +14,24 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // @ts-ignore: Unused imports
 import * as backend$0 from "../backend/models.js";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as $models from "./models.js";
+
 /**
  * AppIcon is an app's icon (a bundle or executable path; "" for a LAN
  * client) as a PNG data URL, for the page to show.
  */
 export function AppIcon(path: string): $CancellablePromise<string> {
     return $Call.ByID(3141288265, path);
+}
+
+/**
+ * ChooseApp asks for an app or an executable; a cancelled dialog is the
+ * zero App.
+ */
+export function ChooseApp(): $CancellablePromise<$models.App> {
+    return $Call.ByID(2737570799);
 }
 
 export function ClearEvents(): $CancellablePromise<void> {
@@ -74,7 +86,6 @@ export function EnableServiceMode(): $CancellablePromise<void> {
 }
 
 /**
- * RevealData opens the app's data folder in Finder.
  * Events is the recent events, oldest first.
  */
 export function Events(): $CancellablePromise<backend$0.Event[] | null> {
@@ -136,6 +147,14 @@ export function Restart(): $CancellablePromise<void> {
 
 export function RevealData(): $CancellablePromise<void> {
     return $Call.ByID(1194505660);
+}
+
+/**
+ * RevealData opens the app's data folder in Finder.
+ * RunningApps is the apps running now, for a process rule to name.
+ */
+export function RunningApps(): $CancellablePromise<$models.App[] | null> {
+    return $Call.ByID(72655528);
 }
 
 export function SetMode(mode: string): $CancellablePromise<void> {

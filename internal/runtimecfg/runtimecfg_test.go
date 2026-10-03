@@ -6,6 +6,7 @@ import (
 	"go.yaml.in/yaml/v3"
 
 	"github.com/localhost-copilot/mihomobar/internal/settings"
+	"github.com/localhost-copilot/mihomobar/internal/userrules"
 )
 
 func TestBuildOverlays(t *testing.T) {
@@ -23,7 +24,7 @@ custom-key: kept
 `)
 	s := settings.Defaults()
 	s.Mode = "global"
-	out, err := Build(profile, s, Controller{Addr: "127.0.0.1:5555", Secret: "s3"})
+	out, err := Build(profile, s, Controller{Addr: "127.0.0.1:5555", Secret: "s3"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +47,7 @@ custom-key: kept
 	}
 
 	s.ICMPForwarding = false
-	out, err = Build([]byte("tun: {disable-icmp-forwarding: false}"), s, Controller{})
+	out, err = Build([]byte("tun: {disable-icmp-forwarding: false}"), s, Controller{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,5 +57,39 @@ custom-key: kept
 	}
 	if v := m["tun"].(map[string]any)["disable-icmp-forwarding"]; v != true {
 		t.Errorf("disable-icmp-forwarding = %v, want true", v)
+	}
+}
+
+// The user's rules go first; one whose policy the profile lacks is left
+// out rather than failing the profile.
+func TestBuildUserRules(t *testing.T) {
+	profile := []byte(`
+proxies: [{name: hk, type: direct}]
+proxy-groups: [{name: Proxy, type: select, proxies: [hk]}]
+rules:
+  - MATCH,Proxy
+`)
+	user := []userrules.Rule{
+		{Type: "DOMAIN", Payload: "a.com", Policy: "Proxy"},
+		{Type: "DOMAIN", Payload: "b.com", Policy: "Gone"},
+		{Type: "DOMAIN-SUFFIX", Payload: "lan", Policy: "DIRECT"},
+	}
+	out, err := Build(profile, settings.Defaults(), Controller{}, user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m struct{ Rules []string }
+	if err := yaml.Unmarshal(out, &m); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"DOMAIN,a.com,Proxy", "DOMAIN-SUFFIX,lan,DIRECT", "MATCH,Proxy"}
+	if len(m.Rules) != len(want) {
+		t.Fatalf("rules = %v", m.Rules)
+	}
+	for i := range want {
+		if m.Rules[i] != want[i] {
+			t.Errorf("rules = %v, want %v", m.Rules, want)
+			break
+		}
 	}
 }

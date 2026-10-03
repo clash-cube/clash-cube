@@ -16,6 +16,8 @@ import { AppIcon } from "../components/AppIcon";
 import { ConnectionSources, useSourceLabels } from "../components/ConnectionSources";
 import { VirtualConnections, type VirtualRow } from "../components/VirtualConnections";
 import { toast, toastError } from "../components/Toast";
+import { Popover, Menu } from "../components/Popover";
+import { RuleEditor, suggestions } from "../components/RuleEditor";
 
 export function Connections() {
   const t = useT();
@@ -38,6 +40,9 @@ export function Connections() {
   const [sel, setSel] = useState<Conn | null>(null);
   const [sources, setSources] = useState(new Set<string>());
   const { labels, save } = useSourceLabels();
+  // the row a right-click opened the menu on, then the rule editor
+  const [menu, setMenu] = useState<{ c: Conn; at: HTMLElement } | null>(null);
+  const [ruleFor, setRuleFor] = useState<{ c: Conn; at: HTMLElement } | null>(null);
   useEffect(() => { setFrozen(null); setSel(null); }, [profile]);
 
   const conns = useMemo(() => tab === "active" ? snapshot.active : tab === "closed" ? snapshot.closed
@@ -82,7 +87,8 @@ export function Connections() {
     return <span key={id} className={"cell" + (isTextColumn(id) ? "" : " num") + ((id === "up" || id === "down") && c[id] > 0 ? " live" : "")} title={value}>{value || "—"}</span>;
   };
   const row = (c: Conn) => (
-    <div className={"trow" + (sel?.id === c.id ? " sel" : "")} key={c.id} onClick={() => setSel(sel?.id === c.id ? null : c)}>
+    <div className={"trow" + (sel?.id === c.id ? " sel" : "") + (menu?.c.id === c.id ? " menu-on" : "")} key={c.id} onClick={() => setSel(sel?.id === c.id ? null : c)}
+      onContextMenu={(e) => { e.preventDefault(); setMenu({ c, at: e.currentTarget }); }}>
       {columns.map((id) => cell(c, id))}
       <span className="cell r"><button className="icon" title={t("Close connection")} aria-label={t("Close connection")}
         disabled={!activeIDs.has(c.id) || closing.has(c.id)} onClick={(e) => { e.stopPropagation(); close([c]); }}><Close size={12} /></button></span>
@@ -163,13 +169,23 @@ export function Connections() {
           ) : <div className="list table conns">{shown.map(row)}</div>}
         </div>}
         </div></div>
-        {selected && <Detail c={selected} sourceLabel={labels[selected.metadata.sourceIP]} at={snapshot.at} closeDisabled={!activeIDs.has(selected.id) || closing.has(selected.id)} onClose={() => setSel(null)} onKill={() => close([selected])} />}
+        {selected && <Detail c={selected} sourceLabel={labels[selected.metadata.sourceIP]} at={snapshot.at} closeDisabled={!activeIDs.has(selected.id) || closing.has(selected.id)} onClose={() => setSel(null)} onKill={() => close([selected])}
+          onAddRule={(at) => setRuleFor({ c: selected, at })} />}
       </div>
+      <Popover anchor={menu?.at ?? null} open={!!menu} onClose={() => setMenu(null)}>
+        {menu && <Menu close={() => setMenu(null)} items={[
+          { label: t("Add rule…"), onClick: () => setRuleFor(menu) },
+          { label: t("Copy host"), onClick: () => App.CopyText(hostOf(menu.c)).then(() => toast(t("Copied"))) },
+          "sep",
+          { label: t("Close connection"), danger: true, onClick: () => close([menu.c]) },
+        ]} />}
+      </Popover>
+      <RuleEditor anchor={ruleFor?.at ?? null} onClose={() => setRuleFor(null)} choices={ruleFor ? suggestions(ruleFor.c) : []} />
     </div>
   );
 }
 
-function Detail({ c, sourceLabel, at, closeDisabled, onClose, onKill }: { c: Conn; sourceLabel?: string; at: number; closeDisabled: boolean; onClose: () => void; onKill: () => void }) {
+function Detail({ c, sourceLabel, at, closeDisabled, onClose, onKill, onAddRule }: { c: Conn; sourceLabel?: string; at: number; closeDisabled: boolean; onClose: () => void; onKill: () => void; onAddRule: (at: HTMLElement) => void }) {
   const t = useT();
   const m = c.metadata;
   const [raw, setRaw] = useState(false);
@@ -205,6 +221,7 @@ function Detail({ c, sourceLabel, at, closeDisabled, onClose, onKill }: { c: Con
         </div>)}</dl>}
       </div>
       <div className="detail-foot">
+        {!raw && <button className="btn small" onClick={(e) => onAddRule(e.currentTarget)}>{t("Add rule…")}</button>}
         {!raw && <button className="btn small" onClick={() => copy(hostOf(c))}>{t("Copy host")}</button>}
         <button className="btn small" onClick={() => copy(raw ? json : rows.map(([k, v]) => `${k}: ${v}`).join("\n"))}>{t(raw ? "Copy JSON" : "Copy details")}</button>
         <button className="btn small danger" disabled={closeDisabled} onClick={onKill}>{t("Close connection")}</button>
