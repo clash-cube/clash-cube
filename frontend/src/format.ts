@@ -16,6 +16,15 @@ export function delayClass(d: number | undefined): string {
   return "bad";
 }
 
+// a country code as its flag emoji; "" for anything that isn't one
+export function flag(cc: string | undefined): string {
+  if (!cc || !/^[a-z]{2}$/i.test(cc)) return "";
+  return String.fromCodePoint(...[...cc.toUpperCase()].map((c) => 0x1f1a5 + c.charCodeAt(0)));
+}
+
+// an address with its country's flag in front
+export const flagged = (ip: string | undefined, cc?: string) => (ip ? [flag(cc), ip].filter(Boolean).join(" ") : "—");
+
 export function ago(iso: string | number | Date, t: (s: string, v?: Record<string, string | number>) => string): string {
   const ms = Date.now() - new Date(iso).getTime();
   if (!isFinite(ms) || ms < 0) return "";

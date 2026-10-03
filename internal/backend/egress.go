@@ -21,12 +21,24 @@ import (
 // which sees where overseas traffic comes out. They differ when something
 // upstream proxies.
 type Egress struct {
-	Interface  string `json:"interface"`  // e.g. en0
-	Service    string `json:"service"`    // its network service, e.g. Wi-Fi
-	DomesticIP string `json:"domesticIp"` // as a mainland site sees it; "" when unknown
-	IP         string `json:"ip"`         // as Cloudflare sees it; "" when unknown
-	Loc        string `json:"loc"`        // the country of IP
+	Interface   string `json:"interface"`   // e.g. en0
+	Service     string `json:"service"`     // its network service, e.g. Wi-Fi
+	DomesticIP  string `json:"domesticIp"`  // as a mainland site sees it; "" when unknown
+	DomesticLoc string `json:"domesticLoc"` // the country of DomesticIP
+	IP          string `json:"ip"`          // as Cloudflare sees it; "" when unknown
+	Loc         string `json:"loc"`         // the country of IP
 }
+
+// ProxyEgress is where proxied traffic leaves: the address Cloudflare sees
+// a request through the core come from, and the chain it took.
+type ProxyEgress struct {
+	IP    string   `json:"ip"`
+	Loc   string   `json:"loc"`
+	Chain []string `json:"chain"` // from the node out to the policy
+}
+
+// a name, unlike egressTrace, so the rules route it as they would a site
+const proxyTrace = "https://www.cloudflare.com/cdn-cgi/trace"
 
 const (
 	// An IP literal needs no DNS, which under TUN's fake-ip would hand
@@ -60,22 +72,51 @@ func (b *Backend) DirectEgress() (Egress, error) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		for _, l := range strings.Split(get(ctx, egressTrace), "\n") {
-			k, v, _ := strings.Cut(l, "=")
-			switch k {
-			case "ip":
-				e.IP = v
-			case "loc":
-				e.Loc = v
-			}
-		}
+		e.IP, e.Loc = parseTrace(get(ctx, egressTrace))
 	}()
 	go func() {
 		defer wg.Done()
 		e.DomesticIP = ipv4Re.FindString(get(ctx, domesticEcho))
+		e.DomesticLoc = country(e.DomesticIP)
 	}()
 	wg.Wait()
 	return e, nil
+}
+
+// ProxyEgress asks Cloudflare, through the core, where proxied traffic
+// comes out.
+func (b *Backend) ProxyEgress() (ProxyEgress, error) {
+	c, err := b.Client()
+	if err != nil {
+		return ProxyEgress{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	defer cancel()
+	body, chain := throughCore(ctx, c, http.MethodGet, proxyTrace)
+	if chain == nil {
+		return ProxyEgress{}, errors.New("the request through the core failed")
+	}
+	e := ProxyEgress{Chain: chain}
+	e.IP, e.Loc = parseTrace(body)
+	return e, nil
+}
+
+// parseTrace reads Cloudflare's trace: the address and its country, which
+// is Cloudflare's own, or the local database's when it gives none.
+func parseTrace(body string) (ip, loc string) {
+	for _, l := range strings.Split(body, "\n") {
+		k, v, _ := strings.Cut(l, "=")
+		switch k {
+		case "ip":
+			ip = v
+		case "loc":
+			loc = v
+		}
+	}
+	if loc == "" || loc == "XX" {
+		loc = country(ip)
+	}
+	return ip, loc
 }
 
 // boundGetter fetches URLs over the interface, resolving names there too;

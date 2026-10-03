@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { App, type Connectivity, type DNSEgress, type Egress } from "../api";
+import { App, type Connectivity, type DNSEgress, type Egress, type ProxyEgress } from "../api";
 import { useStore } from "../store";
 import { useT } from "../i18n";
-import { delayClass } from "../format";
+import { delayClass, flagged } from "../format";
 import { Refresh } from "./Icons";
 
 type Item = "router" | "dns" | "internet" | "proxy";
@@ -11,8 +11,13 @@ const fields: Record<Item, (keyof Connectivity)[]> = {
   router: ["router", "gateway"],
   dns: ["dns", "dnsVia", "dnsMode"],
   internet: ["internet"],
-  proxy: ["proxy", "via"],
+  proxy: ["proxy", "via", "chain"],
 };
+
+// a chain, node first, as "policy → node"; the policy alone when the rule
+// named the node itself
+const route = (chain: string[]) =>
+  chain.length > 1 ? `${chain[chain.length - 1]} → ${chain[0]}` : chain[0] ?? "—";
 
 type Lookup<T> = T | "loading" | "failed";
 
@@ -61,12 +66,16 @@ export function ConnectivityCards() {
   // the DNS card shows the resolver, or on a click its upstream and the
   // address authoritative servers see the queries from
   const dns = useDetail<DNSEgress>(App.DNSEgress);
+  // the Proxy card shows the route, or on a click where proxied traffic
+  // leaves
+  const proxy = useDetail<ProxyEgress>(App.ProxyEgress);
 
   // each item lands on its own, so a slow proxy doesn't hold the router back
   const measure = () => {
     const n = ++seq.current;
     direct.refresh();
     dns.refresh();
+    proxy.refresh();
     setPending(new Set(items));
     for (const key of items) {
       App.ConnectivityItem(key).then((r) => {
@@ -98,15 +107,16 @@ export function ConnectivityCards() {
     else if (egress === "failed") internetSub = t("Failed");
     else {
       const port = egress.service || egress.interface;
-      const overseas = egress.ip + (egress.loc ? " · " + egress.loc : "");
+      const domestic = flagged(egress.domesticIp, egress.domesticLoc);
+      const overseas = flagged(egress.ip, egress.loc);
       // a different overseas address: something upstream proxies it
       const split = !!egress.domesticIp && !!egress.ip && egress.domesticIp !== egress.ip;
       internetSub = split
-        ? <>{port} · {egress.domesticIp}<br />{t("Overseas")} {overseas}</>
-        : `${port} · ${egress.domesticIp || overseas || "—"}`;
+        ? <>{port} · {domestic}<br />{t("Overseas")} {overseas}</>
+        : `${port} · ${egress.domesticIp ? domestic : overseas}`;
       internetTitle = [
         `${port} (${egress.interface})`,
-        egress.domesticIp && `${t("Domestic")} ${egress.domesticIp}`,
+        egress.domesticIp && `${t("Domestic")} ${domestic}`,
         egress.ip && `${t("Overseas")} ${overseas}`,
         split && t("Overseas traffic leaves elsewhere: something upstream, such as the router, proxies it"),
       ].filter(Boolean).join("\n");
@@ -123,13 +133,32 @@ export function ConnectivityCards() {
       const servers = e.servers ?? [];
       const upstream = e.via === "system" ? t("System resolver")
         : servers.length ? shortServer(servers[0]) + (servers.length > 1 ? ` +${servers.length - 1}` : "") : "mihomo";
-      dnsSub = <>{upstream}<br />{t("Egress")} {e.ip || "—"}</>;
+      dnsSub = <>{upstream}<br />{t("Egress")} {flagged(e.ip, e.loc)}</>;
       dnsTitle = [
         e.via === "system" ? t("System resolver") : `mihomo${e.mode ? ` (${e.mode})` : ""}`,
         ...servers,
-        e.ip && `${t("Egress")} ${e.ip}`,
+        e.ip && `${t("Egress")} ${flagged(e.ip, e.loc)}`,
         e.ecs && `ECS ${e.ecs}`,
         t("The address authoritative servers see the queries come from"),
+      ].filter(Boolean).join("\n");
+    }
+  }
+
+  // the policy the rule named, then the node it picked
+  let proxySub: ReactNode = c.chain?.length ? route(c.chain) : c.via;
+  let proxyTitle = [c.chain?.length && [...c.chain].reverse().join(" → "), t("Click to show the egress IP")].filter(Boolean).join("\n");
+  if (proxy.shown) {
+    const e = proxy.data;
+    if (e === "loading") proxySub = t("Looking up…");
+    else if (e === "failed") proxySub = t("Failed");
+    else {
+      const chain = e.chain ?? [];
+      proxySub = <>{route(chain)}<br />{t("Egress")} {flagged(e.ip, e.loc)}</>;
+      proxyTitle = [
+        [...chain].reverse().join(" → "),
+        e.ip && `${t("Egress")} ${flagged(e.ip, e.loc)}`,
+        // the trace is a site of its own, and the rules may send it elsewhere
+        c.via && chain.length && chain[chain.length - 1] !== c.via && t("Looked up through {p}, not {q} that the test URL takes", { p: chain[chain.length - 1], q: c.via }),
       ].filter(Boolean).join("\n");
     }
   }
@@ -138,7 +167,7 @@ export function ConnectivityCards() {
     { key: "router", label: t("Router"), sub: c.gateway },
     { key: "dns", label: "DNS", sub: dnsSub, title: dnsTitle, onClick: dns.toggle, shown: dns.shown },
     { key: "internet", label: t("Internet"), sub: internetSub, title: internetTitle, onClick: direct.toggle, shown: direct.shown },
-    { key: "proxy", label: t("Proxy"), sub: c.via },
+    { key: "proxy", label: t("Proxy"), sub: proxySub, title: proxyTitle, onClick: proxy.toggle, shown: proxy.shown },
   ];
   return (
     <div className="conn-cards">

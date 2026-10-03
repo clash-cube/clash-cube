@@ -107,6 +107,13 @@ export function ProxyCommand(): $CancellablePromise<string> {
     return $Call.ByID(4092743996);
 }
 
+/**
+ * ProxyEgress is where proxied traffic leaves, and the chain it took.
+ */
+export function ProxyEgress(): $CancellablePromise<backend$0.ProxyEgress> {
+    return $Call.ByID(117796648);
+}
+
 export function Quit(): $CancellablePromise<void> {
     return $Call.ByID(550236858);
 }

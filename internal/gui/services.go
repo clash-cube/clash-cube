@@ -49,6 +49,9 @@ func (s *AppService) DirectEgress() (backend.Egress, error) { return s.h.b.Direc
 // DNSEgress is the resolver in use and the address its queries leave from.
 func (s *AppService) DNSEgress() (backend.DNSEgress, error) { return s.h.b.DNSEgress() }
 
+// ProxyEgress is where proxied traffic leaves, and the chain it took.
+func (s *AppService) ProxyEgress() (backend.ProxyEgress, error) { return s.h.b.ProxyEgress() }
+
 // HelperStatus is service mode's state, for Settings.
 func (s *AppService) HelperStatus() backend.HelperStatus { return s.h.b.HelperStatus() }
 

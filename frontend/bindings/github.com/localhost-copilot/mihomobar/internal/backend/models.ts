@@ -34,6 +34,11 @@ export interface Connectivity {
     "via": string;
 
     /**
+     * from the node out to Via
+     */
+    "chain": string[] | null;
+
+    /**
      * "mihomo", or "system" when the profile has no dns section
      */
     "dnsVia": string;
@@ -71,6 +76,11 @@ export interface DNSEgress {
     "ip": string;
 
     /**
+     * the country of IP
+     */
+    "loc": string;
+
+    /**
      * the client subnet passed upstream, if any
      */
     "ecs": string;
@@ -99,6 +109,11 @@ export interface Egress {
      * as a mainland site sees it; "" when unknown
      */
     "domesticIp": string;
+
+    /**
+     * the country of DomesticIP
+     */
+    "domesticLoc": string;
 
     /**
      * as Cloudflare sees it; "" when unknown
@@ -131,6 +146,20 @@ export interface HelperStatus {
      * the running core is the helper's
      */
     "active": boolean;
+}
+
+/**
+ * ProxyEgress is where proxied traffic leaves: the address Cloudflare sees
+ * a request through the core come from, and the chain it took.
+ */
+export interface ProxyEgress {
+    "ip": string;
+    "loc": string;
+
+    /**
+     * from the node out to the policy
+     */
+    "chain": string[] | null;
 }
 
 /**

@@ -22,6 +22,7 @@ type DNSEgress struct {
 	Mode    string   `json:"mode"`    // fake-ip | redir-host; "" for the system resolver
 	Servers []string `json:"servers"` // the profile's nameservers, as written
 	IP      string   `json:"ip"`      // the egress address; "" when unknown
+	Loc     string   `json:"loc"`     // the country of IP
 	ECS     string   `json:"ecs"`     // the client subnet passed upstream, if any
 }
 
@@ -74,6 +75,7 @@ func (b *Backend) DNSEgress() (DNSEgress, error) {
 		return e, err
 	}
 	e.IP, e.ECS = parseWhoami(txt)
+	e.Loc = country(e.IP)
 	return e, nil
 }
 

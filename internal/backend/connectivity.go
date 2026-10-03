@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -25,14 +26,15 @@ import (
 // §10.4): the router, DNS, the internet directly, and through the proxy.
 // Each is in ms; 0 means not measured, -1 failed.
 type Connectivity struct {
-	Router   int    `json:"router"`
-	DNS      int    `json:"dns"`
-	Internet int    `json:"internet"`
-	Proxy    int    `json:"proxy"`
-	Gateway  string `json:"gateway"`
-	Via      string `json:"via"`     // the policy the mode and rules sent the proxy test to
-	DNSVia   string `json:"dnsVia"`  // "mihomo", or "system" when the profile has no dns section
-	DNSMode  string `json:"dnsMode"` // the core's enhanced-mode: fake-ip | redir-host
+	Router   int      `json:"router"`
+	DNS      int      `json:"dns"`
+	Internet int      `json:"internet"`
+	Proxy    int      `json:"proxy"`
+	Gateway  string   `json:"gateway"`
+	Via      string   `json:"via"`     // the policy the mode and rules sent the proxy test to
+	Chain    []string `json:"chain"`   // from the node out to Via
+	DNSVia   string   `json:"dnsVia"`  // "mihomo", or "system" when the profile has no dns section
+	DNSMode  string   `json:"dnsMode"` // the core's enhanced-mode: fake-ip | redir-host
 }
 
 func ms(d time.Duration) int { return max(1, int(d.Milliseconds())) }
@@ -75,6 +77,8 @@ func (b *Backend) ConnectivityItem(key string) (Connectivity, error) {
 }
 
 func (b *Backend) probe(ctx context.Context, key string, out *Connectivity) error {
+	// the egress lookups name countries from it; have it by then
+	go geoReader()
 	if key == "router" {
 		out.Gateway = gateway()
 		if out.Gateway == "" {
@@ -122,11 +126,12 @@ func (b *Backend) probe(ctx context.Context, key string, out *Connectivity) erro
 	case "proxy":
 		// timed as the core times its own, so the figure matches the
 		// proxies page (and keeps the profile's unified-delay)
-		out.Via = routeOf(ctx, c, testURL)
-		if out.Via == "" {
+		_, out.Chain = throughCore(ctx, c, http.MethodHead, testURL)
+		if len(out.Chain) == 0 {
 			out.Proxy = -1
 			return nil
 		}
+		out.Via = out.Chain[len(out.Chain)-1]
 		d, err := c.Delay(ctx, out.Via, testURL, 5*time.Second)
 		out.Proxy = orFail(d, err)
 	default:
@@ -147,31 +152,32 @@ func orFail(d int, err error) int {
 	return d
 }
 
-// routeOf is the policy the core sends a request for testURL to, as it
-// would an app's: the request goes through the mixed port, so the mode and
-// the rules pick, and no group has to be guessed. It is read off the core's
-// tunnel while it is still open; "" when the request failed.
-func routeOf(ctx context.Context, c *mihomoapi.Client, testURL string) string {
-	u, err := url.Parse(testURL)
-	if err != nil || u.Hostname() == "" {
-		return ""
+// throughCore requests u through the mixed port, as an app would, so the
+// mode and the rules pick the route and no group has to be guessed. It
+// gives the body and the chain the core sent it along, from the node out
+// to the policy the rule named, read off the core's tunnel while it is
+// still open; nil when the request failed.
+func throughCore(ctx context.Context, c *mihomoapi.Client, method, u string) (string, []string) {
+	pu, err := url.Parse(u)
+	if err != nil || pu.Hostname() == "" {
+		return "", nil
 	}
-	target := u.Host
-	if u.Port() == "" {
+	target := pu.Host
+	if pu.Port() == "" {
 		port := "80"
-		if u.Scheme == "https" {
+		if pu.Scheme == "https" {
 			port = "443"
 		}
-		target = net.JoinHostPort(u.Hostname(), port)
+		target = net.JoinHostPort(pu.Hostname(), port)
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	// a CONNECT tunnel, even for http: the core keeps it as one connection
 	// until we close it, where a plain proxied request is gone at once
-	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(settings.Load().MixedPort)))
+	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", net.JoinHostPort(proxyHost, strconv.Itoa(settings.Load().MixedPort)))
 	if err != nil {
-		return ""
+		return "", nil
 	}
 	defer conn.Close()
 	if dl, ok := ctx.Deadline(); ok {
@@ -180,7 +186,7 @@ func routeOf(ctx context.Context, c *mihomoapi.Client, testURL string) string {
 	fmt.Fprintf(conn, "CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", target, target)
 	resp, err := http.ReadResponse(bufio.NewReader(conn), &http.Request{Method: http.MethodConnect})
 	if err != nil || resp.StatusCode != http.StatusOK {
-		return ""
+		return "", nil
 	}
 	// the core answers CONNECT before it dials: a request through the
 	// tunnel waits for the route to be made
@@ -194,28 +200,28 @@ func routeOf(ctx context.Context, c *mihomoapi.Client, testURL string) string {
 		},
 		DisableCompression: true,
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, testURL, nil)
+	req, err := http.NewRequestWithContext(ctx, method, u, nil)
 	if err != nil {
-		return ""
+		return "", nil
 	}
 	resp, err = tr.RoundTrip(req)
 	if err != nil {
-		return ""
+		return "", nil
 	}
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	resp.Body.Close()
 
 	conns, err := c.Connections(ctx)
 	if err != nil {
-		return ""
+		return "", nil
 	}
 	port := strconv.Itoa(conn.LocalAddr().(*net.TCPAddr).Port)
 	for _, cn := range conns.Connections {
-		// chains run from the node out to the policy the rule named
 		if cn.Metadata.SourcePort == port && len(cn.Chains) > 0 {
-			return cn.Chains[len(cn.Chains)-1]
+			return string(body), cn.Chains
 		}
 	}
-	return ""
+	return "", nil
 }
 
 var gatewayRe = regexp.MustCompile(`gateway:\s*(\S+)`)

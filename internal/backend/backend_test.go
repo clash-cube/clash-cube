@@ -244,8 +244,9 @@ rules:
 		}
 		// only the route: the core's delay test won't time a loopback URL
 		c, _ := b.Client()
-		if via := routeOf(context.Background(), c, settings.Load().TestURL); via != tc.via {
-			t.Errorf("%s mode: routed via %q, want %q", tc.mode, via, tc.via)
+		_, chain := throughCore(context.Background(), c, http.MethodHead, settings.Load().TestURL)
+		if len(chain) == 0 || chain[0] != "DIRECT" || chain[len(chain)-1] != tc.via {
+			t.Errorf("%s mode: routed along %q, want DIRECT … %q", tc.mode, chain, tc.via)
 		}
 	}
 }

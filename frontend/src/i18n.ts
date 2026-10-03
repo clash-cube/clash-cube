@@ -44,6 +44,7 @@ const zh: Record<string, string> = {
   "Core stopped with an error": "内核异常退出", "Show logs": "查看日志", "Dismiss": "关闭",
   "Profile": "配置", "Router": "路由器", "Internet": "互联网", "Proxy": "代理", "Failed": "失败", "Identify processes": "识别进程", "Show which app made each connection": "显示每个连接来自哪个应用", "test this node only": "只测该节点", "⌥-click: use this Mac's LAN address": "⌥ 点击：使用本机局域网地址", "Profile order": "配置顺序", "Most hits": "命中最多", "Last hit {t}": "最近命中 {t}", "Process": "进程", "List": "列表", "Path": "路径", "Source": "来源", "Copy host": "复制主机", "Close connection": "关闭连接", "Double-click to copy": "双击复制", "System resolver": "系统 DNS", "Click to show the interface and egress IP": "点击显示网卡和出口 IP", "Looking up…": "正在查询…", "Domestic": "国内", "Overseas": "海外", "Overseas traffic leaves elsewhere: something upstream, such as the router, proxies it": "海外流量从别处出口：上游（如路由器）有代理", "Copy": "复制", "Mode": "模式", "Speed": "速率",
   "Click to show the upstream and egress IP": "点击显示上游和出口 IP", "Egress": "出口", "The address authoritative servers see the queries come from": "权威服务器看到的查询来源地址",
+  "Click to show the egress IP": "点击显示出口 IP", "Looked up through {p}, not {q} that the test URL takes": "此次查询经过 {p}，而非测速链接所走的 {q}",
 };
 
 export type Vars = Record<string, string | number>;
