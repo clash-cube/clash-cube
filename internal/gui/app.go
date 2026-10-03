@@ -159,7 +159,12 @@ func Run(version string) error {
 	h.tray.SetTooltip("MihomoBar")
 	h.menu = newTrayMenu(h)
 	h.tray.SetMenu(h.app.NewMenu()) // replaced by the first rebuild
-	h.tray.OnRightClick(func() { h.tray.OpenMenu() })
+	// the menu takes the panel's place; opening it doesn't take focus
+	// from the panel, so HideOnFocusLost wouldn't hide it
+	h.tray.OnRightClick(func() {
+		h.tray.HideWindow()
+		h.tray.OpenMenu()
+	})
 	h.tray.AttachWindow(h.panel).WindowOffset(6)
 	h.tray.OnClick(func() {
 		trayPlay()
