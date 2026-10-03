@@ -40,6 +40,7 @@ export interface Patch {
     "ipv6"?: boolean | null;
     "logLevel"?: string | null;
     "tunStack"?: string | null;
+    "icmpForwarding"?: boolean | null;
     "bypass"?: string[] | null;
     "autoStart"?: boolean | null;
     "launchAtLogin"?: boolean | null;

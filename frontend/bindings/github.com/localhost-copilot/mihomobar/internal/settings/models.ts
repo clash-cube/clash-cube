@@ -21,6 +21,12 @@ export interface Settings {
      * system | gvisor | mixed
      */
     "tunStack": string;
+
+    /**
+     * ICMPForwarding sends pings under TUN out directly; off, the core
+     * answers them itself. ICMP is never proxied either way.
+     */
+    "icmpForwarding": boolean;
     "systemProxy": boolean;
     "tun": boolean;
     "bypass": string[] | null;

@@ -41,7 +41,20 @@ custom-key: kept
 		t.Error("unix controller kept")
 	}
 	tun := m["tun"].(map[string]any)
-	if tun["enable"] != false || tun["device"] != "utun9" {
+	if tun["enable"] != false || tun["device"] != "utun9" || tun["disable-icmp-forwarding"] != false {
 		t.Errorf("tun = %v", tun)
+	}
+
+	s.ICMPForwarding = false
+	out, err = Build([]byte("tun: {disable-icmp-forwarding: false}"), s, Controller{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m = nil
+	if err := yaml.Unmarshal(out, &m); err != nil {
+		t.Fatal(err)
+	}
+	if v := m["tun"].(map[string]any)["disable-icmp-forwarding"]; v != true {
+		t.Errorf("disable-icmp-forwarding = %v, want true", v)
 	}
 }

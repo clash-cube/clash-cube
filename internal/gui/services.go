@@ -428,20 +428,21 @@ func (s *SettingsService) Get() settings.Settings { return settings.Load() }
 // Patch is a partial update: the keys of p (as settings.json names them)
 // that are present are changed.
 type Patch struct {
-	MixedPort     *int      `json:"mixedPort,omitempty"`
-	AllowLan      *bool     `json:"allowLan,omitempty"`
-	IPv6          *bool     `json:"ipv6,omitempty"`
-	LogLevel      *string   `json:"logLevel,omitempty"`
-	TunStack      *string   `json:"tunStack,omitempty"`
-	Bypass        *[]string `json:"bypass,omitempty"`
-	AutoStart     *bool     `json:"autoStart,omitempty"`
-	LaunchAtLogin *bool     `json:"launchAtLogin,omitempty"`
-	Theme         *string   `json:"theme,omitempty"`
-	Lang          *string   `json:"lang,omitempty"`
-	Dock          *string   `json:"dock,omitempty"`
-	TestURL       *string   `json:"testUrl,omitempty"`
-	TraySpeed     *bool     `json:"traySpeed,omitempty"`
-	FindProcess   *bool     `json:"findProcess,omitempty"`
+	MixedPort      *int      `json:"mixedPort,omitempty"`
+	AllowLan       *bool     `json:"allowLan,omitempty"`
+	IPv6           *bool     `json:"ipv6,omitempty"`
+	LogLevel       *string   `json:"logLevel,omitempty"`
+	TunStack       *string   `json:"tunStack,omitempty"`
+	ICMPForwarding *bool     `json:"icmpForwarding,omitempty"`
+	Bypass         *[]string `json:"bypass,omitempty"`
+	AutoStart      *bool     `json:"autoStart,omitempty"`
+	LaunchAtLogin  *bool     `json:"launchAtLogin,omitempty"`
+	Theme          *string   `json:"theme,omitempty"`
+	Lang           *string   `json:"lang,omitempty"`
+	Dock           *string   `json:"dock,omitempty"`
+	TestURL        *string   `json:"testUrl,omitempty"`
+	TraySpeed      *bool     `json:"traySpeed,omitempty"`
+	FindProcess    *bool     `json:"findProcess,omitempty"`
 }
 
 func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
@@ -463,6 +464,7 @@ func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
 		set(&st.IPv6, p.IPv6)
 		set(&st.LogLevel, p.LogLevel)
 		set(&st.TunStack, p.TunStack)
+		set(&st.ICMPForwarding, p.ICMPForwarding)
 		set(&st.Bypass, p.Bypass)
 		set(&st.AutoStart, p.AutoStart)
 		set(&st.LaunchAtLogin, p.LaunchAtLogin)

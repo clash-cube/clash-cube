@@ -66,6 +66,9 @@ export function Settings() {
         <Row label={t("TUN stack")}>
           <Segmented className="track small" value={s.tunStack} onChange={(v) => patch({ tunStack: v })} options={[{ value: "system", label: "System" }, { value: "gvisor", label: "gVisor" }, { value: "mixed", label: "Mixed" }]} />
         </Row>
+        <Row label={t("ICMP forwarding")} sub={t("Pings go out directly, never through a proxy. Off: the core answers every ping itself. Pinging a domain under fake-ip always gets a local answer.")} wrap>
+          <Switch on={s.icmpForwarding} onChange={(v) => patch({ icmpForwarding: v })} />
+        </Row>
       </Section>
 
       <Section title={t("Core")}>
@@ -122,10 +125,10 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Row({ label, sub, children }: { label: string; sub?: string; children: ReactNode }) {
+function Row({ label, sub, wrap, children }: { label: string; sub?: string; wrap?: boolean; children: ReactNode }) {
   return (
     <div className="row">
-      <div className="who"><div className="name">{label}</div>{sub && <div className="sub">{sub}</div>}</div>
+      <div className="who"><div className="name">{label}</div>{sub && <div className={wrap ? "sub wrap" : "sub"}>{sub}</div>}</div>
       <div className="end">{children}</div>
     </div>
   );

@@ -21,6 +21,9 @@ type Settings struct {
 	IPv6      bool   `json:"ipv6"`
 	LogLevel  string `json:"logLevel"`
 	TunStack  string `json:"tunStack"` // system | gvisor | mixed
+	// ICMPForwarding sends pings under TUN out directly; off, the core
+	// answers them itself. ICMP is never proxied either way.
+	ICMPForwarding bool `json:"icmpForwarding"`
 
 	SystemProxy bool     `json:"systemProxy"`
 	Tun         bool     `json:"tun"`
@@ -43,10 +46,11 @@ type Settings struct {
 
 func Defaults() Settings {
 	return Settings{
-		Mode:      "rule",
-		MixedPort: 7890,
-		LogLevel:  "info",
-		TunStack:  "mixed",
+		Mode:           "rule",
+		MixedPort:      7890,
+		LogLevel:       "info",
+		TunStack:       "mixed",
+		ICMPForwarding: true,
 		Bypass: []string{
 			"127.0.0.1", "192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12",
 			"localhost", "*.local", "*.crashlytics.com", "<local>",

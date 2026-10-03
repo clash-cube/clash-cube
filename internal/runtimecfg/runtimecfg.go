@@ -60,6 +60,7 @@ func Build(profile []byte, s settings.Settings, ctl Controller) ([]byte, error) 
 	if s.TunStack != "" {
 		tun["stack"] = s.TunStack
 	}
+	tun["disable-icmp-forwarding"] = !s.ICMPForwarding
 	if s.Tun {
 		setDefault(tun, "auto-route", true)
 		setDefault(tun, "auto-detect-interface", true)
