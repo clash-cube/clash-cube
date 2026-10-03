@@ -32,10 +32,11 @@ export function Logs() {
       <div className="view-head">
         <h2>{t("Logs")}</h2>
         {!follow && <span className="badge">{t("Paused")}</span>}
-        <div className="grow" />
-        <Segmented className="track small" value={level} onChange={setLevel} options={[{ value: "all", label: "All" }, { value: "info", label: "Info" }, { value: "warning", label: "Warn" }, { value: "error", label: "Error" }]} />
-        <label className="search"><Search /><input placeholder={t("Search")} value={q} onChange={(e) => setQ(e.target.value)} /></label>
-        <button className="btn small" onClick={clear}>{t("Clear")}</button>
+        <div className="view-tools">
+          <Segmented className="track small" value={level} onChange={setLevel} options={[{ value: "all", label: "All" }, { value: "info", label: "Info" }, { value: "warning", label: "Warn" }, { value: "error", label: "Error" }]} />
+          <label className="search"><Search /><input placeholder={t("Search")} value={q} onChange={(e) => setQ(e.target.value)} /></label>
+          <button className="btn small" onClick={clear}>{t("Clear")}</button>
+        </div>
       </div>
       <div className="list logbox" ref={box} onScroll={(e) => {
         const el = e.currentTarget;

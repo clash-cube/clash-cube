@@ -31,9 +31,10 @@ export function Proxies() {
       <div className="view-head">
         <h2>{t("Proxies")}</h2>
         <span className="sub">{shown.length}</span>
-        <div className="grow" />
-        <button className={"btn small" + (sorted ? " on" : "")} onClick={() => setSorted(!sorted)}><Sort size={13} />{sorted ? t("Sort by latency") : t("Default order")}</button>
-        <button className="btn small" onClick={() => shown.forEach((g) => testGroup(g))}><Bolt size={13} />{t("Test all")}</button>
+        <div className="view-tools">
+          <button className={"btn small" + (sorted ? " on" : "")} onClick={() => setSorted(!sorted)}><Sort size={13} />{sorted ? t("Sort by latency") : t("Default order")}</button>
+          <button className="btn small" onClick={() => shown.forEach((g) => testGroup(g))}><Bolt size={13} />{t("Test all")}</button>
+        </div>
       </div>
       {shown.map((g) => (
         <GroupCard

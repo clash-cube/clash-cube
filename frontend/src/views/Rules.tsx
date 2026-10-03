@@ -38,9 +38,10 @@ export function Rules() {
       <div className="view-head">
         <h2>{t("Rules")}</h2>
         <span className="sub">{t("{n} rules", { n: rules.length })}</span>
-        <div className="grow" />
-        <Segmented className="track small" value={order} onChange={setOrder} options={[{ value: "profile", label: t("Profile order") }, { value: "hits", label: t("Most hits") }]} />
-        <label className="search"><Search /><input placeholder={t("Search")} value={q} onChange={(e) => { setQ(e.target.value); setLimit(300); }} /></label>
+        <div className="view-tools">
+          <Segmented className="track small" value={order} onChange={setOrder} options={[{ value: "profile", label: t("Profile order") }, { value: "hits", label: t("Most hits") }]} />
+          <label className="search"><Search /><input placeholder={t("Search")} value={q} onChange={(e) => { setQ(e.target.value); setLimit(300); }} /></label>
+        </div>
       </div>
       {shown.length === 0 ? (
         <div className="empty-state"><b>{t("No rules")}</b></div>

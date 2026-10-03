@@ -31,9 +31,10 @@ export function Profiles() {
       <div className="view-head">
         <h2>{t("Profiles")}</h2>
         <span className="sub">{profiles.length}</span>
-        <div className="grow" />
-        <button className="btn small" disabled={updatingAll} onClick={updateAll}><Refresh size={13} />{updatingAll ? t("Updating…") : t("Update all")}</button>
-        <button className="btn small primary" onClick={(e) => setImportAt(importAt ? null : e.currentTarget)}><Plus size={13} />{t("Import")}</button>
+        <div className="view-tools">
+          <button className="btn small" disabled={updatingAll} onClick={updateAll}><Refresh size={13} />{updatingAll ? t("Updating…") : t("Update all")}</button>
+          <button className="btn small primary" onClick={(e) => setImportAt(importAt ? null : e.currentTarget)}><Plus size={13} />{t("Import")}</button>
+        </div>
       </div>
       <ImportPopover anchor={importAt} onClose={() => setImportAt(null)} onDone={(p) => { setImportAt(null); flashRow(p.id); }} />
       <div className="list">

@@ -116,13 +116,14 @@ export function Connections() {
       <div className="view-head">
         <h2>{t("Connections")}</h2>
         <span className="sub">{t("{n} connections", { n: conns.length })}</span>
-        <div className="grow" />
-        <Segmented className="track small" value={by} onChange={setBy} options={[
-          { value: "process", label: t("Process") }, { value: "host", label: t("Host") }, { value: "rule", label: t("Rule") }, { value: "none", label: t("List") },
-        ]} />
-        <Segmented className="track small" value={net} onChange={setNet} options={[{ value: "all", label: "All" }, { value: "tcp", label: "TCP" }, { value: "udp", label: "UDP" }]} />
-        <label className="search"><Search /><input placeholder={t("Search")} value={q} onChange={(e) => setQ(e.target.value)} /></label>
-        <button className="btn small danger" disabled={!conns.length} onClick={() => run(Proxy.CloseAllConnections())}>{t("Close all")}</button>
+        <div className="view-tools">
+          <Segmented className="track small" value={by} onChange={setBy} options={[
+            { value: "process", label: t("Process") }, { value: "host", label: t("Host") }, { value: "rule", label: t("Rule") }, { value: "none", label: t("List") },
+          ]} />
+          <Segmented className="track small" value={net} onChange={setNet} options={[{ value: "all", label: "All" }, { value: "tcp", label: "TCP" }, { value: "udp", label: "UDP" }]} />
+          <label className="search"><Search /><input placeholder={t("Search")} value={q} onChange={(e) => setQ(e.target.value)} /></label>
+          <button className="btn small danger" disabled={!conns.length} onClick={() => run(Proxy.CloseAllConnections())}>{t("Close all")}</button>
+        </div>
       </div>
       <div className={"conns-body" + (selected ? " with-detail" : "")}>
         <div className="conns-list">

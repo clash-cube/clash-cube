@@ -72,9 +72,14 @@ code, .mono { font-family: var(--code); font-size: 11.5px; }
 .view { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 14px; animation: view-in .24s var(--ease); }
 .view::-webkit-scrollbar { width: 0; }
 @keyframes view-in { from { opacity: 0; transform: translateY(5px); } }
-.view-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
-.view-head h2 { font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
-.view-head .sub { color: var(--muted); font-size: 12px; }
+.view-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 28px; }
+.view-head h2 { font-size: 15px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+.view-head .sub { color: var(--muted); font-size: 12px; white-space: nowrap; }
+/* a page's controls stay together: when they don't fit beside the title
+   they drop as one row below it, and the search field gives way first */
+.view-tools { flex: 1 1 auto; display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+.view-tools > * { flex: none; }
+.view-tools > .search { flex: 1 1 200px; min-width: 120px; max-width: 320px; }
 .section-title { font-size: 11.5px; font-weight: 600; color: var(--muted); letter-spacing: .02em; text-transform: uppercase; padding: 0 4px; margin-bottom: -6px; }
 
 /* ---- cards and rows ---------------------------------------------------- */
@@ -319,8 +324,12 @@ select.input { padding-right: 6px; }
 /* ---- connections: groups and detail ------------------------------------- */
 .conns-view { overflow: hidden; }
 .conns-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr; gap: 12px; }
-.conns-body.with-detail { grid-template-columns: minmax(0, 1fr) 300px; }
-.conns-list { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; }
+.conns-body.with-detail { grid-template-columns: minmax(0, 1fr) clamp(240px, 34%, 300px); }
+.conns-list { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; container-type: inline-size; }
+@container (max-width: 480px) {
+  .conns .trow { grid-template-columns: minmax(0, 1fr) 76px 56px 26px; gap: 8px; }
+  .conns .trow > .cell:nth-child(2) { display: none; }
+}
 .conns-list::-webkit-scrollbar { width: 0; }
 .cgroup { flex: none; }
 .cghead { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px 0 10px; transition: background .12s; }
