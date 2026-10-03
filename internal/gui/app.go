@@ -53,6 +53,7 @@ type host struct {
 	trayMu           sync.Mutex
 	trayOn           bool
 	trayUp, trayDown string
+	trayLetter       string // the mode's, while the core runs
 }
 
 // Run starts the GUI.
@@ -160,7 +161,10 @@ func Run(version string) error {
 	h.tray.SetMenu(h.app.NewMenu()) // replaced by the first rebuild
 	h.tray.OnRightClick(func() { h.tray.OpenMenu() })
 	h.tray.AttachWindow(h.panel).WindowOffset(6)
-	h.tray.OnClick(func() { h.tray.ToggleWindow() })
+	h.tray.OnClick(func() {
+		trayPlay()
+		h.tray.ToggleWindow()
+	})
 
 	h.app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
 		h.menu.refresh()
@@ -264,9 +268,14 @@ func (h *host) stateChanged(st backend.State) {
 	// filled only while traffic is actually taken over (docs/design.md §10.3)
 	on := st.Core == "running" && (st.SystemProxy || st.Tun)
 	stopped := st.Core != "running"
+	letter := ""
+	if !stopped {
+		letter = modeLetter(st.Mode)
+	}
 	h.trayMu.Lock()
 	changed := on != h.trayOn
 	h.trayOn = on
+	h.trayLetter = letter
 	if stopped {
 		h.trayUp, h.trayDown = "", ""
 	}
@@ -279,9 +288,7 @@ func (h *host) stateChanged(st backend.State) {
 		if changed {
 			h.tray.SetTemplateIcon(icon)
 		}
-		if changed || stopped {
-			setTraySpeed(icon, up, down)
-		}
+		setTray(on, up, down, letter)
 		if h.menu != nil {
 			h.menu.update(st)
 		}
@@ -297,11 +304,22 @@ func (h *host) trafficChanged(t mihomoapi.Traffic) {
 	h.trayMu.Lock()
 	same := up == h.trayUp && down == h.trayDown
 	h.trayUp, h.trayDown = up, down
-	icon := h.trayIcon()
+	on, letter := h.trayOn, h.trayLetter
 	h.trayMu.Unlock()
 	if !same {
-		setTraySpeed(icon, up, down)
+		setTray(on, up, down, letter)
 	}
+}
+
+// modeLetter is the mode's mark on the tray icon, as Surge's.
+func modeLetter(mode string) string {
+	switch mode {
+	case "global":
+		return "G"
+	case "direct":
+		return "D"
+	}
+	return "R"
 }
 
 // trayIcon is the icon for the current state; trayMu must be held.
