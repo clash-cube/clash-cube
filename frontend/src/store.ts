@@ -7,7 +7,7 @@ import { toast, toastError } from "./components/Toast";
 export type View = "overview" | "proxies" | "profiles" | "connections" | "rules" | "logs" | "events" | "settings";
 
 // a point of the traffic chart
-export type Sample = { up: number; down: number };
+export type Sample = { up: number; down: number; at: number };
 const HISTORY = 60;
 
 export type LogLine = Log & { id: number; at: number };
@@ -40,7 +40,7 @@ export const useStore = create<Store>((set) => ({
   profiles: [],
   imports: [],
   traffic: { up: 0, down: 0, upTotal: 0, downTotal: 0 },
-  history: Array.from({ length: HISTORY }, () => ({ up: 0, down: 0 })),
+  history: Array.from({ length: HISTORY }, (_, i) => ({ up: 0, down: 0, at: Date.now() - (HISTORY - i) * 1000 })),
   memory: 0,
   logs: [],
   events: [],
@@ -72,7 +72,7 @@ export async function boot() {
   });
   Events.On("traffic", (e) => {
     const t = e.data;
-    useStore.setState((s) => ({ traffic: t, history: [...s.history.slice(1), { up: t.up, down: t.down }] }));
+    useStore.setState((s) => ({ traffic: t, history: [...s.history.slice(1), { up: t.up, down: t.down, at: Date.now() }] }));
   });
   Events.On("memory", (e) => useStore.setState({ memory: e.data.inuse }));
   Events.On("profiles", (e) => useStore.setState({ profiles: e.data ?? [] }));

@@ -1,15 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useStore } from "./store";
+import { useStore, type Sample } from "./store";
 import { useT } from "./i18n";
 import { App, Proxy, Settings, type ClientRate } from "./api";
 import { usePoll } from "./usePoll";
 import { Segmented } from "./components/Segmented";
 import { Switch } from "./components/Switch";
-import { Sparkline } from "./components/Sparkline";
-import { Bolt, Chevron, Gear, Logo, Power, Refresh, Window } from "./components/Icons";
+import { Sparkline, clock } from "./components/Sparkline";
+import { Arrow, Bolt, Chevron, Gear, Globe, Logo, Power, Refresh, Shield, Wifi, Window } from "./components/Icons";
 import { Fold } from "./components/Fold";
 import { AppIcon } from "./components/AppIcon";
-import { coreLabel, restartCore, setMode, setSystemProxy, setTun, startCore } from "./actions";
+import { coreLabel, coreTone, restartCore, setMode, setSystemProxy, setTun, startCore } from "./actions";
 import { speed, delayClass } from "./format";
 import { useGroups } from "./useGroups";
 import { matchName } from "./components/NetworkRules";
@@ -26,6 +26,8 @@ export function Panel() {
   const history = useStore((s) => s.history);
   const { groups, select, testGroup, testOne, testAll, testing, progress, flash } = useGroups();
   const [open, setOpen] = useState<string>("");
+  // the sample under the pointer, shown in place of the speeds now
+  const [scrub, setScrub] = useState<Sample | null>(null);
   const top = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const foot = useRef<HTMLDivElement>(null);
@@ -50,8 +52,11 @@ export function Panel() {
       <div className="ptop" ref={top}>
         <span className={"plogo logo" + (opened ? " spin" : "")} key={opened}><Logo size={20} /></span>
         <div className="pstatus">
-          <div className="pname">{running ? state?.profileName : coreLabel()}</div>
-          <div className="pspeed num">{running ? <>↑ {speed(traffic.up)} · ↓ {speed(traffic.down)}</> : state?.coreError || " "}</div>
+          <div className="pname">{state?.profileName || "MihomoBar"}</div>
+          <div className="pspeed">
+            <span className={"cdot " + coreTone()} />
+            <span className="ptext">{running ? <>{coreLabel()} · <span className="num">127.0.0.1:{state?.mixedPort}</span></> : state?.coreError || coreLabel()}</span>
+          </div>
         </div>
         {running && shown.length > 0 && (
           <button className={"icon" + (progress ? " zap" : "")} disabled={!!testing["all/"]} title={progress || t("Test all")} onClick={testAll}><Bolt /></button>
@@ -70,6 +75,7 @@ export function Panel() {
           />
           <div className="list">
             <div className="row">
+              <span className={"ic" + (state?.systemProxy ? " on" : "")}><Globe size={14} /></span>
               <div className="who">
                 <div className="name">{t("System Proxy")}</div>
                 {running && state?.proxyLost && <div className="sub warn">{t("Taken by another app")} · <button className="link" onClick={() => setSystemProxy(true)}>{t("Take it back")}</button></div>}
@@ -77,11 +83,13 @@ export function Panel() {
               <Switch on={!!state?.systemProxy} onChange={setSystemProxy} />
             </div>
             <div className="row">
+              <span className={"ic" + (state?.tun ? " on" : "")}><Shield size={14} /></span>
               <div className="who"><div className="name">{t("Enhanced Mode")}</div>{!state?.serviceMode && <div className="sub">{t("Installs a privileged helper on first use")}</div>}</div>
               <Switch on={!!state?.tun} onChange={setTun} />
             </div>
             {state?.network.match && (
               <div className="row">
+                <span className="ic"><Wifi size={14} /></span>
                 <div className="who">
                   <div className="name">{t("Network rule")}<span className="badge net">{matchName(state.network.match, t)}</span></div>
                   {(state.network.manual?.length ?? 0) > 0 && <div className="sub warn">{t("Changed by hand")} · <button className="link" onClick={() => Settings.ResumeNetworkAuto().catch(toastError)}>{t("Resume rule")}</button></div>}
@@ -93,7 +101,12 @@ export function Panel() {
           {running ? (
             <>
               <div className="pchart">
-                <Sparkline data={history} height={34} />
+                <div className={"prates num" + (scrub ? " scrub" : "")}>
+                  <span className="rate up"><Arrow dir="up" size={11} />{speed((scrub ?? traffic).up)}</span>
+                  <span className="rate down"><Arrow dir="down" size={11} />{speed((scrub ?? traffic).down)}</span>
+                  {scrub && <span className="pat">{clock(scrub.at)}</span>}
+                </div>
+                <Sparkline data={history} height={34} tooltip={false} onHover={setScrub} />
                 <TopClients />
               </div>
               <div className="pgroups">
@@ -106,7 +119,7 @@ export function Panel() {
                         <Chevron className={"chev" + (isOpen ? " open" : "")} />
                         <span className="pgname">{g.name}</span>
                         <span className="pgnow">{g.now}</span>
-                        {now && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay)}</span>}
+                        {now && delayClass(now.delay) !== "none" && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay)}</span>}
                       </button>
                       <Fold open={isOpen}>
                         <div className="pnodes">
@@ -165,7 +178,7 @@ function TopClients() {
   if (!clients) return null;
   return (
     <div className="pclients">
-      <div className="pclients-head">{t("Top Clients")}</div>
+      {clients.length > 0 && <div className="pclients-head">{t("Top Clients")}</div>}
       {clients.length === 0 ? (
         <div className="pclient none">{t("No active apps")}</div>
       ) : clients.map((c) => (

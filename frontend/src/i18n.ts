@@ -35,6 +35,7 @@ const zh: Record<string, string> = {
   "Start": "启动", "Stop": "停止", "Restart": "重启", "Start core": "启动内核", "Restart core": "重启内核", "Stop core": "停止内核",
   "Upload": "上传", "Download": "下载", "Memory": "内存", "Total": "累计",
   "System Proxy": "系统代理", "Enhanced Mode": "增强模式", "Outbound Mode": "出站模式",
+  "Rules pick the policy for each connection": "按规则为每个连接选择策略", "Everything goes through the GLOBAL group": "所有连接都走 GLOBAL 策略组", "Everything connects directly": "所有连接都直接连接",
   "Route apps that respect the macOS proxy settings": "接管遵循系统代理设置的应用",
   "TUN: capture all traffic, including terminals and games": "TUN：接管所有流量，包括终端与游戏",
   "Service mode": "服务模式", "Privileged helper": "特权助手",

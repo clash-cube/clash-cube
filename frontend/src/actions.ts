@@ -36,6 +36,14 @@ export const startCore = () => run(App.Start());
 export const stopCore = () => run(App.Stop());
 export const restartCore = () => run(App.Restart());
 
+// coreTone is the colour of the core's status dot, as the delay classes.
+export function coreTone(): string {
+  const s = useStore.getState().state;
+  if (!s) return "none";
+  if (s.busy || s.core === "starting" || s.core === "stopping") return "ok testing";
+  return s.core === "running" ? "good" : s.core === "crashed" ? "bad" : "none";
+}
+
 export function coreLabel(): string {
   const s = useStore.getState().state;
   if (!s) return "";

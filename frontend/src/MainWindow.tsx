@@ -4,7 +4,7 @@ import { useT } from "./i18n";
 import { Segmented } from "./components/Segmented";
 import { Gear, Logo } from "./components/Icons";
 import { Popover, Menu } from "./components/Popover";
-import { coreLabel, restartCore, startCore, stopCore } from "./actions";
+import { coreLabel, coreTone, restartCore, startCore, stopCore } from "./actions";
 import { speed } from "./format";
 import { Overview } from "./views/Overview";
 import { Proxies } from "./views/Proxies";
@@ -54,9 +54,9 @@ export function MainWindow() {
           ]}
         />
         <div className="actions">
-          {running && <span className="hdr-speed num">↑ {speed(traffic.up)}  ↓ {speed(traffic.down)}</span>}
+          {running && view !== "overview" && <span className="hdr-speed num">↑ {speed(traffic.up)}  ↓ {speed(traffic.down)}</span>}
           <button className="pill-status" onClick={(e) => setCoreAt(coreAt ? null : e.currentTarget)} title={state?.coreError}>
-            {coreLabel()}
+            <span className={"cdot " + coreTone()} />{coreLabel()}
           </button>
           <button className={"icon" + (view === "settings" ? " on" : "")} title={t("Settings")} onClick={() => setView("settings")}><Gear /></button>
         </div>

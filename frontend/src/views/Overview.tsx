@@ -5,8 +5,15 @@ import { Sparkline } from "../components/Sparkline";
 import { ConnectivityCards } from "../components/ConnectivityCards";
 import { Segmented } from "../components/Segmented";
 import { Switch } from "../components/Switch";
-import { Arrow, Globe, Shield, File, Chevron } from "../components/Icons";
+import { Arrow, Globe, Shield, File, Chevron, Route } from "../components/Icons";
 import { setMode, setSystemProxy, setTun, startCore, restartCore } from "../actions";
+import { useConnectionStore } from "../connectionStore";
+
+const modeHint: Record<string, string> = {
+  rule: "Rules pick the policy for each connection",
+  global: "Everything goes through the GLOBAL group",
+  direct: "Everything connects directly",
+};
 
 export function Overview() {
   const t = useT();
@@ -15,7 +22,9 @@ export function Overview() {
   const history = useStore((s) => s.history);
   const memory = useStore((s) => s.memory);
   const setView = useStore((s) => s.setView);
+  const conns = useConnectionStore((s) => s.snapshot.active.length);
   const running = state?.core === "running";
+  const mode = state?.mode ?? "rule";
 
   return (
     <div className="view overview">
@@ -47,34 +56,35 @@ export function Overview() {
           <div className="grow" />
           {!running && state?.core !== "starting" && <button className="btn small primary" onClick={startCore}>{t("Start core")}</button>}
         </div>
-        <Sparkline data={history} height={96} />
+        <Sparkline data={history} height={88} grid />
+        <div className="traffic-stats">
+          <Stat label={t("Total") + " ↑"} value={bytes(traffic.upTotal)} />
+          <Stat label={t("Total") + " ↓"} value={bytes(traffic.downTotal)} />
+          <Stat label={t("Connections")} value={running ? String(conns) : "—"} />
+          <Stat label={t("Memory")} value={running ? bytes(memory) : "—"} />
+        </div>
       </div>
 
       <ConnectivityCards />
 
-      <div className="stats">
-        <Stat label={t("Total") + " ↑"} value={bytes(traffic.upTotal)} />
-        <Stat label={t("Total") + " ↓"} value={bytes(traffic.downTotal)} />
-        <Stat label={t("Memory")} value={bytes(memory)} />
-        <Stat label={t("Mode")} value={t(cap(state?.mode ?? "rule"))} />
-      </div>
-
-      <div className="section-title">{t("Outbound Mode")}</div>
-      <Segmented
-          className="track fill mode-seg"
-          value={state?.mode ?? "rule"}
-          onChange={setMode}
-          options={[{ value: "rule", label: t("Rule") }, { value: "global", label: t("Global") }, { value: "direct", label: t("Direct") }]}
-        />
-
-      <div className="list">
+      <div className="list controls">
         <div className="row">
-          <span className="ic"><Globe /></span>
+          <span className="ic"><Route /></span>
+          <div className="who"><div className="name">{t("Outbound Mode")}</div><div className="sub">{t(modeHint[mode] ?? "")}</div></div>
+          <Segmented
+            className="track small"
+            value={mode}
+            onChange={setMode}
+            options={[{ value: "rule", label: t("Rule") }, { value: "global", label: t("Global") }, { value: "direct", label: t("Direct") }]}
+          />
+        </div>
+        <div className="row">
+          <span className={"ic" + (state?.systemProxy ? " on" : "")}><Globe /></span>
           <div className="who"><div className="name">{t("System Proxy")}</div><div className="sub">{t("Route apps that respect the macOS proxy settings")} · 127.0.0.1:{state?.mixedPort}</div></div>
           <Switch on={!!state?.systemProxy} onChange={setSystemProxy} label={t("System Proxy")} />
         </div>
         <div className="row">
-          <span className="ic"><Shield /></span>
+          <span className={"ic" + (state?.tun ? " on" : "")}><Shield /></span>
           <div className="who"><div className="name">{t("Enhanced Mode")}</div><div className="sub">{state?.serviceMode ? t("TUN: capture all traffic, including terminals and games") : t("Installs a privileged helper on first use")}</div></div>
           <Switch on={!!state?.tun} onChange={setTun} label={t("Enhanced Mode")} />
         </div>
@@ -88,13 +98,11 @@ export function Overview() {
   );
 }
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="card stat">
+    <div className="tstat">
       <div className="lbl">{label}</div>
-      <div className="val">{value}</div>
+      <div className="val num">{value}</div>
     </div>
   );
 }

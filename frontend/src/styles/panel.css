@@ -4,14 +4,21 @@
 .plogo { display: inline-flex; width: 24px; height: 28px; align-items: center; justify-content: center; color: var(--fg); }
 .pstatus { flex: 1; min-width: 0; }
 .pname { display: flex; align-items: center; gap: 6px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pspeed { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.pspeed { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); margin-top: 1px; min-width: 0; }
+.pspeed .cdot { flex: none; }
+.ptext { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pscroll { flex: 1; min-height: 0; overflow-y: auto; }
 .pscroll::-webkit-scrollbar { width: 0; }
 .pbody { display: flex; flex-direction: column; gap: 8px; padding: 0 10px 8px; }
-.pbody > .seg.track { background: var(--card); box-shadow: var(--card-edge); border-radius: 9px; }
+/* a recessed track, so the white thumb stands out of it as a native control does */
+.pbody > .seg.track { background: color-mix(in srgb, var(--fg) 6%, transparent); border-radius: 9px; }
 .pbody > .seg.track > button { height: 26px; }
-.pchart { border-radius: 10px; background: var(--card); box-shadow: var(--card-edge); padding: 6px 0 0; overflow: hidden; }
-.pclients { border-top: 1px solid var(--line-2); padding: 4px 6px 5px; display: flex; flex-direction: column; }
+.pchart { border-radius: 10px; background: var(--card); box-shadow: var(--card-edge); padding: 8px 0 0; overflow: hidden; }
+.prates { display: flex; gap: 14px; padding: 0 12px 4px; font-size: 12px; font-weight: 500; color: var(--fg-2); }
+.prates .rate { align-items: center; gap: 4px; }
+.prates .pat { margin-left: auto; font-weight: 400; color: var(--muted); }
+.prates.scrub { color: var(--fg); }
+.pclients { padding: 4px 6px 5px; display: flex; flex-direction: column; }
 .pclients-head { font-size: 11px; color: var(--muted); padding: 2px 6px 3px; }
 .pclient { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 6px; border-radius: 6px; text-align: left; transition: background .12s; }
 .pclient:hover { background: var(--card-2); }
@@ -40,6 +47,10 @@
 .pfoot { display: flex; align-items: center; gap: 2px; padding: 4px 8px 8px; flex: none; border-top: 1px solid var(--line-2); margin-top: 0; }
 .link { font-size: 12px; color: var(--fg-2); padding: 4px 7px; border-radius: 6px; transition: background .12s, color .12s; }
 .link:hover { background: var(--pill); color: var(--fg); }
+/* on the frosted backdrop the pills are white; hovers darken instead */
+.panel .icon:hover, .panel .icon.on, .panel .link:hover { background: color-mix(in srgb, var(--fg) 7%, transparent); }
+.is-panel .row .ic { width: 24px; height: 24px; border-radius: 7px; background: color-mix(in srgb, var(--fg) 6%, transparent); }
+.is-panel .row .ic.on { background: var(--accent); color: var(--accent-fg); }
 
 /* ---- the window's header speed ----------------------------------------- */
 .hdr-speed { font-size: 11.5px; color: var(--muted); white-space: pre; margin-right: 4px; }

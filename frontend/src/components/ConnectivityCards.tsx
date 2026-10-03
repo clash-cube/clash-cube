@@ -172,21 +172,26 @@ export function ConnectivityCards() {
     { key: "proxy", label: t("Proxy"), sub: proxySub, title: proxyTitle, onClick: proxy.toggle, shown: proxy.shown },
   ];
   return (
-    <div className="conn-cards">
-      {cards.map(({ key, label, sub, title, onClick, shown }) => {
-        const v = c[key] ?? 0;
-        return (
-          <div className={"card conn-card" + (onClick ? " toggles" : "")} key={key} title={title} onClick={onClick}>
-            <div className="lbl">
-              <span className={"cdot " + (pending.has(key) && !v ? "testing" : delayClass(v))} />
-              {label}
+    <>
+      <div className="section-title section-head">
+        {t("Network")}
+        <button className={"icon" + (busy ? " spin" : "")} title={t("Test")} disabled={!running} onClick={measure}><Refresh size={13} /></button>
+      </div>
+      <div className="conn-cards">
+        {cards.map(({ key, label, sub, title, onClick, shown }) => {
+          const v = c[key] ?? 0;
+          return (
+            <div className={"card conn-card" + (onClick ? " toggles" : "")} key={key} title={title} onClick={onClick}>
+              <div className="lbl">
+                <span className={"cdot " + (pending.has(key) && !v ? "testing" : delayClass(v))} />
+                {label}
+              </div>
+              <div className={"val " + delayClass(v)}>{v > 0 ? <>{v}<small> ms</small></> : v < 0 ? t("Failed") : "—"}</div>
+              {sub && <div className="sub" key={onClick ? String(shown) : undefined}>{sub}</div>}
             </div>
-            <div className={"val " + delayClass(v)}>{v > 0 ? <>{v}<small> ms</small></> : v < 0 ? t("Failed") : "—"}</div>
-            {sub && <div className="sub" key={onClick ? String(shown) : undefined}>{sub}</div>}
-          </div>
-        );
-      })}
-      <button className={"icon conn-refresh" + (busy ? " spin" : "")} title={t("Test")} disabled={!running} onClick={measure}><Refresh size={14} /></button>
-    </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
