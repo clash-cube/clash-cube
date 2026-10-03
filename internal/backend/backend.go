@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -94,9 +96,12 @@ func (b *Backend) Init() error {
 		_ = settings.Save(s)
 	}
 	profiles.SetUserAgent("clash.meta/" + b.CoreVersion + " mihomobar/" + b.Version)
-	// a system proxy left pointing at us by a crash is cleared
-	if !s.SystemProxy && sysproxy.PointsAt("127.0.0.1", s.MixedPort) {
-		_ = sysproxy.Clear()
+	// a system proxy left pointing at us by a crash is cleared, even when
+	// it should be on: it points at a port nobody serves until the core
+	// starts (and it may never, with AutoStart off or a broken profile).
+	// Start sets it again.
+	if proxyPointsAt(proxyHost, s.MixedPort) && !listening(s.MixedPort) {
+		_ = proxyClear()
 	}
 	go b.autoUpdate()
 	return nil
@@ -314,12 +319,31 @@ func (b *Backend) SetSystemProxy(on bool) error {
 	return b.applyProxy(true)
 }
 
+// The system proxy, as variables so tests leave the machine's alone.
+var (
+	proxySet      = sysproxy.Set
+	proxyClear    = sysproxy.Clear
+	proxyPointsAt = sysproxy.PointsAt
+)
+
+const proxyHost = "127.0.0.1"
+
+// listening says whether something accepts connections on the local port.
+func listening(port int) bool {
+	c, err := net.DialTimeout("tcp", net.JoinHostPort(proxyHost, strconv.Itoa(port)), 300*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	c.Close()
+	return true
+}
+
 func (b *Backend) applyProxy(on bool) error {
 	s := settings.Load()
 	if !on {
-		return sysproxy.Clear()
+		return proxyClear()
 	}
-	if err := sysproxy.Set("127.0.0.1", s.MixedPort, s.Bypass); err != nil {
+	if err := proxySet(proxyHost, s.MixedPort, s.Bypass); err != nil {
 		return err
 	}
 	b.mu.Lock()
@@ -328,13 +352,15 @@ func (b *Backend) applyProxy(on bool) error {
 	return nil
 }
 
+// releaseProxy turns the system proxy off if it is ours: set by this run,
+// or pointing at our port (left by a run that didn't get to clear it).
 func (b *Backend) releaseProxy() {
 	b.mu.Lock()
 	owned := b.proxyOwned
 	b.proxyOwned = false
 	b.mu.Unlock()
-	if owned {
-		_ = sysproxy.Clear()
+	if owned || proxyPointsAt(proxyHost, settings.Load().MixedPort) {
+		_ = proxyClear()
 	}
 }
 

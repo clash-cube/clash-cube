@@ -2,7 +2,9 @@ package backend
 
 import (
 	"context"
+	"net"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,7 +24,180 @@ func TestMain(m *testing.M) {
 		}
 		os.Exit(0)
 	}
+	// no test changes the machine's system proxy
+	proxySet = func(host string, port int, _ []string) error { fake.set(host, port); return nil }
+	proxyClear = func() error { fake.clear(); return nil }
+	proxyPointsAt = fake.pointsAt
 	os.Exit(m.Run())
+}
+
+// fakeProxy stands in for the system proxy.
+type fakeProxy struct {
+	mu      sync.Mutex
+	host    string
+	port    int
+	on      bool
+	cleared int
+}
+
+var fake = &fakeProxy{}
+
+func (f *fakeProxy) set(host string, port int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.host, f.port, f.on = host, port, true
+}
+
+func (f *fakeProxy) clear() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.on = false
+	f.cleared++
+}
+
+func (f *fakeProxy) pointsAt(host string, port int) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.on && f.host == host && f.port == port
+}
+
+func (f *fakeProxy) state() (on bool, cleared int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.on, f.cleared
+}
+
+func (f *fakeProxy) reset() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.host, f.port, f.on, f.cleared = "", 0, false, 0
+}
+
+// freePort is a local port nothing listens on.
+func freePort(t *testing.T) int {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port
+}
+
+// A system proxy left at our port by a run that never cleared it (killed,
+// crashed) must not outlive this one: it is cleared at start when nothing
+// serves the port, and by turning the proxy off or quitting otherwise,
+// though this run never set it.
+func TestStaleSystemProxy(t *testing.T) {
+	newBackend := func(t *testing.T, port int, systemProxy bool) *Backend {
+		t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+		if _, err := settings.Update(func(s *settings.Settings) {
+			s.MixedPort, s.SystemProxy, s.AutoStart = port, systemProxy, false
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return New("test", "test", []byte(base), nopSink{make(chan State, 64)})
+	}
+
+	t.Run("cleared at start, even when it should be on", func(t *testing.T) {
+		fake.reset()
+		port := freePort(t)
+		fake.set(proxyHost, port)
+		b := newBackend(t, port, true)
+		if err := b.Init(); err != nil {
+			t.Fatal(err)
+		}
+		if on, _ := fake.state(); on {
+			t.Error("a proxy at a port nobody serves was kept")
+		}
+	})
+
+	t.Run("kept at start while the port is served", func(t *testing.T) {
+		fake.reset()
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer l.Close()
+		port := l.Addr().(*net.TCPAddr).Port
+		fake.set(proxyHost, port)
+		b := newBackend(t, port, true)
+		if err := b.Init(); err != nil {
+			t.Fatal(err)
+		}
+		if on, _ := fake.state(); !on {
+			t.Error("a working proxy was cleared")
+		}
+		// turning it off clears it, though this run didn't set it
+		if err := b.SetSystemProxy(false); err != nil {
+			t.Fatal(err)
+		}
+		if on, _ := fake.state(); on {
+			t.Error("turning the system proxy off left it on")
+		}
+	})
+
+	t.Run("cleared when quitting", func(t *testing.T) {
+		fake.reset()
+		port := freePort(t)
+		b := newBackend(t, port, true)
+		if err := b.Init(); err != nil {
+			t.Fatal(err)
+		}
+		fake.set(proxyHost, port)
+		b.Shutdown()
+		if on, _ := fake.state(); on {
+			t.Error("quitting left the proxy on")
+		}
+	})
+
+	t.Run("someone else's is left alone", func(t *testing.T) {
+		fake.reset()
+		port := freePort(t)
+		b := newBackend(t, port, false)
+		if err := b.Init(); err != nil {
+			t.Fatal(err)
+		}
+		fake.set(proxyHost, port+1)
+		_ = b.SetSystemProxy(false)
+		b.Shutdown()
+		if on, cleared := fake.state(); !on || cleared != 0 {
+			t.Errorf("a proxy at another port was cleared (on=%v, cleared=%d)", on, cleared)
+		}
+	})
+}
+
+// The proxy the app sets follows the core: on when it starts, off when it
+// stops.
+func TestSystemProxyFollowsCore(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a core")
+	}
+	fake.reset()
+	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	port := freePort(t)
+	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort, s.SystemProxy, s.AutoStart = port, true, false }); err != nil {
+		t.Fatal(err)
+	}
+	b := New("test", "test", []byte(base), nopSink{make(chan State, 64)})
+	if err := b.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	t.Cleanup(b.Shutdown)
+	if !fake.pointsAt(proxyHost, port) {
+		t.Fatal("starting the core didn't set the system proxy")
+	}
+	if err := b.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	if on, _ := fake.state(); on {
+		t.Error("stopping the core left the system proxy on")
+	}
+	if !settings.Load().SystemProxy {
+		t.Error("stopping the core forgot the setting")
+	}
 }
 
 const base = `
