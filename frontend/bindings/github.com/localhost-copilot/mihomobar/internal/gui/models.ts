@@ -58,6 +58,10 @@ export interface Patch {
     "logLevel"?: string | null;
     "tunStack"?: string | null;
     "icmpForwarding"?: boolean | null;
+    "guardIPv6"?: boolean | null;
+    "guardDNS"?: boolean | null;
+    "blockSTUN"?: boolean | null;
+    "dnsRespectRules"?: boolean | null;
     "bypass"?: string[] | null;
     "autoStart"?: boolean | null;
     "launchAtLogin"?: boolean | null;

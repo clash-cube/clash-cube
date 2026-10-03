@@ -69,12 +69,66 @@ func Build(profile []byte, s settings.Settings, ctl Controller, user []userrules
 		setDefault(tun, "dns-hijack", []any{"any:53", "tcp://any:53"})
 	}
 	m["tun"] = tun
+	guard(m, tun, s)
 
-	if pre := userRules(m, user); len(pre) > 0 {
+	pre := userRules(m, user)
+	if s.BlockSTUN {
+		pre = append([]any{stunRule}, pre...)
+	}
+	if len(pre) > 0 {
 		own, _ := m["rules"].([]any)
 		m["rules"] = append(pre, own...)
 	}
 	return yaml.Marshal(m)
+}
+
+// stunRule rejects STUN over UDP. A node without UDP makes mihomo skip
+// its rule and go on matching, which can end at DIRECT and show WebRTC
+// this Mac's address; rejected, WebRTC falls back to TURN over TCP.
+const stunRule = "AND,((NETWORK,UDP),(DST-PORT,3478/5349/19302-19309)),REJECT"
+
+// The dns section laid down when a profile has none.
+var defaultNameservers = []any{"https://dns.alidns.com/dns-query", "https://doh.pub/dns-query"}
+
+// guard applies the leak protection settings.
+func guard(m, tun map[string]any, s settings.Settings) {
+	dns, _ := m["dns"].(map[string]any)
+	if dns == nil {
+		dns = map[string]any{}
+	}
+	// mihomo drops the TUN's IPv6 address when ipv6 is off, and auto-route
+	// only routes IPv6 into a TUN that has one, so IPv6 would go around
+	// it. Keep ipv6 on for the core and stop AAAA answers in dns instead,
+	// which needs the core's dns on.
+	v6 := s.GuardIPv6 && s.Tun && !s.IPv6
+	if v6 {
+		m["ipv6"] = true
+		dns["ipv6"] = false
+	}
+	if s.GuardDNS || s.DNSRespectRules || v6 {
+		if dns["enable"] != true {
+			dns["enable"] = true
+			setDefault(dns, "enhanced-mode", "fake-ip")
+			setDefault(dns, "fake-ip-range", "198.18.0.1/16")
+		}
+		if ns, _ := dns["nameserver"].([]any); len(ns) == 0 {
+			dns["nameserver"] = defaultNameservers
+		}
+	}
+	if s.GuardDNS && s.Tun {
+		tun["dns-hijack"] = []any{"any:53", "tcp://any:53"}
+	}
+	if s.DNSRespectRules {
+		dns["respect-rules"] = true
+		// required by respect-rules: proxy servers' names are looked up
+		// direct, so the core can reach them before it has a route
+		if ps, _ := dns["proxy-server-nameserver"].([]any); len(ps) == 0 {
+			dns["proxy-server-nameserver"] = dns["nameserver"]
+		}
+	}
+	if len(dns) > 0 {
+		m["dns"] = dns
+	}
 }
 
 // The policies every profile has.

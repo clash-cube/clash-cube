@@ -25,6 +25,16 @@ type Settings struct {
 	// answers them itself. ICMP is never proxied either way.
 	ICMPForwarding bool `json:"icmpForwarding"`
 
+	// Leak protection (runtimecfg). GuardIPv6 routes IPv6 into the TUN
+	// even with IPv6 off; GuardDNS makes the core answer every lookup;
+	// BlockSTUN rejects STUN over UDP, which WebRTC would send direct when
+	// a node has no UDP; DNSRespectRules sends the core's own lookups the
+	// way the rules send their domains.
+	GuardIPv6       bool `json:"guardIPv6"`
+	GuardDNS        bool `json:"guardDNS"`
+	BlockSTUN       bool `json:"blockSTUN"`
+	DNSRespectRules bool `json:"dnsRespectRules"`
+
 	SystemProxy bool     `json:"systemProxy"`
 	Tun         bool     `json:"tun"`
 	Bypass      []string `json:"bypass"`

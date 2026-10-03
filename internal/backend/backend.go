@@ -434,7 +434,9 @@ func (b *Backend) PatchSettings(fn func(*settings.Settings)) (settings.Settings,
 	b.emitState()
 	coreChanged := before.MixedPort != after.MixedPort || before.AllowLan != after.AllowLan ||
 		before.IPv6 != after.IPv6 || before.LogLevel != after.LogLevel || before.TunStack != after.TunStack ||
-		before.ICMPForwarding != after.ICMPForwarding || before.FindProcess != after.FindProcess
+		before.ICMPForwarding != after.ICMPForwarding || before.FindProcess != after.FindProcess ||
+		before.GuardIPv6 != after.GuardIPv6 || before.GuardDNS != after.GuardDNS ||
+		before.BlockSTUN != after.BlockSTUN || before.DNSRespectRules != after.DNSRespectRules
 	if coreChanged {
 		if err := b.Reload(); err != nil {
 			return after, err

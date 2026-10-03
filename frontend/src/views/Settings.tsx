@@ -5,7 +5,7 @@ import { App, Proxy, Settings as S, type Patch, type HelperStatus } from "../api
 import { Switch } from "../components/Switch";
 import { Segmented } from "../components/Segmented";
 import { toast, toastError } from "../components/Toast";
-import { run } from "../actions";
+import { run, setTun } from "../actions";
 import { NetworkRules } from "../components/NetworkRules";
 
 export function Settings() {
@@ -76,6 +76,30 @@ export function Settings() {
         </Row>
         <Row label={t("ICMP forwarding")} sub={t("Pings go out directly, never through a proxy. Off: the core answers every ping itself. Pinging a domain under fake-ip always gets a local answer.")} wrap>
           <Switch on={s.icmpForwarding} onChange={(v) => patch({ icmpForwarding: v })} />
+        </Row>
+      </Section>
+
+      <Section title={t("Leak Protection")}>
+        {state?.systemProxy && !state.tun && (
+          <div className="row">
+            <div className="who">
+              <div className="name">{t("System proxy only")}</div>
+              <div className="sub warn wrap">{t("WebRTC sends UDP, which the system proxy doesn't carry, so websites can see your real IP. Apps that ignore the proxy look up names with the system's DNS.")}</div>
+            </div>
+            <div className="end"><button className="btn small primary" onClick={async () => { await patch({ guardIPv6: true, guardDNS: true }); await setTun(true); }}>{t("Turn on TUN and protection")}</button></div>
+          </div>
+        )}
+        <Row label={t("Route IPv6 into TUN")} sub={t("With IPv6 off, IPv6 traffic would go around TUN, exposing your IPv6 address to WebRTC and sending lookups to an IPv6 DNS server. Names still get no IPv6 answers; the core's own connections may use IPv6.")} wrap>
+          <Switch on={s.guardIPv6} onChange={(v) => patch({ guardIPv6: v })} />
+        </Row>
+        <Row label={t("Take over DNS")} sub={t("Turns on the core's DNS and, under TUN, hijacks every lookup to port 53, whatever the profile says.")} wrap>
+          <Switch on={s.guardDNS} onChange={(v) => patch({ guardDNS: v })} />
+        </Row>
+        <Row label={t("Block STUN over UDP")} sub={t("A node without UDP lets WebRTC go direct. Rejected, WebRTC falls back to relays over TCP; some video calls may connect slower or fail.")} wrap>
+          <Switch on={s.blockSTUN} onChange={(v) => patch({ blockSTUN: v })} />
+        </Row>
+        <Row label={t("Look up names along the rules")} sub={t("The core's DNS queries go out through the policy their domain matches, so domestic DNS servers don't see the domains you proxy. Lookups get slower.")} wrap>
+          <Switch on={s.dnsRespectRules} onChange={(v) => patch({ dnsRespectRules: v })} />
         </Row>
       </Section>
 

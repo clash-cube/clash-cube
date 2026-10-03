@@ -42,6 +42,10 @@ func Main(args []string) error {
 		return errors.New("core: -d and -f are required")
 	}
 	os.Unsetenv("MIHOMOBAR_SECRET")
+	// mihomo leaves the TUN without an IPv6 address when this Mac has no
+	// global IPv6 at start; joining an IPv6 network later would then route
+	// IPv6 around the TUN. darwin's utun always takes the address.
+	os.Setenv("SKIP_SYSTEM_IPV6_CHECK", "1")
 
 	guardResolver()
 	_, _ = maxprocs.Set(maxprocs.Logger(func(string, ...any) {}))

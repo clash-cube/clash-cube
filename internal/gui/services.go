@@ -544,23 +544,27 @@ func (s *SettingsService) SavedWiFiNetworks() ([]string, error) { return wifi.Sa
 // Patch is a partial update: the keys of p (as settings.json names them)
 // that are present are changed.
 type Patch struct {
-	MixedPort      *int      `json:"mixedPort,omitempty"`
-	AllowLan       *bool     `json:"allowLan,omitempty"`
-	IPv6           *bool     `json:"ipv6,omitempty"`
-	LogLevel       *string   `json:"logLevel,omitempty"`
-	TunStack       *string   `json:"tunStack,omitempty"`
-	ICMPForwarding *bool     `json:"icmpForwarding,omitempty"`
-	Bypass         *[]string `json:"bypass,omitempty"`
-	AutoStart      *bool     `json:"autoStart,omitempty"`
-	LaunchAtLogin  *bool     `json:"launchAtLogin,omitempty"`
-	Theme          *string   `json:"theme,omitempty"`
-	Lang           *string   `json:"lang,omitempty"`
-	Dock           *string   `json:"dock,omitempty"`
-	TestURL        *string   `json:"testUrl,omitempty"`
-	TraySpeed      *bool     `json:"traySpeed,omitempty"`
-	FindProcess    *bool     `json:"findProcess,omitempty"`
-	Notify         *bool     `json:"notify,omitempty"`
-	SaveData       *bool     `json:"saveData,omitempty"`
+	MixedPort       *int      `json:"mixedPort,omitempty"`
+	AllowLan        *bool     `json:"allowLan,omitempty"`
+	IPv6            *bool     `json:"ipv6,omitempty"`
+	LogLevel        *string   `json:"logLevel,omitempty"`
+	TunStack        *string   `json:"tunStack,omitempty"`
+	ICMPForwarding  *bool     `json:"icmpForwarding,omitempty"`
+	GuardIPv6       *bool     `json:"guardIPv6,omitempty"`
+	GuardDNS        *bool     `json:"guardDNS,omitempty"`
+	BlockSTUN       *bool     `json:"blockSTUN,omitempty"`
+	DNSRespectRules *bool     `json:"dnsRespectRules,omitempty"`
+	Bypass          *[]string `json:"bypass,omitempty"`
+	AutoStart       *bool     `json:"autoStart,omitempty"`
+	LaunchAtLogin   *bool     `json:"launchAtLogin,omitempty"`
+	Theme           *string   `json:"theme,omitempty"`
+	Lang            *string   `json:"lang,omitempty"`
+	Dock            *string   `json:"dock,omitempty"`
+	TestURL         *string   `json:"testUrl,omitempty"`
+	TraySpeed       *bool     `json:"traySpeed,omitempty"`
+	FindProcess     *bool     `json:"findProcess,omitempty"`
+	Notify          *bool     `json:"notify,omitempty"`
+	SaveData        *bool     `json:"saveData,omitempty"`
 }
 
 func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
@@ -583,6 +587,10 @@ func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
 		set(&st.LogLevel, p.LogLevel)
 		set(&st.TunStack, p.TunStack)
 		set(&st.ICMPForwarding, p.ICMPForwarding)
+		set(&st.GuardIPv6, p.GuardIPv6)
+		set(&st.GuardDNS, p.GuardDNS)
+		set(&st.BlockSTUN, p.BlockSTUN)
+		set(&st.DNSRespectRules, p.DNSRespectRules)
 		set(&st.Bypass, p.Bypass)
 		set(&st.AutoStart, p.AutoStart)
 		set(&st.LaunchAtLogin, p.LaunchAtLogin)
