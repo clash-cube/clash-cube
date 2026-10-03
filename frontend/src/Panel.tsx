@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useStore } from "./store";
 import { useT } from "./i18n";
-import { App } from "./api";
+import { App, Proxy, type ClientRate } from "./api";
+import { usePoll } from "./usePoll";
 import { Segmented } from "./components/Segmented";
 import { Switch } from "./components/Switch";
 import { Sparkline } from "./components/Sparkline";
@@ -77,7 +78,10 @@ export function Panel() {
 
           {running ? (
             <>
-              <div className="pchart"><Sparkline data={history} height={34} /></div>
+              <div className="pchart">
+                <Sparkline data={history} height={34} />
+                <TopClients />
+              </div>
               <div className="pgroups">
                 {shown.map((g) => {
                   const isOpen = open === g.name;
@@ -134,6 +138,46 @@ export function Panel() {
       </div>
     </div>
   );
+}
+
+// TopClients lists, under the traffic chart, the apps the traffic comes
+// from, as Surge's menu does: each one's icon, name and speed now.
+function TopClients() {
+  const t = useT();
+  const [clients, setClients] = useState<ClientRate[] | null>(null);
+  usePoll(async () => {
+    try { setClients((await Proxy.TopClients(3)) ?? []); } catch { setClients([]); }
+  }, 1000);
+  if (!clients) return null;
+  return (
+    <div className="pclients">
+      <div className="pclients-head">{t("Top Clients")}</div>
+      {clients.length === 0 ? (
+        <div className="pclient none">{t("No active apps")}</div>
+      ) : clients.map((c) => (
+        <button className="pclient" key={c.path + "\0" + c.name} onClick={() => App.ShowMain("connections")}>
+          <AppIcon path={c.path} />
+          <span className="pcname">{c.name}</span>
+          <span className="pcspeed num">{speed(c.up + c.down)}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// an icon is fetched once per app, and kept
+const icons = new Map<string, Promise<string>>();
+
+function AppIcon({ path }: { path: string }) {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    let p = icons.get(path);
+    if (!p) icons.set(path, (p = App.AppIcon(path)));
+    let live = true;
+    p.then((s) => live && setSrc(s), () => {});
+    return () => { live = false; };
+  }, [path]);
+  return src ? <img className="pcicon" src={src} alt="" /> : <span className="pcicon" />;
 }
 
 // useFit keeps the panel window as tall as the parts' natural height; a

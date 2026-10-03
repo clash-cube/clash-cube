@@ -11,6 +11,14 @@
 .pbody > .seg.track { background: var(--card); box-shadow: var(--card-edge); border-radius: 9px; }
 .pbody > .seg.track > button { height: 26px; }
 .pchart { border-radius: 10px; background: var(--card); box-shadow: var(--card-edge); padding: 6px 0 0; overflow: hidden; }
+.pclients { border-top: 1px solid var(--line-2); padding: 4px 6px 5px; display: flex; flex-direction: column; }
+.pclients-head { font-size: 11px; color: var(--muted); padding: 2px 6px 3px; }
+.pclient { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 6px; border-radius: 6px; text-align: left; transition: background .12s; }
+.pclient:hover { background: var(--card-2); }
+.pclient.none { color: var(--faint); font-size: 12px; }
+.pcicon { width: 16px; height: 16px; flex: none; }
+.pcname { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; }
+.pcspeed { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
 .pgroups { display: flex; flex-direction: column; border-radius: 10px; background: var(--card); box-shadow: var(--card-edge); overflow: hidden; }
 .pgroup + .pgroup { border-top: 1px solid var(--line-2); }
 .pghead { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 38px; padding: 0 10px 0 8px; text-align: left; transition: background .12s; }

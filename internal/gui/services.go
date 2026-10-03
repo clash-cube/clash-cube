@@ -99,6 +99,10 @@ func lanIP() string {
 	return ip.String()
 }
 
+// AppIcon is an app's icon (a bundle or executable path; "" for a LAN
+// client) as a PNG data URL, for the page to show.
+func (s *AppService) AppIcon(path string) string { return appIcon(path) }
+
 // RevealData opens the app's data folder in Finder.
 func (s *AppService) RevealData() error { return exec.Command("open", appdir.Root()).Run() }
 
@@ -125,6 +129,10 @@ type Member struct {
 type ProxyService struct {
 	h       *host
 	testing sync.Map // group → struct{}
+
+	meterMu sync.Mutex
+	meter   backend.ClientMeter // for TopClients
+	meterAt time.Time
 }
 
 func (s *ProxyService) client() (*mihomoapi.Client, error) { return s.h.b.Client() }
@@ -251,6 +259,29 @@ func (s *ProxyService) Connections() (mihomoapi.Connections, error) {
 	conns, err := c.Connections(context.Background())
 	sort.Slice(conns.Connections, func(i, j int) bool { return conns.Connections[i].Start.After(conns.Connections[j].Start) })
 	return conns, err
+}
+
+// TopClients is the n apps moving the most traffic, their speeds measured
+// since the last call. After a pause (the panel was hidden) it starts over,
+// and the first call has no speeds yet.
+func (s *ProxyService) TopClients(n int) ([]backend.ClientRate, error) {
+	c, err := s.client()
+	if err != nil {
+		return []backend.ClientRate{}, err
+	}
+	conns, err := c.Connections(context.Background())
+	if err != nil {
+		return []backend.ClientRate{}, err
+	}
+	s.meterMu.Lock()
+	now := time.Now()
+	if now.Sub(s.meterAt) > 5*time.Second {
+		s.meter = backend.ClientMeter{}
+	}
+	s.meterAt = now
+	rates := s.meter.Sample(now, conns.Connections)
+	s.meterMu.Unlock()
+	return rates[:min(n, len(rates))], nil
 }
 
 func (s *ProxyService) CloseConnection(id string) error {

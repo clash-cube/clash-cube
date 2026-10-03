@@ -15,6 +15,14 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as backend$0 from "../backend/models.js";
 
 /**
+ * AppIcon is an app's icon (a bundle or executable path; "" for a LAN
+ * client) as a PNG data URL, for the page to show.
+ */
+export function AppIcon(path: string): $CancellablePromise<string> {
+    return $Call.ByID(3141288265, path);
+}
+
+/**
  * Connectivity measures router, DNS, internet and proxy latency.
  */
 export function Connectivity(): $CancellablePromise<backend$0.Connectivity> {

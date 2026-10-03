@@ -2,9 +2,11 @@ package backend
 
 import (
 	"cmp"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
@@ -13,10 +15,11 @@ import (
 // ClientRate is one app's traffic now, as Surge's "Top Clients" lists it:
 // its name, the path its icon comes from, and its speed in bytes a second.
 type ClientRate struct {
-	Name     string
-	Path     string // the app bundle, or the executable; "" for a LAN client
-	Up, Down int64
-	total    int64
+	Name  string `json:"name"`
+	Path  string `json:"path"` // the app bundle, or the executable; "" for a LAN client
+	Up    int64  `json:"up"`
+	Down  int64  `json:"down"`
+	total int64
 }
 
 // ClientMeter turns successive snapshots of /connections into each app's
@@ -70,14 +73,32 @@ func (m *ClientMeter) Sample(now time.Time, conns []mihomoapi.Connection) []Clie
 }
 
 // appOf names the app a connection belongs to: the outermost .app bundle
-// on its process's path, else the process, else the client's address.
+// on its process's path, else the process, else the client's address. The
+// core's own connections (delay tests, rule set and provider updates) are
+// "mihomo", as its logs call them, with this app's icon.
 func appOf(md mihomoapi.Metadata) (name, path string) {
+	if md.Type == "Inner" {
+		return "mihomo", ownBundle()
+	}
 	if p := md.ProcessPath; p != "" {
-		if i := strings.Index(p, ".app/"); i >= 0 {
-			bundle := p[:i+len(".app")]
-			return strings.TrimSuffix(filepath.Base(bundle), ".app"), bundle
+		if b := bundleOf(p); b != "" {
+			return strings.TrimSuffix(filepath.Base(b), ".app"), b
 		}
 		return cmp.Or(md.Process, filepath.Base(p)), p
 	}
-	return cmp.Or(md.Process, md.SourceIP), ""
+	return cmp.Or(md.Process, md.SourceIP, md.Type), ""
 }
+
+// bundleOf is the outermost .app bundle on a path, or "".
+func bundleOf(p string) string {
+	if i := strings.Index(p, ".app/"); i >= 0 {
+		return p[:i+len(".app")]
+	}
+	return ""
+}
+
+// ownBundle is the .app this program runs from, or the program itself.
+var ownBundle = sync.OnceValue(func() string {
+	exe, _ := os.Executable()
+	return cmp.Or(bundleOf(exe), exe)
+})

@@ -49,3 +49,19 @@ func TestClientMeter(t *testing.T) {
 		}
 	}
 }
+
+func TestAppOf(t *testing.T) {
+	for _, c := range []struct {
+		md   mihomoapi.Metadata
+		name string
+	}{
+		// the core's own: no process, no source
+		{mihomoapi.Metadata{Type: "Inner"}, "mihomo"},
+		{mihomoapi.Metadata{Type: "HTTP", SourceIP: "192.168.1.9"}, "192.168.1.9"},
+		{mihomoapi.Metadata{Type: "Tun"}, "Tun"},
+	} {
+		if name, _ := appOf(c.md); name != c.name {
+			t.Errorf("appOf(%+v) = %q, want %q", c.md, name, c.name)
+		}
+	}
+}

@@ -18,6 +18,7 @@ const zh: Record<string, string> = {
   "The root core reads its configuration from your user folder, so programs running as you can influence it.": "root 内核从你的用户目录读取配置，因此以你的身份运行的程序可以影响它。",
   "Installs a privileged helper on first use": "首次开启时会安装特权助手",
   "Current profile": "当前配置", "Open Dashboard": "打开主界面", "Quit": "退出",
+  "Top Clients": "活跃应用", "No active apps": "暂无活跃应用",
   "Test": "测速", "Testing…": "测速中…", "Test all": "全部测速", "Sort by latency": "按延迟排序", "Default order": "默认顺序",
   "Core is not running": "内核未运行", "Start the core to see proxies.": "启动内核后即可查看代理。",
   "No proxy groups": "没有代理组", "This profile has no proxy groups.": "此配置没有代理组。",

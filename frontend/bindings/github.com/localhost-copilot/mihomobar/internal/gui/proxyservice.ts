@@ -12,6 +12,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as backend$0 from "../backend/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as mihomoapi$0 from "../mihomoapi/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -61,6 +64,15 @@ export function Rules(): $CancellablePromise<mihomoapi$0.Rule[] | null> {
 
 export function Select(group: string, name: string): $CancellablePromise<void> {
     return $Call.ByID(141765054, group, name);
+}
+
+/**
+ * TopClients is the n apps moving the most traffic, their speeds measured
+ * since the last call. After a pause (the panel was hidden) it starts over,
+ * and the first call has no speeds yet.
+ */
+export function TopClients(n: number): $CancellablePromise<backend$0.ClientRate[] | null> {
+    return $Call.ByID(2078237291, n);
 }
 
 export function UpdateGeo(): $CancellablePromise<void> {
