@@ -55,6 +55,8 @@ export function Popover({ anchor, open, onClose, children, align = "start", widt
       ref={ref}
       className={"pop" + (pos.up ? " up" : "") + (leaving ? " leaving" : "")}
       style={{ left: pos.left, top: pos.top, width, ["--ox" as string]: pos.ox + "px" }}
+      // Portal clicks still bubble through React parents, including clickable rows.
+      onClick={(e) => e.stopPropagation()}
     >
       {children}
     </div>,
