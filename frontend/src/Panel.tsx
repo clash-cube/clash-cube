@@ -91,7 +91,7 @@ export function Panel() {
                         <div className="pnodes">
                           <div className="pnodes-bar">
                             <span>{g.members?.length ?? 0} · {g.type}</span>
-                            <button className={"icon" + (testing[g.name] ? " spin" : "")} onClick={() => testGroup(g)}><Bolt size={13} /></button>
+                            <button className={"icon" + (testing[g.name] ? " zap" : "")} onClick={() => testGroup(g)}><Bolt size={13} /></button>
                           </div>
                           {(g.members ?? []).map((m, i) => (
                             <button

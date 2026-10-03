@@ -77,7 +77,7 @@ export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne
           <div className="sub">{g.now || "—"}</div>
         </div>
         {now && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay)}</span>}
-        <button className={"icon" + (testing[g.name] ? " spin" : "")} title={t("Test")} onClick={(e) => { e.stopPropagation(); onTest(); }}><Bolt size={14} /></button>
+        <button className={"icon" + (testing[g.name] ? " zap" : "")} title={t("Test")} onClick={(e) => { e.stopPropagation(); onTest(); }}><Bolt size={14} /></button>
       </div>
       <Fold open={open}>
         <div className={"nodes" + (compact ? " compact" : "")}>
