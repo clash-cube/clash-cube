@@ -46,6 +46,9 @@ func (s *AppService) ConnectivityItem(key string) (backend.Connectivity, error) 
 // DirectEgress is the direct route's interface and public address.
 func (s *AppService) DirectEgress() (backend.Egress, error) { return s.h.b.DirectEgress() }
 
+// DNSEgress is the resolver in use and the address its queries leave from.
+func (s *AppService) DNSEgress() (backend.DNSEgress, error) { return s.h.b.DNSEgress() }
+
 // HelperStatus is service mode's state, for Settings.
 func (s *AppService) HelperStatus() backend.HelperStatus { return s.h.b.HelperStatus() }
 

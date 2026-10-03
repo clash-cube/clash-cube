@@ -42,6 +42,13 @@ export function CopyText(text: string): $CancellablePromise<boolean> {
 }
 
 /**
+ * DNSEgress is the resolver in use and the address its queries leave from.
+ */
+export function DNSEgress(): $CancellablePromise<backend$0.DNSEgress> {
+    return $Call.ByID(3851272135);
+}
+
+/**
  * DirectEgress is the direct route's interface and public address.
  */
 export function DirectEgress(): $CancellablePromise<backend$0.Egress> {

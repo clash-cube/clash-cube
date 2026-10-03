@@ -319,3 +319,25 @@ func (c *Client) DNSQuery(ctx context.Context, name string) error {
 	}
 	return nil
 }
+
+// DNSLookup resolves name's qtype records through the core's resolver and
+// gives each answer's data as the zone file writes it.
+func (c *Client) DNSLookup(ctx context.Context, name, qtype string) ([]string, error) {
+	var v struct {
+		Status int `json:"Status"`
+		Answer []struct {
+			Data string `json:"data"`
+		} `json:"Answer"`
+	}
+	if err := c.req(ctx, http.MethodGet, "/dns/query?name="+url.QueryEscape(name)+"&type="+url.QueryEscape(qtype), nil, &v); err != nil {
+		return nil, err
+	}
+	if v.Status != 0 {
+		return nil, fmt.Errorf("dns rcode %d", v.Status)
+	}
+	out := make([]string, len(v.Answer))
+	for i, a := range v.Answer {
+		out[i] = a.Data
+	}
+	return out, nil
+}

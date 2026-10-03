@@ -30,8 +30,9 @@ type Connectivity struct {
 	Internet int    `json:"internet"`
 	Proxy    int    `json:"proxy"`
 	Gateway  string `json:"gateway"`
-	Via      string `json:"via"`    // the policy the mode and rules sent the proxy test to
-	DNSVia   string `json:"dnsVia"` // "mihomo", or "system" when the profile has no dns section
+	Via      string `json:"via"`     // the policy the mode and rules sent the proxy test to
+	DNSVia   string `json:"dnsVia"`  // "mihomo", or "system" when the profile has no dns section
+	DNSMode  string `json:"dnsMode"` // the core's enhanced-mode: fake-ip | redir-host
 }
 
 func ms(d time.Duration) int { return max(1, int(d.Milliseconds())) }
@@ -109,6 +110,7 @@ func (b *Backend) probe(ctx context.Context, key string, out *Connectivity) erro
 			return nil
 		}
 		out.DNSVia = "mihomo"
+		_, out.DNSMode, _ = runtimeDNS()
 		if err != nil && !strings.Contains(err.Error(), "rcode 3") { // NXDOMAIN still answered
 			out.DNS = -1
 			return nil

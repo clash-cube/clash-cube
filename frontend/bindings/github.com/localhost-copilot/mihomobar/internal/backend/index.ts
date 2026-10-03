@@ -4,6 +4,7 @@
 export type {
     ClientRate,
     Connectivity,
+    DNSEgress,
     Egress,
     HelperStatus,
     State

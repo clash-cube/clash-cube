@@ -37,6 +37,43 @@ export interface Connectivity {
      * "mihomo", or "system" when the profile has no dns section
      */
     "dnsVia": string;
+
+    /**
+     * the core's enhanced-mode: fake-ip | redir-host
+     */
+    "dnsMode": string;
+}
+
+/**
+ * DNSEgress is where name lookups leave: the resolver that answers them
+ * and the address authoritative servers see the queries come from, which
+ * is the resolver's (or the proxy's), not this Mac's.
+ */
+export interface DNSEgress {
+    /**
+     * "mihomo", or "system" when the profile has no dns section
+     */
+    "via": string;
+
+    /**
+     * fake-ip | redir-host; "" for the system resolver
+     */
+    "mode": string;
+
+    /**
+     * the profile's nameservers, as written
+     */
+    "servers": string[] | null;
+
+    /**
+     * the egress address; "" when unknown
+     */
+    "ip": string;
+
+    /**
+     * the client subnet passed upstream, if any
+     */
+    "ecs": string;
 }
 
 /**
