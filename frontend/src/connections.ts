@@ -4,6 +4,7 @@ export type Conn = Connection & { up: number; down: number; closedAt?: number };
 export type ConnectionSnapshot = { active: Conn[]; closed: Conn[]; at: number };
 export type ConnectionSort = "time" | "host" | "up" | "down" | "upload" | "download";
 export type ConnectionTab = "active" | "closed" | "all";
+export type ConnectionGroupBy = "none" | "process" | "host" | "rule" | "source";
 
 export const hostOf = (c: Connection) => c.metadata.host || c.metadata.sniffHost || c.metadata.destinationIP;
 export const processName = (c: Connection) => c.metadata.type === "Inner" ? "mihomo"
@@ -12,6 +13,24 @@ export const processOf = (c: Connection) => processName(c) || c.metadata.sourceI
 export const ruleOf = (c: Connection) => c.rulePayload ? `${c.rule}(${c.rulePayload})` : c.rule;
 export const chainOf = (c: Connection) => (c.chains ?? []).slice().reverse().join(" → ");
 export const address = (host: string, port: string) => host ? `${host.includes(":") ? `[${host}]` : host}${port ? ":" + port : ""}` : "—";
+
+export function groupConnections(conns: Conn[], by: ConnectionGroupBy) {
+  if (by === "none") return null;
+  const key = by === "source" ? (c: Conn) => c.metadata.sourceIP
+    : by === "process" ? processOf : by === "host" ? hostOf : ruleOf;
+  const groups = new Map<string, Conn[]>();
+  for (const c of conns) {
+    const name = key(c);
+    const list = groups.get(name);
+    if (list) list.push(c); else groups.set(name, [c]);
+  }
+  // Keep the sorted first-member order. Device identity is always its IP;
+  // two devices with the same editable label must remain separate groups.
+  return [...groups].map(([name, list]) => ({ name, list,
+    up: list.reduce((n, c) => n + c.up, 0), down: list.reduce((n, c) => n + c.down, 0),
+    total: list.reduce((n, c) => n + c.upload + c.download, 0),
+  }));
+}
 
 export function filterConnections(conns: Conn[], query: string, network: string,
   sources: ReadonlySet<string> = new Set(), labels: Record<string, string> = {}): Conn[] {

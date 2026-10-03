@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ConnectionTracker, filterConnections, compareConnections } from "../src/connections.ts";
+import { ConnectionTracker, filterConnections, compareConnections, groupConnections } from "../src/connections.ts";
 import { duration } from "../src/format.ts";
 
 const conn = (id, overrides = {}) => ({ id, metadata: { network: "tcp", type: "HTTP", sourceIP: "192.168.1.5",
@@ -8,6 +8,20 @@ const conn = (id, overrides = {}) => ({ id, metadata: { network: "tcp", type: "H
   sniffHost: "sniff.test", remoteDestination: "203.0.113.8", process: "curl", processPath: "/usr/bin/curl" },
   start: new Date(0).toISOString(), upload: 0, download: 0, chains: ["node", "group"], rule: "Domain", rulePayload: "example.test", ...overrides });
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
+
+test("device groups keep IP identity and aggregate only filtered members in sorted order", () => {
+  const a = { ...conn("a"), up: 10, down: 20, upload: 100, download: 200 };
+  const b = { ...conn("b"), up: 30, down: 40, upload: 300, download: 400 };
+  const c = { ...a, id: "c", metadata: { ...a.metadata, sourceIP: "192.168.1.6" } };
+  const unknown = { ...a, id: "unknown", metadata: { ...a.metadata, sourceIP: "" } };
+  const labels = { "192.168.1.5": "Office", "192.168.1.6": "Office" };
+  const filtered = filterConnections([c, b, a, unknown], "Office", "all", new Set(), labels);
+  const groups = groupConnections(filtered, "source");
+  assert.deepEqual(groups.map((g) => g.name), ["192.168.1.6", "192.168.1.5"]);
+  assert.deepEqual(groups[1].list.map((c) => c.id), ["b", "a"]);
+  assert.deepEqual([groups[1].up, groups[1].down, groups[1].total], [40, 60, 1000]);
+  assert.equal(groupConnections([unknown], "source")[0].name, "");
+});
 
 test("source selection intersects protocol and label search, including archived connections", () => {
   const tracker = new ConnectionTracker();

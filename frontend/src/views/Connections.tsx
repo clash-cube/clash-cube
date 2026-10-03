@@ -3,18 +3,17 @@ import { useT } from "../i18n";
 import { useStore } from "../store";
 import { App } from "../api";
 import { closeConnections, useConnectionStore } from "../connectionStore";
-import { address, chainOf, compareConnections, filterConnections, hostOf, processName, processOf, ruleOf,
+import { address, chainOf, compareConnections, filterConnections, groupConnections, hostOf, processName, processOf, ruleOf,
   type Conn, type ConnectionSnapshot, type ConnectionSort, type ConnectionTab } from "../connections";
 import { bytes, duration, speed } from "../format";
-import { Chevron, Close, Search } from "../components/Icons";
+import { Chevron, Close, Copy, Search } from "../components/Icons";
+import { useConnectionPreferences } from "../useConnectionPreferences";
 import { Segmented } from "../components/Segmented";
 import { Fold } from "../components/Fold";
 import { AppIcon } from "../components/AppIcon";
 import { ConnectionSources, useSourceLabels } from "../components/ConnectionSources";
 import { VirtualConnections, type VirtualRow } from "../components/VirtualConnections";
 import { toast, toastError } from "../components/Toast";
-
-type GroupBy = "none" | "process" | "host" | "rule";
 
 export function Connections() {
   const t = useT();
@@ -24,12 +23,9 @@ export function Connections() {
   const snapshot = frozen ?? live;
   const [tab, setTab] = useState<ConnectionTab>("active");
   const [q, setQ] = useState("");
-  const [net, setNet] = useState<"all" | "tcp" | "udp">("all");
-  const [by, setBy] = useState<GroupBy>("process");
+  const { net, by, sort, ascending, update } = useConnectionPreferences();
   const [folded, setFolded] = useState<Record<string, boolean>>({});
   const [sel, setSel] = useState<Conn | null>(null);
-  const [sort, setSort] = useState<ConnectionSort>("time");
-  const [ascending, setAscending] = useState(false);
   const [sources, setSources] = useState(new Set<string>());
   const { labels, save } = useSourceLabels();
   useEffect(() => { setFrozen(null); setSel(null); }, [profile]);
@@ -40,22 +36,7 @@ export function Connections() {
   const activeIDs = useMemo(() => new Set(live.active.map((c) => c.id)), [live]);
   const closeable = (list: Conn[]) => list.filter((c) => activeIDs.has(c.id) && !closing.has(c.id));
 
-  const groups = useMemo(() => {
-    if (by === "none") return null;
-    const key = by === "process" ? processOf : by === "host" ? hostOf : ruleOf;
-    const m = new Map<string, Conn[]>();
-    for (const c of shown) {
-      const k = key(c);
-      const list = m.get(k);
-      if (list) list.push(c); else m.set(k, [c]);
-    }
-    // The first member determines group order, keeping the selected sort
-    // meaningful both within groups and across them.
-    return [...m.entries()].map(([name, list]) => ({ name, list,
-      up: list.reduce((n, c) => n + c.up, 0), down: list.reduce((n, c) => n + c.down, 0),
-      total: list.reduce((n, c) => n + c.upload + c.download, 0),
-    }));
-  }, [shown, by]);
+  const groups = useMemo(() => groupConnections(shown, by), [shown, by]);
 
   const selected = sel && ([...snapshot.active, ...snapshot.closed].find((c) => c.id === sel.id) ?? sel);
   // Keep the inspected record even when it ages out of the bounded history.
@@ -90,10 +71,12 @@ export function Connections() {
     const open = !folded[by + g.name];
     const icon = g.list[0].metadata;
     const count = closeable(g.list).length;
+    const name = by === "source" ? [labels[g.name], g.name || t("No source address")].filter(Boolean).join(" · ") : g.name;
     return <div className="cghead" onClick={() => setFolded((f) => ({ ...f, [by + g.name]: open }))}>
       <Chevron className={"chev" + (open ? " open" : "")} />
       {by === "process" && <AppIcon path={icon.processPath} core={icon.type === "Inner"} />}
-      <span className="cgname" title={g.name}>{g.name}</span><span className="cgcount">{g.list.length}</span>
+      {by === "source" && <AppIcon path="" />}
+      <span className="cgname" title={name}>{name}</span><span className="cgcount">{g.list.length}</span>
       <div className="grow" /><span className="num cgspeed">↑ {speed(g.up)} ↓ {speed(g.down)} · {bytes(g.total)}</span>
       <button className="icon" disabled={!count} title={t("Close {n} matching", { n: count })}
         onClick={(e) => { e.stopPropagation(); close(g.list); }}><Close size={12} /></button>
@@ -122,20 +105,20 @@ export function Connections() {
         </div>
       </div>
       <div className="conn-controls">
-        <Segmented className="track small" value={by} onChange={setBy} options={[
-          { value: "process", label: t("Process") }, { value: "host", label: t("Host") }, { value: "rule", label: t("Rule") }, { value: "none", label: t("List") },
+        <Segmented className="track small" value={by} onChange={(by) => update({ by })} options={[
+          { value: "process", label: t("Process") }, { value: "source", label: t("Device") }, { value: "host", label: t("Host") }, { value: "rule", label: t("Rule") }, { value: "none", label: t("List") },
         ]} />
-        <Segmented className="track small" value={net} onChange={setNet} options={[
+        <Segmented className="track small" value={net} onChange={(net) => update({ net })} options={[
           { value: "all", label: t("All") }, { value: "tcp", label: "TCP" }, { value: "udp", label: "UDP" },
         ]} />
         <label className="search"><Search /><input aria-label={t("Search connections")} placeholder={t("Search connections")} value={q} onChange={(e) => setQ(e.target.value)} /></label>
         <ConnectionSources connections={conns} selected={sources} onChange={setSources} labels={labels} onSave={save} />
-        <select className="input conn-sort" aria-label={t("Sort by")} value={sort} onChange={(e) => { const key = e.target.value as ConnectionSort; setSort(key); setAscending(key === "host"); }}>
+        <select className="input conn-sort" aria-label={t("Sort by")} value={sort} onChange={(e) => { const sort = e.target.value as ConnectionSort; update({ sort, ascending: sort === "host" }); }}>
           <option value="time">{t("Start time")}</option><option value="host">{t("Host")}</option>
           <option value="down">{t("Download speed")}</option><option value="up">{t("Upload speed")}</option>
           <option value="download">{t("Downloaded")}</option><option value="upload">{t("Uploaded")}</option>
         </select>
-        <button className="btn small" title={t(ascending ? "Ascending" : "Descending")} aria-label={t(ascending ? "Ascending" : "Descending")} onClick={() => setAscending(!ascending)}>{ascending ? "↑" : "↓"}</button>
+        <button className="btn small" title={t(ascending ? "Ascending" : "Descending")} aria-label={t(ascending ? "Ascending" : "Descending")} onClick={() => update({ ascending: !ascending })}>{ascending ? "↑" : "↓"}</button>
       </div>
       {(error || frozen) && <div className="conn-notice" role="status">{error ? t("Refresh failed. Showing the last successful snapshot.") : t("Paused. History collection continues.")} {error && <span>{error}</span>}</div>}
       <div className={"conns-body" + (selected ? " with-detail" : "")}>
@@ -189,9 +172,15 @@ function Detail({ c, sourceLabel, at, closeDisabled, onClose, onKill }: { c: Con
       <div className="detail-head"><AppIcon path={m.processPath} core={m.type === "Inner"} /><b title={hostOf(c)}>{hostOf(c)}</b><button className="icon" title={t("Close details")} onClick={onClose}><Close size={12} /></button></div>
       <div className="detail-tabs"><Segmented className="track small" value={raw ? "raw" : "details"} onChange={(v) => setRaw(v === "raw")}
         options={[{ value: "details", label: t("Details") }, { value: "raw", label: t("Raw JSON") }]} /></div>
-      {raw ? <pre className="conn-json">{json}</pre> : <dl>{rows.map(([k, v]) => <div key={k} onDoubleClick={() => copy(v)} title={t("Double-click to copy")}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>}
+      <div className="detail-body" key={c.id + (raw ? ":raw" : ":details")}>
+        {raw ? <pre className="conn-json">{json}</pre> : <dl>{rows.map(([k, v]) => <div key={k}>
+          <dt>{k}</dt><dd onDoubleClick={() => copy(v)} title={t("Double-click to copy")}>{v}</dd>
+          <button className="icon" title={t("Copy {field}", { field: k })} aria-label={t("Copy {field}", { field: k })} onClick={() => copy(v)}><Copy size={12} /></button>
+        </div>)}</dl>}
+      </div>
       <div className="detail-foot">
-        <button className="btn small" onClick={() => copy(raw ? json : hostOf(c))}>{t(raw ? "Copy JSON" : "Copy host")}</button>
+        {!raw && <button className="btn small" onClick={() => copy(hostOf(c))}>{t("Copy host")}</button>}
+        <button className="btn small" onClick={() => copy(raw ? json : rows.map(([k, v]) => `${k}: ${v}`).join("\n"))}>{t(raw ? "Copy JSON" : "Copy details")}</button>
         <button className="btn small danger" disabled={closeDisabled} onClick={onKill}>{t("Close connection")}</button>
       </div>
     </aside>
