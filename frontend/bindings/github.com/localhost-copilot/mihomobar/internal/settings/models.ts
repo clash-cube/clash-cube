@@ -68,5 +68,10 @@ export interface Settings {
      * speed beside the menu bar icon
      */
     "traySpeed": boolean;
+
+    /**
+     * notifications for the events that ask for one
+     */
+    "notify": boolean;
     "window"?: number[] | null;
 }

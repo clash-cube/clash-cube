@@ -64,6 +64,15 @@ const zh: Record<string, string> = {
   "Click to show the upstream and egress IP": "点击显示上游和出口 IP", "Egress": "出口", "The address authoritative servers see the queries come from": "权威服务器看到的查询来源地址",
   "Click to show the egress IP": "点击显示出口 IP",
   "Groups": "策略组", "Providers": "提供商", "{n} nodes": "{n} 个节点", "Reachable nodes": "可用节点", "Click to test this node": "点击测试该节点", "Looked up through {p}, not {q} that the test URL takes": "此次查询经过 {p}，而非测速链接所走的 {q}",
+  "Events": "事件", "Problems": "问题", "No events": "暂无事件", "Network changes, automatic group switches and errors appear here.": "网络变化、自动策略组切换和错误会显示在这里。",
+  "Proxy groups": "策略组", "Notifications": "通知", "Core errors, failed updates, and the system proxy taken by another app": "内核出错、订阅更新失败、系统代理被其他应用改写时通知",
+  "Another app changed the system proxy": "其他应用修改了系统代理", "Apps that follow the system proxy no longer go through MihomoBar.": "遵循系统代理的应用已不再经过 MihomoBar。",
+  "Take it back": "重新接管", "Taken by another app": "已被其他应用改写",
+  "The core stopped: {error}": "内核已停止：{error}", "Couldn't update {name}: {error}": "无法更新 {name}：{error}",
+  "The updated profile was refused, the previous one stays: {error}": "更新后的配置未通过校验，继续使用之前的配置：{error}",
+  "Network unavailable": "网络不可用", "Network changed to {name}, router {router}": "网络已切换到 {name}，路由器 {router}",
+  "Woke from sleep": "从睡眠中唤醒", "Closed connections and flushed DNS": "已关闭连接并清除 DNS 缓存",
+  "{group} switched from {from} to {to}": "{group} 从 {from} 切换到 {to}",
 };
 
 export type Vars = Record<string, string | number>;

@@ -119,6 +119,10 @@ func lanIP() string {
 func (s *AppService) AppIcon(path string) string { return appIcon(path) }
 
 // RevealData opens the app's data folder in Finder.
+// Events is the recent events, oldest first.
+func (s *AppService) Events() []backend.Event { return s.h.b.Events() }
+func (s *AppService) ClearEvents()            { s.h.b.ClearEvents() }
+
 func (s *AppService) RevealData() error { return exec.Command("open", appdir.Root()).Run() }
 
 // Group is a proxy group with its members, in the profile's order.
@@ -488,6 +492,7 @@ type Patch struct {
 	TestURL        *string   `json:"testUrl,omitempty"`
 	TraySpeed      *bool     `json:"traySpeed,omitempty"`
 	FindProcess    *bool     `json:"findProcess,omitempty"`
+	Notify         *bool     `json:"notify,omitempty"`
 }
 
 func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
@@ -519,6 +524,7 @@ func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
 		set(&st.TestURL, p.TestURL)
 		set(&st.TraySpeed, p.TraySpeed)
 		set(&st.FindProcess, p.FindProcess)
+		set(&st.Notify, p.Notify)
 	})
 	if p.Dock != nil {
 		application.InvokeAsync(func() { s.h.dock(s.h.main.IsVisible()) })

@@ -127,6 +127,29 @@ export interface Egress {
 }
 
 /**
+ * Event is something that happened, for the events list and, when Notify
+ * is set, a notification. Text is English, with {name}s filled from Args,
+ * so each page can translate it.
+ */
+export interface Event {
+    "id": number;
+    "time": string;
+
+    /**
+     * core | proxy | network | profile | group
+     */
+    "kind": string;
+
+    /**
+     * info | warning | error
+     */
+    "level": string;
+    "text": string;
+    "args"?: { [_ in string]?: string } | null;
+    "notify": boolean;
+}
+
+/**
  * HelperStatus is what Settings shows of service mode.
  */
 export interface HelperStatus {
@@ -194,6 +217,11 @@ export interface State {
     "appVersion": string;
     "mode": string;
     "systemProxy": boolean;
+
+    /**
+     * another app took the system proxy over; ours is no longer in effect
+     */
+    "proxyLost": boolean;
     "tun": boolean;
     "tunStack": string;
     "serviceMode": boolean;

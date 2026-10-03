@@ -227,6 +227,8 @@ select.input { padding-right: 6px; }
 .mode-seg .thumb { top: 3px; bottom: 3px; border-radius: 8px; }
 .banner { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; animation: view-in .24s var(--ease); }
 .banner.err { background: var(--red-soft); color: var(--red); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 25%, transparent); }
+.banner.warn { background: var(--amber-soft); color: var(--amber); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 25%, transparent); }
+.banner.warn .grow > div { color: var(--fg-2); font-size: 12px; margin-top: 2px; }
 .banner b { font-weight: 600; }
 .banner .mono { color: var(--fg-2); margin-top: 2px; white-space: pre-wrap; word-break: break-all; user-select: text; }
 
@@ -316,6 +318,21 @@ select.input { padding-right: 6px; }
 .logline.error .lv { color: var(--red); }
 .logline.debug .lv { color: var(--faint); }
 .logline .msg { word-break: break-all; white-space: pre-wrap; color: var(--fg-2); }
+
+.row .sub.warn { color: var(--amber); }
+.row .sub.warn .link { font-size: inherit; color: inherit; padding: 0; text-decoration: underline; }
+
+/* ---- events ------------------------------------------------------------ */
+.events-view { overflow: hidden; }
+.eventbox { flex: 1; min-height: 0; overflow-y: auto; }
+.event { display: grid; grid-template-columns: 8px 1fr auto; align-items: baseline; gap: 10px; padding: 9px 14px; animation: log-in .3s var(--ease); }
+.event + .event { border-top: 1px solid var(--line-2); }
+.event .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); align-self: center; }
+.event.warning .dot { background: var(--amber); }
+.event.error .dot { background: var(--red); }
+.event .text { word-break: break-word; user-select: text; }
+.event .kind { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.event .at { font-size: 11.5px; color: var(--faint); white-space: nowrap; }
 
 /* ---- settings ---------------------------------------------------------- */
 .settings .row { min-height: 46px; }

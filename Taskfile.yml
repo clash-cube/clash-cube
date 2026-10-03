@@ -66,6 +66,12 @@ tasks:
     cmds:
       - scripts/bundle.sh "{{.VERSION}}"
 
+  install:
+    summary: Bundle the app, then quit, replace and reopen ~/Applications/MihomoBar.app
+    deps: [app]
+    cmds:
+      - scripts/install.sh
+
   dmg:
     summary: Package bin/MihomoBar.dmg
     deps: [app]

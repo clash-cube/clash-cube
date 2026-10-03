@@ -31,6 +31,8 @@ type State struct {
 	AppVersion  string `json:"appVersion"`
 	Mode        string `json:"mode"`
 	SystemProxy bool   `json:"systemProxy"`
+	// another app took the system proxy over; ours is no longer in effect
+	ProxyLost   bool   `json:"proxyLost"`
 	Tun         bool   `json:"tun"`
 	TunStack    string `json:"tunStack"`
 	ServiceMode bool   `json:"serviceMode"`
@@ -47,6 +49,7 @@ type Sink interface {
 	Memory(mihomoapi.Memory)
 	Log(mihomoapi.Log)
 	Profiles([]profiles.Profile)
+	Event(Event)
 }
 
 type Backend struct {
@@ -64,9 +67,20 @@ type Backend struct {
 	streamCancel context.CancelFunc
 	// we turned the system proxy on, so we turn it off
 	proxyOwned bool
-	logLevel   string
-	logWatch   context.CancelFunc
-	latency    latencyTester
+	// another app took it over after we set it (watch.go)
+	proxyLost bool
+	logLevel  string
+	logWatch  context.CancelFunc
+	latency   latencyTester
+
+	// watch.go
+	events       []Event
+	eventSeq     int
+	woke         time.Time
+	resetTimer   *time.Timer
+	groupNow     map[string]string
+	groupClient  *mihomoapi.Client
+	groupProfile string
 }
 
 func New(version, coreVersion string, defaultYAML []byte, sink Sink) *Backend {
@@ -110,6 +124,7 @@ func (b *Backend) Init() error {
 
 // Boot starts the core if the settings say to, then restores the system proxy.
 func (b *Backend) Boot() {
+	go b.watch()
 	s := settings.Load()
 	if !s.AutoStart {
 		b.emitState()
@@ -131,7 +146,7 @@ func (b *Backend) State() State {
 	s := settings.Load()
 	st, errText := b.core.Status()
 	b.mu.Lock()
-	busy := b.busy
+	busy, lost := b.busy, b.proxyLost
 	b.mu.Unlock()
 	name := ""
 	if p, ok := profiles.Get(s.Profile); ok {
@@ -139,7 +154,7 @@ func (b *Backend) State() State {
 	}
 	return State{
 		Core: string(st), CoreError: errText, CoreVersion: b.CoreVersion, AppVersion: b.Version,
-		Mode: s.Mode, SystemProxy: s.SystemProxy, Tun: s.Tun, TunStack: s.TunStack,
+		Mode: s.Mode, SystemProxy: s.SystemProxy, ProxyLost: lost && s.SystemProxy, Tun: s.Tun, TunStack: s.TunStack,
 		ServiceMode: s.ServiceMode, MixedPort: s.MixedPort,
 		Profile: s.Profile, ProfileName: name, Busy: busy,
 	}
@@ -157,6 +172,8 @@ func (b *Backend) coreChanged() {
 		b.stopStreams()
 		if st == coremgr.Crashed {
 			go b.releaseProxy()
+			_, errText := b.core.Status()
+			b.event("core", "error", "The core stopped: {error}", map[string]string{"error": errText}, true)
 		}
 	}
 	b.emitState()
@@ -348,7 +365,7 @@ func (b *Backend) applyProxy(on bool) error {
 		return err
 	}
 	b.mu.Lock()
-	b.proxyOwned = true
+	b.proxyOwned, b.proxyLost = true, false
 	b.mu.Unlock()
 	return nil
 }
@@ -358,7 +375,7 @@ func (b *Backend) applyProxy(on bool) error {
 func (b *Backend) releaseProxy() {
 	b.mu.Lock()
 	owned := b.proxyOwned
-	b.proxyOwned = false
+	b.proxyOwned, b.proxyLost = false, false
 	b.mu.Unlock()
 	if owned || proxyPointsAt(proxyHost, settings.Load().MixedPort) {
 		_ = proxyClear()
@@ -423,6 +440,7 @@ func (b *Backend) ProfileChanged(id string) {
 	if id != "" && id == settings.Load().Profile {
 		if err := b.Reload(); err != nil {
 			log.Println("reload:", err)
+			b.event("profile", "error", "The updated profile was refused, the previous one stays: {error}", map[string]string{"error": err.Error()}, true)
 		}
 	}
 	b.emitState()
@@ -448,6 +466,7 @@ func (b *Backend) autoUpdate() {
 		for _, p := range profiles.Due(time.Now()) {
 			if _, err := profiles.Update(p.ID); err != nil {
 				log.Printf("update %s: %v", p.Name, err)
+				b.event("profile", "warning", "Couldn't update {name}: {error}", map[string]string{"name": p.Name, "error": err.Error()}, true)
 				continue
 			}
 			b.ProfileChanged(p.ID)

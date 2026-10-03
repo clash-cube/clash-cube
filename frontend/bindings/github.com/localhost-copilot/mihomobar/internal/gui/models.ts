@@ -50,6 +50,7 @@ export interface Patch {
     "testUrl"?: string | null;
     "traySpeed"?: boolean | null;
     "findProcess"?: boolean | null;
+    "notify"?: boolean | null;
 }
 
 /**

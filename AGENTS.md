@@ -48,6 +48,7 @@ events (`events.go`). Put behaviour in `backend`, not in `gui`.
 ```sh
 wails3 task build:dev     # bindings + frontend (dev) + go build → bin/mihomobar
 wails3 task app           # release bin/MihomoBar.app (ad-hoc signed)
+wails3 task install       # app, then quit/replace/reopen ~/Applications/MihomoBar.app
 go test ./internal/...    # backend/helper tests start real cores
 cd frontend && npx tsc    # type check
 ```
@@ -66,7 +67,7 @@ cd frontend && npx tsc    # type check
 
 ## Don't disturb the user's machine
 
-An installed app at `bin/MihomoBar.app` and root helper may be running.
+An installed app at `~/Applications/MihomoBar.app` and root helper may be running.
 When stopping development instances, match them exactly,
 e.g. `pkill -f "^./bin/mihomobar"`. A loose pattern also matches the user's
 app and the helper's core.

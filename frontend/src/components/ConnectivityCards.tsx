@@ -56,6 +56,7 @@ export function ConnectivityCards() {
   const running = useStore((s) => s.state?.core === "running");
   const mode = useStore((s) => s.state?.mode);
   const profile = useStore((s) => s.state?.profile);
+  const reset = useStore((s) => s.networkReset);
   const [c, setC] = useState<Partial<Connectivity>>({});
   const [pending, setPending] = useState<Set<Item>>(new Set());
   const busy = pending.size > 0;
@@ -97,7 +98,7 @@ export function ConnectivityCards() {
     measure();
     const id = setInterval(() => { if (!document.hidden) measure(); }, 30000);
     return () => clearInterval(id);
-  }, [running, mode, profile]);
+  }, [running, mode, profile, reset]);
 
   let internetSub: ReactNode = "DIRECT";
   let internetTitle = t("Click to show the interface and egress IP");

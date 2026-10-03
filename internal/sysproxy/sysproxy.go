@@ -121,3 +121,24 @@ func PointsAt(host string, port int) bool {
 	}
 	return false
 }
+
+// Effective says whether the proxy macOS applies now, the primary service's
+// as scutil reports it, is HTTP at host:port. Unlike PointsAt it takes one
+// command, so it can be asked often.
+func Effective(host string, port int) bool {
+	out, err := exec.Command("/usr/sbin/scutil", "--proxy").Output()
+	if err != nil {
+		return false
+	}
+	return parseEffective(string(out), host, port)
+}
+
+func parseEffective(out, host string, port int) bool {
+	kv := map[string]string{}
+	for _, l := range strings.Split(out, "\n") {
+		if k, v, ok := strings.Cut(l, " : "); ok {
+			kv[strings.TrimSpace(k)] = strings.TrimSpace(v)
+		}
+	}
+	return kv["HTTPEnable"] == "1" && kv["HTTPProxy"] == host && kv["HTTPPort"] == strconv.Itoa(port)
+}

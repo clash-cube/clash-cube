@@ -30,6 +30,16 @@ export function Overview() {
         </div>
       )}
 
+      {running && state?.proxyLost && (
+        <div className="banner warn">
+          <div className="grow">
+            <b>{t("Another app changed the system proxy")}</b>
+            <div>{t("Apps that follow the system proxy no longer go through MihomoBar.")}</div>
+          </div>
+          <button className="btn small primary" onClick={() => setSystemProxy(true)}>{t("Take it back")}</button>
+        </div>
+      )}
+
       <div className="card traffic-card">
         <div className="traffic-head">
           <div className="rate up"><Arrow dir="up" size={13} /><span className="num">{speed(traffic.up)}</span><span className="lbl">{t("Upload")}</span></div>

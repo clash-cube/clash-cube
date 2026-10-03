@@ -3,6 +3,7 @@ import { useT } from "../i18n";
 import { useStore } from "../store";
 import { Search } from "../components/Icons";
 import { Segmented } from "../components/Segmented";
+import { LogsTabs } from "./Events";
 
 const LEVELS = ["debug", "info", "warning", "error"] as const;
 type Level = (typeof LEVELS)[number] | "all";
@@ -30,7 +31,7 @@ export function Logs() {
   return (
     <div className="view logs-view">
       <div className="view-head">
-        <h2>{t("Logs")}</h2>
+        <LogsTabs value="logs" />
         {!follow && <span className="badge">{t("Paused")}</span>}
         <div className="view-tools">
           <Segmented className="track small" value={level} onChange={setLevel} options={[{ value: "all", label: "All" }, { value: "info", label: "Info" }, { value: "warning", label: "Warn" }, { value: "error", label: "Error" }]} />

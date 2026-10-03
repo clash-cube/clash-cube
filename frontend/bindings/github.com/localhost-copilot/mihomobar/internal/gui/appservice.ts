@@ -22,6 +22,10 @@ export function AppIcon(path: string): $CancellablePromise<string> {
     return $Call.ByID(3141288265, path);
 }
 
+export function ClearEvents(): $CancellablePromise<void> {
+    return $Call.ByID(1703361915);
+}
+
 /**
  * Connectivity measures router, DNS, internet and proxy latency.
  */
@@ -67,6 +71,14 @@ export function DisableServiceMode(uninstall: boolean): $CancellablePromise<void
  */
 export function EnableServiceMode(): $CancellablePromise<void> {
     return $Call.ByID(966595062);
+}
+
+/**
+ * RevealData opens the app's data folder in Finder.
+ * Events is the recent events, oldest first.
+ */
+export function Events(): $CancellablePromise<backend$0.Event[] | null> {
+    return $Call.ByID(1767932624);
 }
 
 /**
@@ -122,9 +134,6 @@ export function Restart(): $CancellablePromise<void> {
     return $Call.ByID(3972975136);
 }
 
-/**
- * RevealData opens the app's data folder in Finder.
- */
 export function RevealData(): $CancellablePromise<void> {
     return $Call.ByID(1194505660);
 }

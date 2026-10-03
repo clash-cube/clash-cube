@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { Events } from "@wailsio/runtime";
-import { App, Profiles, Settings, type State, type Profile, type SettingsT, type Log } from "./api";
+import { App, Profiles, Settings, type State, type Profile, type SettingsT, type Log, type Event } from "./api";
 
-export type View = "overview" | "proxies" | "profiles" | "connections" | "rules" | "logs" | "settings";
+export type View = "overview" | "proxies" | "profiles" | "connections" | "rules" | "logs" | "events" | "settings";
 
 // a point of the traffic chart
 export type Sample = { up: number; down: number };
@@ -19,10 +19,14 @@ type Store = {
   history: Sample[];
   memory: number;
   logs: LogLine[];
+  events: Event[];
+  // bumped when the network was reset, for what measures it to again
+  networkReset: number;
   view: View;
   setView: (v: View) => void;
   refreshSettings: () => Promise<void>;
   clearLogs: () => void;
+  clearEvents: () => void;
 };
 
 let logSeq = 0;
@@ -35,16 +39,23 @@ export const useStore = create<Store>((set) => ({
   history: Array.from({ length: HISTORY }, () => ({ up: 0, down: 0 })),
   memory: 0,
   logs: [],
+  events: [],
+  networkReset: 0,
   view: (new URLSearchParams(location.search).get("view") as View) || "overview",
   setView: (view) => set({ view }),
   refreshSettings: async () => set({ settings: await Settings.Get() }),
   clearLogs: () => set({ logs: [] }),
+  clearEvents: () => { App.ClearEvents(); set({ events: [] }); },
 }));
+
+const MAX_EVENTS = 200;
+// what the backend says the network reset with (backend.ResetText)
+const RESET_TEXT = "Closed connections and flushed DNS";
 
 // boot reads the app once and follows its events.
 export async function boot() {
-  const [state, settings, profiles] = await Promise.all([App.State(), Settings.Get(), Profiles.List()]);
-  useStore.setState({ state, settings, profiles: profiles ?? [] });
+  const [state, settings, profiles, events] = await Promise.all([App.State(), Settings.Get(), Profiles.List(), App.Events()]);
+  useStore.setState({ state, settings, profiles: profiles ?? [], events: events ?? [] });
   applyTheme(settings.theme);
 
   Events.On("state", (e) => {
@@ -61,6 +72,13 @@ export async function boot() {
   });
   Events.On("memory", (e) => useStore.setState({ memory: e.data.inuse }));
   Events.On("profiles", (e) => useStore.setState({ profiles: e.data ?? [] }));
+  Events.On("event", (e) => {
+    const ev: Event = e.data;
+    useStore.setState((s) => ({
+      events: [...s.events.slice(-MAX_EVENTS + 1), ev],
+      networkReset: ev.text === RESET_TEXT ? s.networkReset + 1 : s.networkReset,
+    }));
+  });
   Events.On("navigate", (e) => useStore.setState({ view: e.data as View }));
   Events.On("log", (e) => {
     const line: LogLine = { ...e.data, id: ++logSeq, at: Date.now() };

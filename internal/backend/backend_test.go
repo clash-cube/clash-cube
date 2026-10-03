@@ -30,6 +30,7 @@ func TestMain(m *testing.M) {
 	proxySet = func(host string, port int, _ []string) error { fake.set(host, port); return nil }
 	proxyClear = func() error { fake.clear(); return nil }
 	proxyPointsAt = fake.pointsAt
+	proxyEffective = fake.pointsAt
 	os.Exit(m.Run())
 }
 
@@ -285,6 +286,7 @@ func (nopSink) Traffic(mihomoapi.Traffic)   {}
 func (nopSink) Memory(mihomoapi.Memory)     {}
 func (nopSink) Log(mihomoapi.Log)           {}
 func (nopSink) Profiles([]profiles.Profile) {}
+func (nopSink) Event(Event)                 {}
 
 func TestCoreLifecycle(t *testing.T) {
 	if testing.Short() {

@@ -6,6 +6,7 @@ export type {
     Connectivity,
     DNSEgress,
     Egress,
+    Event,
     HelperStatus,
     LatencyEvent,
     LatencyResult,

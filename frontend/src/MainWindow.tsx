@@ -12,12 +12,13 @@ import { Profiles } from "./views/Profiles";
 import { Connections } from "./views/Connections";
 import { Rules } from "./views/Rules";
 import { Logs } from "./views/Logs";
+import { Events } from "./views/Events";
 import { Settings } from "./views/Settings";
 import { Prewarm } from "./components/Prewarm";
 import { useConnectionFeed } from "./connectionStore";
 
 const VIEWS: Record<View, () => JSX.Element> = {
-  overview: Overview, proxies: Proxies, profiles: Profiles, connections: Connections, rules: Rules, logs: Logs, settings: Settings,
+  overview: Overview, proxies: Proxies, profiles: Profiles, connections: Connections, rules: Rules, logs: Logs, events: Events, settings: Settings,
 };
 
 export function MainWindow() {
@@ -41,7 +42,7 @@ export function MainWindow() {
           <span>MihomoBar</span>
         </div>
         <Segmented
-          value={view === "settings" ? ("" as View) : view}
+          value={view === "settings" ? ("" as View) : view === "events" ? "logs" : view}
           onChange={setView}
           options={[
             { value: "overview", label: t("Overview") },

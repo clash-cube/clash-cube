@@ -372,6 +372,14 @@ func (m *trayMenu) sample(stop chan struct{}) {
 	}
 }
 
+// remeasure takes the quality again, the network having changed.
+func (m *trayMenu) remeasure() {
+	m.mu.Lock()
+	m.measured = time.Time{}
+	m.mu.Unlock()
+	go m.measure()
+}
+
 // measure takes the connectivity quality, once at a time.
 func (m *trayMenu) measure() {
 	m.mu.Lock()

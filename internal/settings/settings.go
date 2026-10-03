@@ -41,6 +41,7 @@ type Settings struct {
 	TestURL       string `json:"testUrl"`
 	FindProcess   bool   `json:"findProcess"` // look up the process of every connection
 	TraySpeed     bool   `json:"traySpeed"`   // speed beside the menu bar icon
+	Notify        bool   `json:"notify"`      // notifications for the events that ask for one
 	Window        []int  `json:"window,omitempty"`
 }
 
@@ -57,6 +58,7 @@ func Defaults() Settings {
 		},
 		AutoStart:   true,
 		FindProcess: true,
+		Notify:      true,
 		Theme:       "system",
 		Lang:        "system",
 		Dock:        "window",

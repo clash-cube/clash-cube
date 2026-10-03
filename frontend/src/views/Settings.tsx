@@ -28,6 +28,7 @@ export function Settings() {
         <Row label={t("Start core when the app opens")}><Switch on={s.autoStart} onChange={(v) => patch({ autoStart: v })} /></Row>
         <Row label={t("Open at login")}><Switch on={s.launchAtLogin} onChange={(v) => patch({ launchAtLogin: v })} /></Row>
         <Row label={t("Show speed in the menu bar")}><Switch on={s.traySpeed} onChange={(v) => patch({ traySpeed: v })} /></Row>
+        <Row label={t("Notifications")} sub={t("Core errors, failed updates, and the system proxy taken by another app")}><Switch on={s.notify} onChange={(v) => patch({ notify: v })} /></Row>
         <Row label={t("Show in Dock")}>
           <select className="input" value={s.dock} onChange={(e) => patch({ dock: e.target.value })}>
             <option value="window">{t("While the window is open")}</option>

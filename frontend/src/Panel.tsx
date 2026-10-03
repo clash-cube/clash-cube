@@ -68,7 +68,10 @@ export function Panel() {
           />
           <div className="list">
             <div className="row">
-              <div className="who"><div className="name">{t("System Proxy")}</div></div>
+              <div className="who">
+                <div className="name">{t("System Proxy")}</div>
+                {running && state?.proxyLost && <div className="sub warn">{t("Taken by another app")} · <button className="link" onClick={() => setSystemProxy(true)}>{t("Take it back")}</button></div>}
+              </div>
               <Switch on={!!state?.systemProxy} onChange={setSystemProxy} />
             </div>
             <div className="row">

@@ -16,6 +16,7 @@ git submodule update --init
 wails3 task deps        # pnpm install
 wails3 task run         # dev build, opens the main window
 wails3 task app         # bin/MihomoBar.app (ad-hoc signed)
+wails3 task install     # copy it to ~/Applications and reopen (needed for notifications)
 wails3 task test
 ```
 

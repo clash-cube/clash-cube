@@ -171,7 +171,11 @@ func Run(version string) error {
 		h.tray.ToggleWindow()
 	})
 
+	h.app.Event.OnApplicationEvent(events.Common.SystemDidWake, func(*application.ApplicationEvent) {
+		go h.b.Woke()
+	})
 	h.app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
+		h.startNotifications()
 		h.menu.refresh()
 		go h.b.Boot()
 		switch os.Getenv("MIHOMOBAR_SHOW") {
@@ -271,7 +275,7 @@ func (h *host) fitPanel(height, ms int) {
 // stateChanged keeps the tray icon and menu in step with the core.
 func (h *host) stateChanged(st backend.State) {
 	// filled only while traffic is actually taken over (docs/design.md §10.3)
-	on := st.Core == "running" && (st.SystemProxy || st.Tun)
+	on := st.Core == "running" && ((st.SystemProxy && !st.ProxyLost) || st.Tun)
 	stopped := st.Core != "running"
 	letter := ""
 	if !stopped {
