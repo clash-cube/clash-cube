@@ -29,7 +29,7 @@ export interface Connectivity {
     "gateway": string;
 
     /**
-     * the group the proxy latency went through
+     * the policy the mode and rules sent the proxy test to
      */
     "via": string;
 

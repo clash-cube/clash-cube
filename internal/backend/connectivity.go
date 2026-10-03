@@ -1,16 +1,20 @@
 package backend
 
 import (
+	"bufio"
 	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
+	"net/url"
 	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
@@ -26,7 +30,7 @@ type Connectivity struct {
 	Internet int    `json:"internet"`
 	Proxy    int    `json:"proxy"`
 	Gateway  string `json:"gateway"`
-	Via      string `json:"via"`    // the group the proxy latency went through
+	Via      string `json:"via"`    // the policy the mode and rules sent the proxy test to
 	DNSVia   string `json:"dnsVia"` // "mihomo", or "system" when the profile has no dns section
 }
 
@@ -41,7 +45,7 @@ func (b *Backend) Connectivity() (Connectivity, error) {
 	var wg sync.WaitGroup
 	var firstErr error
 	var mu sync.Mutex
-	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 11*time.Second)
 	defer cancel()
 	for _, key := range ConnectivityItems {
 		wg.Add(1)
@@ -63,7 +67,7 @@ func (b *Backend) Connectivity() (Connectivity, error) {
 // fields, so a caller can show each as soon as it is done.
 func (b *Backend) ConnectivityItem(key string) (Connectivity, error) {
 	var out Connectivity
-	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 11*time.Second)
 	defer cancel()
 	err := b.probe(ctx, key, &out)
 	return out, err
@@ -114,7 +118,9 @@ func (b *Backend) probe(ctx context.Context, key string, out *Connectivity) erro
 		d, err := c.Delay(ctx, "DIRECT", testURL, 5*time.Second)
 		out.Internet = orFail(d, err)
 	case "proxy":
-		out.Via = b.mainGroup(ctx)
+		// timed as the core times its own, so the figure matches the
+		// proxies page (and keeps the profile's unified-delay)
+		out.Via = routeOf(ctx, c, testURL)
 		if out.Via == "" {
 			out.Proxy = -1
 			return nil
@@ -139,23 +145,72 @@ func orFail(d int, err error) int {
 	return d
 }
 
-// mainGroup is the group most traffic goes through: GLOBAL in global mode,
-// else the first group the profile lists.
-func (b *Backend) mainGroup(ctx context.Context) string {
-	c, err := b.Client()
+// routeOf is the policy the core sends a request for testURL to, as it
+// would an app's: the request goes through the mixed port, so the mode and
+// the rules pick, and no group has to be guessed. It is read off the core's
+// tunnel while it is still open; "" when the request failed.
+func routeOf(ctx context.Context, c *mihomoapi.Client, testURL string) string {
+	u, err := url.Parse(testURL)
+	if err != nil || u.Hostname() == "" {
+		return ""
+	}
+	target := u.Host
+	if u.Port() == "" {
+		port := "80"
+		if u.Scheme == "https" {
+			port = "443"
+		}
+		target = net.JoinHostPort(u.Hostname(), port)
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// a CONNECT tunnel, even for http: the core keeps it as one connection
+	// until we close it, where a plain proxied request is gone at once
+	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(settings.Load().MixedPort)))
 	if err != nil {
 		return ""
 	}
-	all, err := c.Proxies(ctx)
+	defer conn.Close()
+	if dl, ok := ctx.Deadline(); ok {
+		_ = conn.SetDeadline(dl)
+	}
+	fmt.Fprintf(conn, "CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", target, target)
+	resp, err := http.ReadResponse(bufio.NewReader(conn), &http.Request{Method: http.MethodConnect})
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return ""
+	}
+	// the core answers CONNECT before it dials: a request through the
+	// tunnel waits for the route to be made
+	var once atomic.Bool
+	tr := &http.Transport{
+		DialContext: func(context.Context, string, string) (net.Conn, error) {
+			if once.Swap(true) {
+				return nil, errors.New("tunnel used")
+			}
+			return conn, nil
+		},
+		DisableCompression: true,
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, testURL, nil)
 	if err != nil {
 		return ""
 	}
-	if settings.Load().Mode == "global" {
-		return "GLOBAL"
+	resp, err = tr.RoundTrip(req)
+	if err != nil {
+		return ""
 	}
-	for _, name := range all["GLOBAL"].All {
-		if p, ok := all[name]; ok && len(p.All) > 0 && !p.Hidden {
-			return name
+	resp.Body.Close()
+
+	conns, err := c.Connections(ctx)
+	if err != nil {
+		return ""
+	}
+	port := strconv.Itoa(conn.LocalAddr().(*net.TCPAddr).Port)
+	for _, cn := range conns.Connections {
+		// chains run from the node out to the policy the rule named
+		if cn.Metadata.SourcePort == port && len(cn.Chains) > 0 {
+			return cn.Chains[len(cn.Chains)-1]
 		}
 	}
 	return ""

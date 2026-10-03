@@ -3,6 +3,8 @@ package backend
 import (
 	"context"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
@@ -197,6 +199,54 @@ func TestSystemProxyFollowsCore(t *testing.T) {
 	}
 	if !settings.Load().SystemProxy {
 		t.Error("stopping the core forgot the setting")
+	}
+}
+
+// The proxy latency is taken where the mode and rules send the test URL:
+// the policy the MATCH rule names in rule mode, GLOBAL in global mode.
+func TestProxyLatencyFollowsRules(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a core")
+	}
+	fake.reset()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	defer srv.Close()
+	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	port := freePort(t)
+	if _, err := settings.Update(func(s *settings.Settings) {
+		s.MixedPort, s.AutoStart, s.Mode, s.TestURL = port, false, "rule", srv.URL+"/generate_204"
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// the first group isn't the one the rules use
+	const profile = `
+geodata-mode: false
+geo-auto-update: false
+proxies: []
+proxy-groups:
+  - { name: Side, type: select, proxies: [REJECT] }
+  - { name: Main, type: select, proxies: [DIRECT] }
+rules:
+  - MATCH,Main
+`
+	b := New("test", "test", []byte(profile), nopSink{make(chan State, 64)})
+	if err := b.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	t.Cleanup(b.Shutdown)
+
+	for _, tc := range []struct{ mode, via string }{{"rule", "Main"}, {"global", "GLOBAL"}} {
+		if err := b.SetMode(tc.mode); err != nil {
+			t.Fatal(err)
+		}
+		// only the route: the core's delay test won't time a loopback URL
+		c, _ := b.Client()
+		if via := routeOf(context.Background(), c, settings.Load().TestURL); via != tc.via {
+			t.Errorf("%s mode: routed via %q, want %q", tc.mode, via, tc.via)
+		}
 	}
 }
 
