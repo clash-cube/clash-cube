@@ -86,7 +86,7 @@ func tr(en, cn string) string {
 // The menu's labels carry a little markup that styleTrayMenu draws
 // (traymenu_darwin.go). detail puts right at the menu's right edge, in the
 // secondary colour; a right made by badge is drawn as a coloured badge;
-// withIcon puts a file's icon before a name.
+// withIcon puts a file's icon before a name; subtitled adds a second line.
 func detail(left, right string) string {
 	if right == "" {
 		return left
@@ -107,6 +107,10 @@ func keyed(menu *application.Menu, it *application.MenuItem, key string, click f
 	it.SetLabel(detail(it.Label(), "⌘ "+key)).OnClick(click)
 	menu.Add(it.Label()).SetAccelerator("CmdOrCtrl+" + key).SetHidden(true).OnClick(click)
 }
+
+// subtitled gives a row a second line under its title, in a smaller
+// secondary font, as Surge's outbound modes have.
+func subtitled(title, sub string) string { return title + "\x06" + sub }
 
 // stay marks a row whose click leaves the menu up, to watch what it does.
 func stay(label string) string { return "\x05" + label }
@@ -439,13 +443,19 @@ func (m *trayMenu) rebuild() {
 
 	// outbound mode, its letter as on the tray icon
 	om := menu.AddSubmenu(detail(tr("Outbound Mode", "出站模式"), badge("accent", modeLetter(st.Mode))))
-	for _, md := range []struct{ id, en, cn string }{
-		{"direct", "Direct Outbound", "直接连接"},
-		{"global", "Global Proxy", "全局代理"},
-		{"rule", "Rule-Based Proxy", "规则判定"},
+	for i, md := range []struct{ id, en, cn, subEN, subCN string }{
+		{"direct", "Direct Outbound", "直接连接",
+			"All requests will be sent to the target server directly", "所有请求都将直接发送至目标服务器"},
+		{"global", "Global Proxy", "全局代理",
+			"All requests will be forwarded to a proxy server", "所有请求都将转发至代理服务器"},
+		{"rule", "Rule-Based Proxy", "规则判定",
+			"Using rule system to determine how to process requests", "使用规则系统决定如何处理请求"},
 	} {
+		if i > 0 {
+			om.AddSeparator()
+		}
 		id := md.id
-		om.AddRadio(tr(md.en, md.cn), st.Mode == id).OnClick(m.run("mode", func() error { return b.SetMode(id) }))
+		om.AddRadio(subtitled(tr(md.en, md.cn), tr(md.subEN, md.subCN)), st.Mode == id).OnClick(m.run("mode", func() error { return b.SetMode(id) }))
 	}
 
 	// proxy groups

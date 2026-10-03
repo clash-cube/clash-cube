@@ -57,7 +57,7 @@ static NSImage *mbIcon(NSString *path) {
 // A row's layout in points, after Surge's menu: AppKit's own leaves a wide
 // gap before the submenu arrows and gives shortcuts a column of their own,
 // so every row is drawn by a view instead.
-static const CGFloat mbRowH = 22, mbTextX = 16, mbCheckedTextX = 24, mbCheckX = 8;
+static const CGFloat mbRowH = 22, mbSubRowH = 42, mbSubGap = 2, mbTextX = 16, mbCheckedTextX = 24, mbCheckX = 8;
 static const CGFloat mbPadR = 14, mbArrowW = 8, mbArrowGap = 5, mbIconW = 16, mbIconGap = 6;
 
 // How wide a row's parts may be before they're cut short, and the room
@@ -74,6 +74,9 @@ static NSImage *mbTinted(NSImage *img, NSColor *color) {
 	}];
 }
 
+// The font of a row's second line (subtitled in traymenu.go).
+static NSFont *mbSubFont(NSFont *font) { return [NSFont menuFontOfSize:round(font.pointSize * .85)]; }
+
 static NSImage *mbSymbol(NSString *name, NSFont *font, CGFloat scale) {
 	NSImage *img = [NSImage imageWithSystemSymbolName:name accessibilityDescription:nil];
 	NSImageSymbolConfiguration *c = [NSImageSymbolConfiguration configurationWithPointSize:round(font.pointSize * scale) weight:NSFontWeightSemibold];
@@ -85,6 +88,7 @@ static NSImage *mbSymbol(NSString *name, NSFont *font, CGFloat scale) {
 // It reads the item's state, enablement and highlight as it draws.
 @interface MBRowView : NSView
 @property (nonatomic, copy) NSString *left, *right, *kind; // kind is a badge's, nil for text
+@property (nonatomic, copy) NSString *sub; // a second line under left, or nil
 @property (nonatomic, retain) NSImage *icon;
 @property (nonatomic) BOOL checks; // the menu has a checked row: titles move over for the marks
 @property (nonatomic) BOOL stays;  // a click leaves the menu up (stay in traymenu.go)
@@ -95,6 +99,7 @@ static NSImage *mbSymbol(NSString *name, NSFont *font, CGFloat scale) {
 	[_left release];
 	[_right release];
 	[_kind release];
+	[_sub release];
 	[_icon release];
 	[super dealloc];
 }
@@ -113,6 +118,12 @@ static NSImage *mbSymbol(NSString *name, NSFont *font, CGFloat scale) {
 	NSColor *fg = lit ? NSColor.selectedMenuItemTextColor : it.isEnabled ? NSColor.labelColor : NSColor.tertiaryLabelColor;
 	NSColor *dim = lit ? [NSColor.selectedMenuItemTextColor colorWithAlphaComponent:.8] : NSColor.secondaryLabelColor;
 	CGFloat textY = round((b.size.height - (font.ascender - font.descender)) / 2);
+	NSFont *subFont = mbSubFont(font);
+	if (self.sub) {
+		// the two lines centred together
+		CGFloat th = font.ascender - font.descender, sh = subFont.ascender - subFont.descender;
+		textY = round((b.size.height - th - mbSubGap - sh) / 2);
+	}
 
 	if (it.state == NSControlStateValueOn) {
 		NSImage *check = mbSymbol(@"checkmark", font, .8);
@@ -124,6 +135,10 @@ static NSImage *mbSymbol(NSString *name, NSFont *font, CGFloat scale) {
 		x += mbIconW + mbIconGap;
 	}
 	[self.left drawAtPoint:NSMakePoint(x, textY) withAttributes:@{NSFontAttributeName: font, NSForegroundColorAttributeName: fg}];
+	if (self.sub) {
+		CGFloat subY = textY + font.ascender - font.descender + mbSubGap;
+		[self.sub drawAtPoint:NSMakePoint(x, subY) withAttributes:@{NSFontAttributeName: subFont, NSForegroundColorAttributeName: lit ? fg : NSColor.secondaryLabelColor}];
+	}
 
 	CGFloat r = b.size.width - mbPadR;
 	if (it.hasSubmenu) {
@@ -214,8 +229,14 @@ static void mbStyle(NSMenu *menu) {
 				need += mbIconW + mbIconGap;
 			}
 		}
+		NSRange sub = [l rangeOfString:@"\x06"];
+		v.sub = sub.location == NSNotFound ? nil : [l substringFromIndex:NSMaxRange(sub)];
+		if (v.sub) l = [l substringToIndex:sub.location];
 		v.left = mbFit(l, plain, mbLeftMax);
-		need += ceil([v.left sizeWithAttributes:plain].width);
+		// a second line is a sentence: it sets the width, uncut
+		CGFloat lw = [v.left sizeWithAttributes:plain].width;
+		if (v.sub) lw = MAX(lw, [v.sub sizeWithAttributes:@{NSFontAttributeName: mbSubFont(font)}].width);
+		need += ceil(lw);
 
 		v.kind = nil;
 		v.right = nil;
@@ -243,7 +264,7 @@ static void mbStyle(NSMenu *menu) {
 	CGFloat x = checks ? mbCheckedTextX : mbTextX;
 	for (MBRowView *v in rows) {
 		v.checks = checks;
-		v.frame = NSMakeRect(0, 0, ceil(x + width), mbRowH);
+		v.frame = NSMakeRect(0, 0, ceil(x + width), v.sub ? mbSubRowH : mbRowH);
 		[v setNeedsDisplay:YES];
 	}
 }
