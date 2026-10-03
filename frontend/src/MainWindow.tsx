@@ -13,6 +13,7 @@ import { Connections } from "./views/Connections";
 import { Rules } from "./views/Rules";
 import { Logs } from "./views/Logs";
 import { Settings } from "./views/Settings";
+import { Prewarm } from "./components/Prewarm";
 
 const VIEWS: Record<View, () => JSX.Element> = {
   overview: Overview, proxies: Proxies, profiles: Profiles, connections: Connections, rules: Rules, logs: Logs, settings: Settings,
@@ -66,6 +67,7 @@ export function MainWindow() {
         </Popover>
       </header>
       <Page key={view} />
+      <Prewarm />
     </div>
   );
 }
