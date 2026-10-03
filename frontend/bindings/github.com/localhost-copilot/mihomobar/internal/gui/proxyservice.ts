@@ -55,11 +55,26 @@ export function Groups(): $CancellablePromise<$models.Group[] | null> {
 }
 
 /**
+ * LookupHost tells how the core resolves and routes host (a name, an
+ * address, host:port or a URL).
+ */
+export function LookupHost(host: string): $CancellablePromise<backend$0.Lookup> {
+    return $Call.ByID(3168067658, host);
+}
+
+/**
  * Providers is the profile's proxy providers, by name; the ones the core
  * makes for groups' own proxies are left out.
  */
 export function Providers(): $CancellablePromise<$models.Provider[] | null> {
     return $Call.ByID(1937542960);
+}
+
+/**
+ * RuleProviders is the profile's rule providers, by name.
+ */
+export function RuleProviders(): $CancellablePromise<mihomoapi$0.RuleProvider[] | null> {
+    return $Call.ByID(1988753002);
 }
 
 /**
@@ -109,6 +124,14 @@ export function UpdateGeo(): $CancellablePromise<void> {
  */
 export function UpdateProvider(name: string): $CancellablePromise<void> {
     return $Call.ByID(2461202334, name);
+}
+
+/**
+ * UpdateRuleProvider fetches a rule provider again; the core keeps the
+ * rules it had when the fetch fails.
+ */
+export function UpdateRuleProvider(name: string): $CancellablePromise<void> {
+    return $Call.ByID(2457023384, name);
 }
 
 /**

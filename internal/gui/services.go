@@ -405,6 +405,40 @@ func (s *ProxyService) UpdateGeo() error {
 	return c.UpdateGeo(context.Background())
 }
 
+// LookupHost tells how the core resolves and routes host (a name, an
+// address, host:port or a URL).
+func (s *ProxyService) LookupHost(host string) (backend.Lookup, error) { return s.h.b.LookupHost(host) }
+
+// RuleProviders is the profile's rule providers, by name.
+func (s *ProxyService) RuleProviders() ([]mihomoapi.RuleProvider, error) {
+	c, err := s.client()
+	if err != nil {
+		return []mihomoapi.RuleProvider{}, err
+	}
+	all, err := c.RuleProviders(context.Background())
+	if err != nil {
+		return []mihomoapi.RuleProvider{}, err
+	}
+	out := make([]mihomoapi.RuleProvider, 0, len(all))
+	for _, p := range all {
+		out = append(out, p)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
+}
+
+// UpdateRuleProvider fetches a rule provider again; the core keeps the
+// rules it had when the fetch fails.
+func (s *ProxyService) UpdateRuleProvider(name string) error {
+	c, err := s.client()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	return c.UpdateRuleProvider(ctx, name)
+}
+
 // UserRules is the rules added in the app, ahead of the profile's.
 func (s *ProxyService) UserRules() []userrules.Rule { return userrules.List() }
 

@@ -292,6 +292,23 @@ select.input { padding-right: 6px; }
 .conns .trow > .cell { padding: 0 10px; }
 .rules .trow { grid-template-columns: 44px 140px minmax(0, 1fr) minmax(90px, .6fr) 110px; }
 .rules .trow .actions { display: flex; gap: 2px; justify-content: flex-end; }
+.lookup { display: flex; flex-direction: column; gap: 12px; }
+.lookup-bar { display: flex; gap: 8px; }
+.lookup-bar .search { flex: 1; }
+.lookup-result { animation: view-in .24s var(--ease); }
+.lookup-field { align-items: baseline; min-height: 40px; }
+.lookup-field .lbl { width: 96px; flex: none; color: var(--muted); font-size: 12px; }
+.lookup-field .val { flex: 1; min-width: 0; user-select: text; word-break: break-all; }
+.lookup-field .policy { color: var(--accent); font-weight: 500; }
+.lookup-field .err { color: var(--red); }
+.lookup-field .muted { color: var(--muted); font-size: 12px; }
+.lookup-field .answers { display: flex; flex-direction: column; gap: 3px; }
+.lookup-field .note { margin-top: 6px; }
+.rule-providers .trow { grid-template-columns: minmax(0, 1.4fr) 90px minmax(0, 1fr) 130px 40px; min-height: 52px; }
+.rule-providers .host { display: flex; flex-direction: column; min-width: 0; }
+.rule-providers .host .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rule-providers .host .sub { font-size: 11.5px; color: var(--muted); }
+.rule-providers .muted, .rules .muted { color: var(--muted); font-weight: 400; font-size: 12px; }
 .user-rules-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: -4px; }
 .user-rules-title .btn { text-transform: none; letter-spacing: 0; }
 .user-rules-empty { padding: 14px; color: var(--muted); font-size: 12px; }

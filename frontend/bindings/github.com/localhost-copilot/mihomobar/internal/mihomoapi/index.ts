@@ -9,5 +9,6 @@ export type {
     Metadata,
     Rule,
     RuleExtra,
+    RuleProvider,
     Traffic
 } from "./models.js";

@@ -187,6 +187,29 @@ func (c *Client) UpdateProxyProvider(ctx context.Context, name string) error {
 	return c.req(ctx, http.MethodPut, "/providers/proxies/"+url.PathEscape(name), nil, nil)
 }
 
+// RuleProvider is a rule provider, as /providers/rules has it.
+type RuleProvider struct {
+	Name        string    `json:"name"`
+	Behavior    string    `json:"behavior"`    // Domain | IPCIDR | Classical
+	Format      string    `json:"format"`      // YamlRule | TextRule | MrsRule
+	VehicleType string    `json:"vehicleType"` // HTTP | File | Inline
+	RuleCount   int       `json:"ruleCount"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+func (c *Client) RuleProviders(ctx context.Context) (map[string]RuleProvider, error) {
+	var v struct {
+		Providers map[string]RuleProvider `json:"providers"`
+	}
+	err := c.req(ctx, http.MethodGet, "/providers/rules", nil, &v)
+	return v.Providers, err
+}
+
+// UpdateRuleProvider fetches a rule provider again.
+func (c *Client) UpdateRuleProvider(ctx context.Context, name string) error {
+	return c.req(ctx, http.MethodPut, "/providers/rules/"+url.PathEscape(name), nil, nil)
+}
+
 func (c *Client) Select(ctx context.Context, group, name string) error {
 	return c.req(ctx, http.MethodPut, "/proxies/"+url.PathEscape(group), map[string]string{"name": name}, nil)
 }
@@ -378,6 +401,29 @@ func (c *Client) DNSQuery(ctx context.Context, name string) error {
 		return fmt.Errorf("dns rcode %d", v.Status)
 	}
 	return nil
+}
+
+// DNSAnswer is one record of an answer.
+type DNSAnswer struct {
+	Type int    `json:"type"` // 1 A, 28 AAAA, 5 CNAME
+	TTL  int    `json:"TTL"`
+	Data string `json:"data"`
+}
+
+// DNSAnswers resolves name's qtype records through the core, with the
+// record types and TTLs; a name that doesn't exist is no error, no records.
+func (c *Client) DNSAnswers(ctx context.Context, name, qtype string) ([]DNSAnswer, error) {
+	var v struct {
+		Status int         `json:"Status"`
+		Answer []DNSAnswer `json:"Answer"`
+	}
+	if err := c.req(ctx, http.MethodGet, "/dns/query?name="+url.QueryEscape(name)+"&type="+url.QueryEscape(qtype), nil, &v); err != nil {
+		return nil, err
+	}
+	if v.Status != 0 && v.Status != 3 { // 3: NXDOMAIN
+		return nil, fmt.Errorf("dns rcode %d", v.Status)
+	}
+	return v.Answer, nil
 }
 
 // DNSLookup resolves name's qtype records through the core's resolver and

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -440,5 +442,113 @@ func TestUserRules(t *testing.T) {
 	}
 	if rules, _ = c.Rules(context.Background()); len(rules) != 2 {
 		t.Errorf("core rules = %+v", rules)
+	}
+}
+
+// The core lists a profile's rule providers and takes an update of one.
+func TestRuleProviders(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a core")
+	}
+	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
+		t.Fatal(err)
+	}
+	profile := base + `rule-providers:
+  lan:
+    type: inline
+    behavior: domain
+    payload: ['+.lan', '+.local']
+`
+	profile = strings.Replace(profile, "rules:\n  - MATCH,Proxy", "rules:\n  - RULE-SET,lan,DIRECT\n  - MATCH,Proxy", 1)
+	b := New("test", "test", []byte(profile), nopSink{make(chan State, 64)})
+	if err := b.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	t.Cleanup(b.Shutdown)
+	c, _ := b.Client()
+	ps, err := c.RuleProviders(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, ok := ps["lan"]
+	if !ok || p.Behavior != "Domain" || p.VehicleType != "Inline" || p.RuleCount != 2 {
+		t.Fatalf("providers = %+v", ps)
+	}
+	if err := c.UpdateRuleProvider(context.Background(), "lan"); err != nil {
+		t.Errorf("update: %v", err)
+	}
+	if err := c.UpdateRuleProvider(context.Background(), "nope"); err == nil {
+		t.Error("an unknown provider updated")
+	}
+}
+
+// A lookup reports the rule and chain a connection takes, REJECT for a
+// rejected one, and a resolver that fails.
+func TestLookupHost(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a core")
+	}
+	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
+		t.Fatal(err)
+	}
+	// a local server for the DIRECT route to reach
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				return
+			}
+			go func() { time.Sleep(2 * time.Second); c.Close() }()
+		}
+	}()
+	profile := base + `dns:
+  enable: true
+  enhanced-mode: fake-ip
+  nameserver: [127.0.0.1:1]
+hosts:
+  direct.test: 127.0.0.1
+`
+	profile = strings.Replace(profile, "rules:\n  - MATCH,Proxy", "rules:\n  - DOMAIN,blocked.test,REJECT\n  - DOMAIN,direct.test,DIRECT\n  - MATCH,Proxy", 1)
+	b := New("test", "test", []byte(profile), nopSink{make(chan State, 64)})
+	if err := b.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	t.Cleanup(b.Shutdown)
+
+	port := l.Addr().(*net.TCPAddr).Port
+	r, err := b.LookupHost("direct.test:" + strconv.Itoa(port))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Rule != "Domain" || r.RulePayload != "direct.test" || len(r.Chain) != 1 || r.Chain[0] != "DIRECT" {
+		t.Errorf("route = %+v", r)
+	}
+	if r.DNSMode != "fake-ip" {
+		t.Errorf("dns mode = %q", r.DNSMode)
+	}
+	// /dns/query skips hosts and asks the nameserver, which is down
+	if r.DNSErr == "" || len(r.A) != 0 {
+		t.Errorf("a failing resolver not reported: %+v %q", r.A, r.DNSErr)
+	}
+
+	r, err = b.LookupHost("blocked.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.RouteErr != "" || len(r.Chain) != 1 || r.Chain[0] != "REJECT" {
+		t.Errorf("rejected = %+v", r)
 	}
 }

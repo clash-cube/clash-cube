@@ -10,6 +10,8 @@ export type {
     HelperStatus,
     LatencyEvent,
     LatencyResult,
+    Lookup,
     ProxyEgress,
+    Record,
     State
 } from "./models.js";

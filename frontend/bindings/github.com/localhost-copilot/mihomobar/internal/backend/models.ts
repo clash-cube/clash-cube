@@ -191,6 +191,48 @@ export interface LatencyResult {
 }
 
 /**
+ * Lookup is what the core makes of a name: how its resolver answers, and
+ * the rule and route a connection to it takes.
+ */
+export interface Lookup {
+    "host": string;
+    "port": number;
+
+    /**
+     * the profile's enhanced-mode; "" with DNS off
+     */
+    "dnsMode": string;
+
+    /**
+     * mihomo, or system when the profile has no DNS
+     */
+    "dnsVia": string;
+    "a": Record[] | null;
+    "aaaa": Record[] | null;
+    "cname": string[] | null;
+    "dnsError"?: string;
+
+    /**
+     * how a connection to host:port is routed
+     */
+    "rule": string;
+    "rulePayload": string;
+
+    /**
+     * node first, as the core has it
+     */
+    "chain": string[] | null;
+    "remoteIp": string;
+
+    /**
+     * RemoteIP is in the fake-ip range: another fake-ip resolver (a TUN
+     * upstream, say) answered for the system
+     */
+    "remoteFake": boolean;
+    "routeError"?: string;
+}
+
+/**
  * ProxyEgress is where proxied traffic leaves: the address Cloudflare sees
  * a request through the core come from, and the chain it took.
  */
@@ -202,6 +244,16 @@ export interface ProxyEgress {
      * from the node out to the policy
      */
     "chain": string[] | null;
+}
+
+/**
+ * Record is an address the resolver gave. Under fake-ip, apps are handed
+ * an address from the pool instead; these are the real ones the core
+ * connects to.
+ */
+export interface Record {
+    "data": string;
+    "ttl": number;
 }
 
 /**

@@ -68,6 +68,30 @@ export interface RuleExtra {
     "missCount": number;
 }
 
+/**
+ * RuleProvider is a rule provider, as /providers/rules has it.
+ */
+export interface RuleProvider {
+    "name": string;
+
+    /**
+     * Domain | IPCIDR | Classical
+     */
+    "behavior": string;
+
+    /**
+     * YamlRule | TextRule | MrsRule
+     */
+    "format": string;
+
+    /**
+     * HTTP | File | Inline
+     */
+    "vehicleType": string;
+    "ruleCount": number;
+    "updatedAt": string;
+}
+
 export interface Traffic {
     "up": number;
     "down": number;
