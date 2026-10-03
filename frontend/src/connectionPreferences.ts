@@ -1,14 +1,18 @@
 import type { ConnectionGroupBy, ConnectionSort } from "./connections";
+import { connectionColumns, defaultColumns, parseColumnLayout, type ConnectionColumn } from "./connectionColumns.ts";
 
 export type ConnectionPreferences = {
   by: ConnectionGroupBy;
   net: "all" | "tcp" | "udp";
   sort: ConnectionSort;
   ascending: boolean;
+  columns: ConnectionColumn[];
+  widths: Partial<Record<ConnectionColumn, number>>;
 };
 
 export const defaultConnectionPreferences: ConnectionPreferences = {
   by: "process", net: "all", sort: "time", ascending: false,
+  columns: defaultColumns, widths: {},
 };
 
 // Validate each saved field independently so stale or damaged preferences do
@@ -20,8 +24,9 @@ export function parseConnectionPreferences(json: string | null): ConnectionPrefe
     return {
       by: ["none", "process", "host", "rule", "source"].includes(value.by) ? value.by : defaultConnectionPreferences.by,
       net: ["all", "tcp", "udp"].includes(value.net) ? value.net : defaultConnectionPreferences.net,
-      sort: ["time", "host", "up", "down", "upload", "download"].includes(value.sort) ? value.sort : defaultConnectionPreferences.sort,
+      sort: connectionColumns.some((c) => c.id === value.sort) ? value.sort : defaultConnectionPreferences.sort,
       ascending: typeof value.ascending === "boolean" ? value.ascending : defaultConnectionPreferences.ascending,
+      ...parseColumnLayout(value),
     };
   } catch { return { ...defaultConnectionPreferences }; }
 }

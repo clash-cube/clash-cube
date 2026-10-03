@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import { App } from "../api";
 import { closeConnections, useConnectionStore } from "../connectionStore";
 import { address, chainOf, compareConnections, filterConnections, groupConnections, hostOf, processName, processOf, ruleOf,
-  type Conn, type ConnectionSnapshot, type ConnectionSort, type ConnectionTab } from "../connections";
+  type Conn, type ConnectionSnapshot, type ConnectionTab } from "../connections";
+import { connectionColumns, defaultColumns, isTextColumn, type ConnectionColumn } from "../connectionColumns";
+import { ConnectionColumnHeader, ConnectionColumnMenu } from "../components/ConnectionColumns";
 import { bytes, duration, speed } from "../format";
 import { Chevron, Close, Copy, Search } from "../components/Icons";
 import { useConnectionPreferences } from "../useConnectionPreferences";
@@ -23,7 +25,15 @@ export function Connections() {
   const snapshot = frozen ?? live;
   const [tab, setTab] = useState<ConnectionTab>("active");
   const [q, setQ] = useState("");
-  const { net, by, sort, ascending, update } = useConnectionPreferences();
+  const { net, by, sort, ascending, columns, widths, update } = useConnectionPreferences();
+  const [resizing, setResizing] = useState<Partial<Record<ConnectionColumn, number>>>({});
+  const columnWidths = { ...widths, ...resizing };
+  const sizes = columns.map((id) => columnWidths[id] ?? connectionColumns.find((c) => c.id === id)!.width);
+  const tableStyle = {
+    "--conn-grid": sizes.map((width, i) => i === 0 && columnWidths.host === undefined ? `minmax(${width}px, 1fr)` : `${width}px`).join(" ") + " 36px",
+    width: `max(100%, ${sizes.reduce((a, b) => a + b, 0) + 36}px)`,
+  } as CSSProperties;
+  const selectSort = (id: ConnectionColumn) => update({ sort: id, ascending: sort === id ? !ascending : isTextColumn(id) });
   const [folded, setFolded] = useState<Record<string, boolean>>({});
   const [sel, setSel] = useState<Conn | null>(null);
   const [sources, setSources] = useState(new Set<string>());
@@ -49,19 +59,31 @@ export function Connections() {
   };
   const targets = closeable(shown);
 
+  const cell = (c: Conn, id: ConnectionColumn) => {
+    const m = c.metadata;
+    if (id === "host") return <span className="cell host" key={id}>
+      <span className="conn-host"><AppIcon path={m.processPath} core={m.type === "Inner"} /><span className="name" title={address(hostOf(c), m.destinationPort)}>{address(hostOf(c), m.destinationPort)}</span></span>
+      <span className="sub">{m.network.toUpperCase()} · {by === "process" ? ruleOf(c) : processOf(c)}{c.closedAt !== undefined && <> · {t("Closed")}</>}</span>
+    </span>;
+    let value: string;
+    switch (id) {
+      case "process": value = processOf(c); break;
+      case "source": value = [labels[m.sourceIP], address(m.sourceIP, m.sourcePort)].filter(Boolean).join(" · "); break;
+      case "network": value = `${m.network.toUpperCase()} · ${m.type}`; break;
+      case "rule": value = ruleOf(c); break;
+      case "chain": value = chainOf(c); break;
+      case "up": case "down": value = speed(c[id]); break;
+      case "upload": case "download": value = bytes(c[id]); break;
+      case "total": value = bytes(c.upload + c.download); break;
+      case "time": return <span key={id} className="cell num host" title={new Date(c.start).toLocaleString()}>
+        <span>{new Date(c.start).toLocaleTimeString([], { hour12: false })}</span><span className="sub">{duration(c.start, c.closedAt ?? snapshot.at)}</span>
+      </span>;
+    }
+    return <span key={id} className={"cell" + (isTextColumn(id) ? "" : " num") + ((id === "up" || id === "down") && c[id] > 0 ? " live" : "")} title={value}>{value || "—"}</span>;
+  };
   const row = (c: Conn) => (
     <div className={"trow" + (sel?.id === c.id ? " sel" : "")} key={c.id} onClick={() => setSel(sel?.id === c.id ? null : c)}>
-      <span className="cell host">
-        <span className="conn-host"><AppIcon path={c.metadata.processPath} core={c.metadata.type === "Inner"} /><span className="name" title={address(hostOf(c), c.metadata.destinationPort)}>{address(hostOf(c), c.metadata.destinationPort)}</span></span>
-        <span className="sub">{c.metadata.network.toUpperCase()} · {by === "process" ? ruleOf(c) : processOf(c)}{c.closedAt !== undefined && <> · {t("Closed")}</>}</span>
-      </span>
-      <span className="cell" title={chainOf(c)}>{chainOf(c)}</span>
-      <span className="cell r num conn-rates">
-        <span className={c.up ? "live" : ""}>↑ {speed(c.up)}</span>
-        <span className={c.down ? "live" : ""}>↓ {speed(c.down)}</span>
-        <span className="sub" title={t("Total")}>{bytes(c.upload + c.download)}</span>
-      </span>
-      <span className="cell r num">{duration(c.start, c.closedAt ?? snapshot.at)}</span>
+      {columns.map((id) => cell(c, id))}
       <span className="cell r"><button className="icon" title={t("Close connection")} aria-label={t("Close connection")}
         disabled={!activeIDs.has(c.id) || closing.has(c.id)} onClick={(e) => { e.stopPropagation(); close([c]); }}><Close size={12} /></button></span>
     </div>
@@ -113,15 +135,18 @@ export function Connections() {
         ]} />
         <label className="search"><Search /><input aria-label={t("Search connections")} placeholder={t("Search connections")} value={q} onChange={(e) => setQ(e.target.value)} /></label>
         <ConnectionSources connections={conns} selected={sources} onChange={setSources} labels={labels} onSave={save} />
-        <select className="input conn-sort" aria-label={t("Sort by")} value={sort} onChange={(e) => { const sort = e.target.value as ConnectionSort; update({ sort, ascending: sort === "host" }); }}>
-          <option value="time">{t("Start time")}</option><option value="host">{t("Host")}</option>
-          <option value="down">{t("Download speed")}</option><option value="up">{t("Upload speed")}</option>
-          <option value="download">{t("Downloaded")}</option><option value="upload">{t("Uploaded")}</option>
+        <ConnectionColumnMenu selected={columns} onChange={(columns) => update({ columns })} onReset={() => { setResizing({}); update({ columns: defaultColumns, widths: {} }); }} />
+        <select className="input conn-sort" aria-label={t("Sort by")} value={sort} onChange={(e) => { const sort = e.target.value as ConnectionColumn; update({ sort, ascending: isTextColumn(sort) }); }}>
+          {connectionColumns.map((c) => <option key={c.id} value={c.id}>{t(c.label)}</option>)}
         </select>
         <button className="btn small" title={t(ascending ? "Ascending" : "Descending")} aria-label={t(ascending ? "Ascending" : "Descending")} onClick={() => update({ ascending: !ascending })}>{ascending ? "↑" : "↓"}</button>
       </div>
       {(error || frozen) && <div className="conn-notice" role="status">{error ? t("Refresh failed. Showing the last successful snapshot.") : t("Paused. History collection continues.")} {error && <span>{error}</span>}</div>}
       <div className={"conns-body" + (selected ? " with-detail" : "")}>
+        <div className="conn-table-scroll"><div className="conn-table-content" style={tableStyle}>
+        <ConnectionColumnHeader columns={columns} widths={columnWidths} sort={sort} ascending={ascending} onSort={selectSort}
+          onPreview={(id, width) => setResizing(width === null ? {} : { [id]: width })}
+          onResize={(id, width) => update({ widths: { ...widths, [id]: width } })} />
         {shown.length > 200 ? <VirtualConnections rows={virtualRows} resetKey={JSON.stringify([q, net, by, tab, sort, ascending, [...sources]])} /> : <div className="conns-list">
           {shown.length === 0 ? (
             <div className="empty-state"><b>{t(q.trim() || net !== "all" || sources.size ? "No matching connections" : "No connections")}</b></div>
@@ -137,6 +162,7 @@ export function Connections() {
             })
           ) : <div className="list table conns">{shown.map(row)}</div>}
         </div>}
+        </div></div>
         {selected && <Detail c={selected} sourceLabel={labels[selected.metadata.sourceIP]} at={snapshot.at} closeDisabled={!activeIDs.has(selected.id) || closing.has(selected.id)} onClose={() => setSel(null)} onKill={() => close([selected])} />}
       </div>
     </div>

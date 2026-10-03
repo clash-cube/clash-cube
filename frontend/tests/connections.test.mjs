@@ -9,6 +9,15 @@ const conn = (id, overrides = {}) => ({ id, metadata: { network: "tcp", type: "H
   start: new Date(0).toISOString(), upload: 0, download: 0, chains: ["node", "group"], rule: "Domain", rulePayload: "example.test", ...overrides });
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 
+test("column sorting uses raw totals and stable source addresses, independent of formatted text", () => {
+  const a = { ...conn("a", { upload: 1024, download: 1 }), up: 10, down: 20 };
+  const b = { ...conn("b", { upload: 100, download: 800 }), up: 20, down: 10,
+    metadata: { ...a.metadata, sourceIP: "192.168.1.15", process: "browser" } };
+  assert.deepEqual([a, b].sort(compareConnections("total", true)).map((c) => c.id), ["b", "a"]);
+  assert.deepEqual([b, a].sort(compareConnections("source", true)).map((c) => c.id), ["a", "b"]);
+  assert.deepEqual([a, b].sort(compareConnections("process", true)).map((c) => c.id), ["b", "a"]);
+});
+
 test("device groups keep IP identity and aggregate only filtered members in sorted order", () => {
   const a = { ...conn("a"), up: 10, down: 20, upload: 100, download: 200 };
   const b = { ...conn("b"), up: 30, down: 40, upload: 300, download: 400 };

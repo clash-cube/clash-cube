@@ -33,6 +33,8 @@ const zh: Record<string, string> = {
   "Details": "详情", "Raw JSON": "原始 JSON", "Copy JSON": "复制 JSON",
   "Could not copy to clipboard": "无法复制到剪贴板",
   "Device": "设备", "Copy details": "复制详情", "Copy {field}": "复制{field}",
+  "Columns": "显示列", "Reset columns": "恢复默认列", "Drag column edges to resize": "拖动列头边缘调整宽度",
+  "Resize {column}": "调整{column}列宽",
   "Refresh failed. Showing the last successful snapshot.": "刷新失败，正在显示上次成功获取的数据。",
   "Paused. History collection continues.": "画面已暂停，连接历史仍在记录。",
   "Testing {done}/{total}": "测速中 {done}/{total}",

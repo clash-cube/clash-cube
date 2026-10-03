@@ -288,7 +288,8 @@ select.input { padding-right: 6px; }
 /* ---- tables (connections, rules) ------------------------------------- */
 .table { display: flex; flex-direction: column; }
 .thead, .trow { display: grid; align-items: center; gap: 10px; padding: 0 10px 0 14px; }
-.conns .trow { grid-template-columns: minmax(160px, 2.2fr) minmax(90px, 1.4fr) 84px 64px 30px; }
+.conns .trow { grid-template-columns: var(--conn-grid); gap: 0; padding: 4px 0; height: 64px; }
+.conns .trow > .cell { padding: 0 10px; }
 .rules .trow { grid-template-columns: 44px 140px minmax(0, 1fr) minmax(90px, .6fr) 110px; }
 .thead { height: 30px; font-size: 11px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line-2); text-transform: uppercase; letter-spacing: .02em; }
 .trow { min-height: 40px; padding-top: 4px; padding-bottom: 4px; transition: background .12s, opacity .2s, transform .2s var(--ease); }
@@ -375,7 +376,18 @@ select.input { padding-right: 6px; }
 .conn-sort { width: auto; max-width: 160px; padding: 4px 8px; font-size: 12px; }
 .conn-notice { font-size: 12px; color: var(--muted); padding: 6px 10px; background: var(--pill); border-radius: 8px; }
 .conn-notice span { overflow-wrap: anywhere; }
-.conn-rates { display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; }
+.conn-table-scroll { min-width: 0; min-height: 0; overflow-x: auto; overflow-y: hidden; display: flex; }
+.conn-table-content { flex: none; min-height: 0; display: flex; flex-direction: column; }
+.conn-table-content > .conns-list { flex: 1; }
+.conn-column-head { flex: none; display: grid; grid-template-columns: var(--conn-grid); height: 34px; background: var(--card); border-bottom: 1px solid var(--line-2); }
+.conn-column-title { position: relative; min-width: 0; }
+.conn-column-title > button { width: 100%; height: 100%; padding: 0 10px; text-align: left; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conn-column-title[aria-sort="ascending"] > button, .conn-column-title[aria-sort="descending"] > button { color: var(--accent); }
+.conn-column-resize { position: absolute; right: -3px; top: 0; bottom: 0; width: 7px; cursor: col-resize; touch-action: none; z-index: 1; }
+.conn-column-resize::after { content: ""; position: absolute; left: 3px; top: 7px; bottom: 7px; width: 1px; background: var(--line); }
+.conn-column-resize:hover::after, .conn-column-resize:focus-visible::after { background: var(--accent); }
+.conn-column-menu { display: flex; flex-direction: column; gap: 8px; padding: 12px; max-height: 380px; overflow-y: auto; }
+.conn-column-menu label { display: flex; align-items: center; gap: 8px; font-size: 12px; }
 .conn-host { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .conn-host .name { overflow: hidden; text-overflow: ellipsis; }
 .source-options { display: flex; flex-direction: column; gap: 10px; padding: 12px; max-height: 320px; overflow-y: auto; }
@@ -389,13 +401,9 @@ select.input { padding-right: 6px; }
 .conn-virtual-space { position: relative; }
 .conn-virtual-row { position: absolute; left: 0; right: 0; background: var(--card); border-bottom: 1px solid var(--line-2); }
 .conn-virtual-row .trow { height: 64px; }
-.conns-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr; gap: 12px; }
+.conns-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .conns-body.with-detail { grid-template-columns: minmax(0, 1fr) clamp(240px, 34%, 300px); }
 .conns-list { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; container-type: inline-size; }
-@container (max-width: 480px) {
-  .conns .trow { grid-template-columns: minmax(0, 1fr) 76px 56px 26px; gap: 8px; }
-  .conns .trow > .cell:nth-child(2) { display: none; }
-}
 .conns-list::-webkit-scrollbar { width: 0; }
 .cgroup { flex: none; }
 .cghead { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px 0 10px; transition: background .12s; }

@@ -2,7 +2,7 @@ import type { Connection } from "../bindings/github.com/localhost-copilot/mihomo
 
 export type Conn = Connection & { up: number; down: number; closedAt?: number };
 export type ConnectionSnapshot = { active: Conn[]; closed: Conn[]; at: number };
-export type ConnectionSort = "time" | "host" | "up" | "down" | "upload" | "download";
+export type ConnectionSort = "time" | "host" | "up" | "down" | "upload" | "download" | "total" | "process" | "source" | "rule" | "chain" | "network";
 export type ConnectionTab = "active" | "closed" | "all";
 export type ConnectionGroupBy = "none" | "process" | "host" | "rule" | "source";
 
@@ -49,8 +49,21 @@ export function filterConnections(conns: Conn[], query: string, network: string,
 
 export function compareConnections(key: ConnectionSort, ascending: boolean) {
   return (a: Conn, b: Conn) => {
-    const order = key === "host" ? hostOf(a).localeCompare(hostOf(b))
-      : key === "time" ? Date.parse(a.start) - Date.parse(b.start) : a[key] - b[key];
+    const value = (c: Conn): string | number => {
+      switch (key) {
+        case "host": return hostOf(c);
+        case "process": return processOf(c);
+        case "source": return address(c.metadata.sourceIP, c.metadata.sourcePort);
+        case "rule": return ruleOf(c);
+        case "chain": return chainOf(c);
+        case "network": return c.metadata.network;
+        case "total": return c.upload + c.download;
+        case "time": return Date.parse(c.start);
+        default: return c[key];
+      }
+    };
+    const av = value(a), bv = value(b);
+    const order = typeof av === "string" ? av.localeCompare(String(bv), undefined, { numeric: true }) : av - Number(bv);
     return (ascending ? order : -order) || a.id.localeCompare(b.id);
   };
 }
