@@ -1,16 +1,19 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import { useGroups } from "../useGroups";
 import { Fold } from "../components/Fold";
 import { Segmented } from "../components/Segmented";
 import { toast } from "../components/Toast";
-import { Bolt, Chevron, Refresh, Sort } from "../components/Icons";
+import { Bolt, Chevron, Columns, Refresh, Rows, Search, Sort } from "../components/Icons";
 import { ago, bytes, delayClass } from "../format";
 import type { Group, Member, Provider } from "../api";
 import { startCore } from "../actions";
 
 type Tab = "groups" | "providers";
+
+// below this width two columns would leave a card one node wide
+const TWO_COLUMNS_MIN = 760;
 
 export function Proxies() {
   const t = useT();
@@ -21,6 +24,17 @@ export function Proxies() {
   // ?view=proxies#providers opens on the providers
   const [tab, setTab] = useState<Tab>(location.hash === "#providers" ? "providers" : "groups");
   const [updatingAll, setUpdatingAll] = useState(false);
+  const [twoCols, setTwoCols] = useState(() => { try { return localStorage.getItem("proxies.columns") !== "1"; } catch { return true; } });
+  const [box, width] = useWidth();
+  const [q, setQ] = useState("");
+  // while searching every match is open; a card folded then stays folded
+  // only until the query changes
+  const [folded, setFolded] = useState<Record<string, boolean>>({});
+  useEffect(() => setFolded({}), [q]);
+  const toggleCols = () => {
+    setTwoCols(!twoCols);
+    try { localStorage.setItem("proxies.columns", twoCols ? "1" : "2"); } catch {}
+  };
 
   if (core !== "running") {
     return (
@@ -36,8 +50,20 @@ export function Proxies() {
   const view: Tab = pvs.length ? tab : "groups";
   if (view === "groups" && shown.length === 0 && !pvs.length) return <div className="view"><div className="empty-state"><b>{t("No proxy groups")}</b>{t("This profile has no proxy groups.")}</div></div>;
 
-  const isOpen = (key: string, dflt: boolean) => open[key] ?? dflt;
-  const toggle = (key: string, dflt: boolean) => setOpen((o) => ({ ...o, [key]: !(o[key] ?? dflt) }));
+  // a group whose name matches shows all its nodes, any other only the
+  // nodes whose names match, and not at all when none do
+  const needle = q.trim().toLowerCase();
+  const has = (name: string) => name.toLowerCase().includes(needle);
+  const narrow = <T extends { name: string; members?: Member[] | null }>(x: T): T | null => {
+    if (!needle || has(x.name)) return x;
+    const members = (x.members ?? []).filter((m) => has(m.name));
+    return members.length ? { ...x, members } : null;
+  };
+  const groupsShown = shown.map(narrow).filter((g): g is Group => !!g);
+  const pvsShown = pvs.map(narrow).filter((p): p is Provider => !!p);
+
+  const isOpen = (key: string, dflt: boolean) => (needle ? !folded[key] : open[key] ?? dflt);
+  const toggle = (key: string, dflt: boolean) => needle ? setFolded((f) => ({ ...f, [key]: !f[key] })) : setOpen((o) => ({ ...o, [key]: !(o[key] ?? dflt) }));
   const pkey = (p: Provider) => "provider/" + p.name;
   const testProvider = (p: Provider) => testGroup({ key: pkey(p), testUrl: p.testUrl, members: p.members });
   const updatable = pvs.filter((p) => p.vehicleType !== "Inline");
@@ -50,8 +76,11 @@ export function Proxies() {
   };
   const testingAny = view === "groups" ? shown.some((g) => testing[g.name]) : pvs.some((p) => testing[pkey(p)]);
 
+  const wide = width >= TWO_COLUMNS_MIN;
+  const cols = twoCols && wide ? 2 : 1;
+
   return (
-    <div className="view">
+    <div className="view proxies-view" ref={box}>
       <div className="view-head">
         <h2>{t("Proxies")}</h2>
         {pvs.length ? (
@@ -61,42 +90,91 @@ export function Proxies() {
           ]} />
         ) : <span className="sub">{shown.length}</span>}
         <div className="view-tools">
+          <label className="search"><Search /><input placeholder={t("Search groups and nodes")} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setQ("")} /></label>
+          {wide && <button className="icon" title={twoCols ? t("One column") : t("Two columns")} onClick={toggleCols}>{twoCols ? <Rows size={14} /> : <Columns size={14} />}</button>}
           <button className={"btn small" + (sorted ? " on" : "")} onClick={() => setSorted(!sorted)}><Sort size={13} />{sorted ? t("Sort by latency") : t("Default order")}</button>
           {view === "providers" && updatable.length > 0 && (
             <button className="btn small" disabled={updatingAll} onClick={updateAll}><Refresh size={13} />{updatingAll ? t("Updating…") : t("Update all")}</button>
           )}
-          <button className={"btn small" + (testingAny ? " zap" : "")} onClick={() => (view === "groups" ? shown.forEach((g) => !testing[g.name] && testGroup(g)) : pvs.forEach((p) => !testing[pkey(p)] && testProvider(p)))}><Bolt size={13} />{t("Test all")}</button>
+          <button className={"btn small" + (testingAny ? " zap" : "")} onClick={() => (view === "groups" ? groupsShown.forEach((g) => !testing[g.name] && testGroup(g)) : pvsShown.forEach((p) => !testing[pkey(p)] && testProvider(p)))}><Bolt size={13} />{t("Test all")}</button>
         </div>
       </div>
-      {view === "groups" ? shown.map((g) => (
-        <GroupCard
-          key={g.name}
-          g={g}
-          open={isOpen(g.name, g.name !== "GLOBAL")}
-          toggle={() => toggle(g.name, g.name !== "GLOBAL")}
-          sorted={sorted}
-          onSelect={(n) => select(g.name, n)}
-          onTest={() => testGroup(g)}
-          onTestOne={testOne}
-          testing={testing}
-          flash={flash}
-        />
-      )) : pvs.map((p) => (
-        <ProviderCard
-          key={p.name}
-          p={p}
-          open={isOpen(pkey(p), false)}
-          toggle={() => toggle(pkey(p), false)}
-          sorted={sorted}
-          onTest={() => testProvider(p)}
-          onUpdate={async () => { if (await updateProvider(p.name)) toast(t("Updated {name}", { name: p.name })); }}
-          onTestOne={testOne}
-          testing={testing}
-          testKey={pkey(p)}
-        />
-      ))}
+      {needle && (view === "groups" ? groupsShown : pvsShown).length === 0 && <div className="empty-state"><b>{t("No matches")}</b>{t("Nothing is named like “{q}”.", { q: q.trim() })}</div>}
+      {view === "groups" ? (
+        <Masonry cols={cols} items={groupsShown.map((g) => ({
+          key: g.name,
+          // a card's column follows its size when open by default, not its
+          // state now: folding a card doesn't send the others across
+          weight: g.name === "GLOBAL" ? 1 : 1 + Math.ceil((g.members?.length ?? 0) / 2),
+          node: (
+            <GroupCard
+              g={g}
+              open={isOpen(g.name, g.name !== "GLOBAL")}
+              toggle={() => toggle(g.name, g.name !== "GLOBAL")}
+              sorted={sorted}
+              onSelect={(n) => select(g.name, n)}
+              onTest={() => testGroup(g)}
+              onTestOne={testOne}
+              testing={testing}
+              flash={flash}
+            />
+          ),
+        }))} />
+      ) : (
+        <Masonry cols={cols} items={pvsShown.map((p) => ({
+          key: pkey(p),
+          weight: 1,
+          node: (
+            <ProviderCard
+              p={p}
+              open={isOpen(pkey(p), false)}
+              toggle={() => toggle(pkey(p), false)}
+              sorted={sorted}
+              onTest={() => testProvider(p)}
+              onUpdate={async () => { if (await updateProvider(p.name)) toast(t("Updated {name}", { name: p.name })); }}
+              onTestOne={testOne}
+              testing={testing}
+              testKey={pkey(p)}
+            />
+          ),
+        }))} />
+      )}
     </div>
   );
+}
+
+// Cards in columns, each to the shortest so far, keeping their order within
+// a column; one column is the plain list.
+function Masonry({ cols, items }: { cols: number; items: { key: string; weight: number; node: ReactNode }[] }) {
+  if (cols === 1) return <>{items.map((it) => <Keyed key={it.key}>{it.node}</Keyed>)}</>;
+  const lanes: (typeof items)[] = Array.from({ length: cols }, () => []);
+  const load = new Array(cols).fill(0);
+  for (const it of items) {
+    const i = load.indexOf(Math.min(...load));
+    lanes[i].push(it);
+    load[i] += it.weight;
+  }
+  return (
+    <div className="pcols">
+      {lanes.map((lane, i) => <div className="pcol" key={i}>{lane.map((it) => <Keyed key={it.key}>{it.node}</Keyed>)}</div>)}
+    </div>
+  );
+}
+const Keyed = ({ children }: { children: ReactNode }) => <>{children}</>;
+
+// the width of an element, through a callback ref: the page mounts its box
+// only once the core and the groups are there
+function useWidth() {
+  const [width, setWidth] = useState(0);
+  const ro = useRef<ResizeObserver | null>(null);
+  const ref = useCallback((el: HTMLDivElement | null) => {
+    ro.current?.disconnect();
+    ro.current = null;
+    if (!el) return;
+    ro.current = new ResizeObserver(() => setWidth(el.clientWidth));
+    ro.current.observe(el);
+  }, []);
+  return [ref, width] as const;
 }
 
 export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne, testing, flash, compact }: {
