@@ -5,31 +5,7 @@ package gui
 #cgo LDFLAGS: -framework Cocoa
 #import <Cocoa/Cocoa.h>
 #include <stdlib.h>
-
-// The tray's button, the one Wails made (its target is Wails' controller).
-static NSButton *findTrayButton(NSView *v, Class ctl) {
-	if ([v isKindOfClass:[NSStatusBarButton class]] && [[(NSButton *)v target] isKindOfClass:ctl]) {
-		return (NSButton *)v;
-	}
-	for (NSView *s in v.subviews) {
-		NSButton *b = findTrayButton(s, ctl);
-		if (b) return b;
-	}
-	return nil;
-}
-
-static NSButton *trayButton(void) {
-	static NSButton *found;
-	if (found && found.window) return found;
-	found = nil;
-	Class ctl = NSClassFromString(@"StatusItemController");
-	if (!ctl) return nil;
-	for (NSWindow *w in NSApp.windows) {
-		NSView *root = w.contentView.superview ?: w.contentView;
-		if ((found = findTrayButton(root, ctl))) break;
-	}
-	return found;
-}
+#include "tray_darwin.h"
 
 // What the item shows: the cube, filled while traffic is taken over, the
 // mode's letter on it, and the speed.

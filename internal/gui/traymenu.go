@@ -1,7 +1,7 @@
 package gui
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -17,9 +17,11 @@ import (
 )
 
 // trayMenu is the tray icon's right-click menu, laid out as Surge's is
-// (docs/design.md §10.2): status, outbound mode, a submenu per proxy
-// group, the two switches, profiles, then the core and the app. It is built
-// afresh from the backend each time something it shows changes.
+// (docs/design.md §10.2): the main window, the outbound mode, a submenu per
+// proxy group, the connectivity quality, the apps moving the most traffic,
+// the two switches, profiles, then the core and the app. It is built afresh
+// from the backend each time something it shows changes, but not while it
+// shows: then only the quality and the apps change, in place.
 type trayMenu struct {
 	h  *host
 	mu sync.Mutex
@@ -27,10 +29,34 @@ type trayMenu struct {
 	last    backend.State
 	groups  []Group
 	pending bool // a rebuild is scheduled
+
+	open  bool          // the menu shows
+	stale bool          // it should be rebuilt once it closes
+	stop  chan struct{} // ends the sampling while it shows
+
+	meter     backend.ClientMeter
+	clients   []backend.ClientRate
+	quality   int // ms through the proxy (direct in direct mode); 0 unmeasured, -1 failed
+	measured  time.Time
+	measuring bool
+	testing   map[string]bool // groups being tested from the menu
+
+	// the rows that change while the menu shows; main thread only
+	qualityItem *application.MenuItem
+	clientItems []*application.MenuItem
+	nodes       map[string][]nodeRow             // group → its nodes' rows
+	tests       map[string]*application.MenuItem // group → its "Test Latency" row
 }
 
+// topClients is how many app rows the menu has, filled or not, as Surge's.
+const topClients = 5
+
+// theTrayMenu is the menu AppKit's open and close callbacks reach.
+var theTrayMenu *trayMenu
+
 func newTrayMenu(h *host) *trayMenu {
-	m := &trayMenu{h: h, last: h.b.State()}
+	m := &trayMenu{h: h, last: h.b.State(), testing: map[string]bool{}}
+	theTrayMenu = m
 	return m
 }
 
@@ -57,13 +83,123 @@ func tr(en, cn string) string {
 	return en
 }
 
+// The menu's labels carry a little markup that styleTrayMenu draws
+// (traymenu_darwin.go). detail puts right at the menu's right edge, in the
+// secondary colour; a right made by badge is drawn as a coloured badge;
+// withIcon puts a file's icon before a name.
+func detail(left, right string) string {
+	if right == "" {
+		return left
+	}
+	return left + "\t" + right
+}
+
+// badge's kind is accent, good, ok, bad or none.
+func badge(kind, text string) string { return "\x01" + kind + "\x02" + text }
+
+func withIcon(path, name string) string { return "\x03" + path + "\x04" + name }
+
+// keyed gives a row its shortcut as Surge shows it: the key drawn as the
+// row's detail, and held by a hidden twin. A real key equivalent would get
+// a column of its own, which pushes every row's detail away from the
+// submenu arrows.
+func keyed(menu *application.Menu, it *application.MenuItem, key string, click func(*application.Context)) {
+	it.SetLabel(detail(it.Label(), "⌘ "+key)).OnClick(click)
+	menu.Add(it.Label()).SetAccelerator("CmdOrCtrl+" + key).SetHidden(true).OnClick(click)
+}
+
+// stay marks a row whose click leaves the menu up, to watch what it does.
+func stay(label string) string { return "\x05" + label }
+
+// delayBadge is a node's latency as Surge's benchmark shows it. An untested
+// node's is blank but holds the room, so delays coming in while the menu
+// shows don't outgrow it.
+func delayBadge(d int) string {
+	if d == 0 {
+		return badge("space", "")
+	}
+	return badge(delayKind(d), delayText(d))
+}
+
+func testLabel(testing bool) string {
+	if testing {
+		return stay(tr("Testing…", "测速中…"))
+	}
+	return stay(tr("Test Latency", "测速"))
+}
+
+// nodeRow is a node's row in a group's submenu, to update in place.
+type nodeRow struct {
+	name  string
+	delay int // as last shown
+	item  *application.MenuItem
+}
+
+// test tests a group's nodes, showing them testing and then their delays
+// in the menu as it stays up. The menu is rebuilt once it closes.
+func (m *trayMenu) test(ps *ProxyService, g Group) {
+	m.mu.Lock()
+	busy := m.testing[g.Name]
+	m.testing[g.Name] = true
+	m.mu.Unlock()
+	if busy {
+		return
+	}
+	m.showDelays(g.Name, nil)
+	res, err := ps.GroupDelay(g.Name, g.TestURL)
+	if err != nil {
+		log.Printf("test %s: %v", g.Name, err)
+	}
+	m.mu.Lock()
+	delete(m.testing, g.Name)
+	m.mu.Unlock()
+	if res == nil {
+		res = map[string]int{}
+	}
+	m.showDelays(g.Name, res)
+	m.refresh()
+}
+
+// showDelays puts a group's delays on its rows, or shows them testing while
+// res is nil. A node the test didn't answer for shows its delay as before.
+func (m *trayMenu) showDelays(group string, res map[string]int) {
+	application.InvokeAsync(func() {
+		testing := res == nil
+		rows := m.nodes[group]
+		for i := range rows {
+			r := &rows[i]
+			if testing {
+				r.item.SetLabel(detail(r.name, badge("none", "···")))
+				continue
+			}
+			if d, ok := res[r.name]; ok {
+				r.delay = d
+			}
+			r.item.SetLabel(detail(r.name, delayBadge(r.delay)))
+		}
+		if it := m.tests[group]; it != nil {
+			it.SetLabel(testLabel(testing))
+		}
+		styleTrayMenu()
+	})
+}
+
 func (m *trayMenu) relabel() { m.rebuild() }
 
 // update takes a new state; groups are reloaded when the core is up.
 func (m *trayMenu) update(st backend.State) {
 	m.mu.Lock()
+	prev := m.last
 	m.last = st
+	// what the quality says depends on the path traffic takes
+	retest := st.Core == "running" && (prev.Core != "running" || prev.Mode != st.Mode || prev.Profile != st.Profile)
+	if retest {
+		m.measured = time.Time{}
+	}
 	m.mu.Unlock()
+	if retest {
+		time.AfterFunc(2*time.Second, m.measure)
+	}
 	m.refresh()
 }
 
@@ -106,9 +242,144 @@ func delayText(d int) string {
 	case d > 0:
 		return fmt.Sprintf("%d ms", d)
 	case d < 0:
-		return tr("timeout", "超时")
+		return tr("Failed", "失败")
 	}
 	return ""
+}
+
+// delayKind colours a latency as the window's delay chips do.
+func delayKind(d int) string {
+	switch {
+	case d == 0:
+		return "none"
+	case d > 0 && d < 200:
+		return "good"
+	case d > 0 && d < 500:
+		return "ok"
+	}
+	return "bad"
+}
+
+// tracking is the menu opening or closing; on the main thread. While it
+// shows, the apps are sampled every second and a stale quality measured.
+func (m *trayMenu) tracking(open bool) {
+	m.mu.Lock()
+	m.open = open
+	stale := m.stale && !open
+	if !open {
+		m.stale = false
+		if m.stop != nil {
+			close(m.stop)
+			m.stop = nil
+		}
+	} else if m.last.Core == "running" && m.stop == nil {
+		m.stop = make(chan struct{})
+		m.meter = backend.ClientMeter{}
+		go m.sample(m.stop)
+	}
+	retest := open && m.last.Core == "running" && time.Since(m.measured) > 30*time.Second
+	m.mu.Unlock()
+	if retest {
+		go m.measure()
+	}
+	if stale {
+		m.refresh()
+	}
+}
+
+// sample measures each app's speed until stop: at once, soon after (the
+// first sample has no speeds), then every second.
+func (m *trayMenu) sample(stop chan struct{}) {
+	c, err := m.h.b.Client()
+	if err != nil {
+		return
+	}
+	wait := 400 * time.Millisecond
+	for first := true; ; first = false {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		conns, err := c.Connections(ctx)
+		cancel()
+		if err == nil {
+			m.mu.Lock()
+			rates := m.meter.Sample(time.Now(), conns.Connections)
+			if !first {
+				m.clients = rates
+			}
+			m.mu.Unlock()
+			if !first {
+				application.InvokeAsync(m.live)
+			}
+		}
+		select {
+		case <-stop:
+			return
+		case <-time.After(wait):
+		}
+		wait = time.Second
+	}
+}
+
+// measure takes the connectivity quality, once at a time.
+func (m *trayMenu) measure() {
+	m.mu.Lock()
+	if m.measuring || m.last.Core != "running" {
+		m.mu.Unlock()
+		return
+	}
+	m.measuring = true
+	m.mu.Unlock()
+	application.InvokeAsync(m.live)
+
+	c, err := m.h.b.Connectivity()
+	d := c.Proxy
+	if settings.Load().Mode == "direct" {
+		d = c.Internet
+	}
+	if err != nil {
+		d = -1
+	}
+	m.mu.Lock()
+	m.quality, m.measured, m.measuring = d, time.Now(), false
+	m.mu.Unlock()
+	application.InvokeAsync(m.live)
+}
+
+func (m *trayMenu) qualityLabel() string {
+	m.mu.Lock()
+	d, measuring := m.quality, m.measuring
+	m.mu.Unlock()
+	label := tr("Connectivity Quality", "连通质量")
+	switch {
+	case measuring && d == 0:
+		return detail(label, badge("none", "···"))
+	case d == 0:
+		return label
+	}
+	return detail(label, delayBadge(d))
+}
+
+func clientLabel(clients []backend.ClientRate, i int) string {
+	if i >= len(clients) {
+		return "—"
+	}
+	c := clients[i]
+	return detail(withIcon(c.Path, c.Name), speed(c.Up+c.Down))
+}
+
+// live updates the rows that change while the menu shows; main thread.
+func (m *trayMenu) live() {
+	if m.qualityItem == nil {
+		return
+	}
+	m.mu.Lock()
+	clients := m.clients
+	m.mu.Unlock()
+	m.qualityItem.SetLabel(m.qualityLabel())
+	for i, it := range m.clientItems {
+		it.SetLabel(clientLabel(clients, i))
+		it.SetEnabled(i < len(clients))
+	}
+	styleTrayMenu()
 }
 
 // rebuild makes the menu from what is known; on the main thread.
@@ -116,42 +387,47 @@ func (m *trayMenu) rebuild() {
 	if m.h.tray == nil {
 		return
 	}
+	watchTrayMenu()
 	m.mu.Lock()
-	st, groups := m.last, m.groups
+	if m.open {
+		m.stale = true
+		m.mu.Unlock()
+		return
+	}
+	st, groups, clients := m.last, m.groups, m.clients
 	m.mu.Unlock()
 	b := m.h.b
 	running := st.Core == "running"
 	menu := m.h.app.NewMenu()
 
-	// status
-	var status string
-	switch st.Core {
-	case "running":
-		status = tr("Running", "运行中") + " · " + st.ProfileName
-	case "starting":
-		status = tr("Starting…", "正在启动…")
-	case "crashed":
-		status = tr("Core stopped with an error", "内核异常退出")
-	default:
-		status = tr("Stopped", "已停止")
+	// the core's state, while it isn't running: the icon says the rest
+	if !running {
+		status := tr("Stopped", "已停止")
+		switch st.Core {
+		case "starting":
+			status = tr("Starting…", "正在启动…")
+		case "crashed":
+			status = tr("Core stopped with an error", "内核异常退出")
+		}
+		menu.Add(status).SetEnabled(false)
+		menu.AddSeparator()
 	}
-	menu.Add(status).SetEnabled(false)
-	if running && !st.SystemProxy && !st.Tun {
-		menu.Add(tr("Not taking over traffic: turn on System Proxy or TUN", "未接管流量：请开启系统代理或 TUN")).SetEnabled(false)
-	}
+	keyed(menu, menu.Add(tr("Show Main Window", "显示主窗口")), "M", func(*application.Context) { m.h.showMain("") })
 	menu.AddSeparator()
 
-	// outbound mode
+	// outbound mode, its letter as on the tray icon
+	om := menu.AddSubmenu(detail(tr("Outbound Mode", "出站模式"), badge("accent", modeLetter(st.Mode))))
 	for _, md := range []struct{ id, en, cn string }{
 		{"direct", "Direct Outbound", "直接连接"},
 		{"global", "Global Proxy", "全局代理"},
 		{"rule", "Rule-Based Proxy", "规则判定"},
 	} {
 		id := md.id
-		menu.AddRadio(tr(md.en, md.cn), st.Mode == id).OnClick(m.run("mode", func() error { return b.SetMode(id) }))
+		om.AddRadio(tr(md.en, md.cn), st.Mode == id).OnClick(m.run("mode", func() error { return b.SetMode(id) }))
 	}
 
 	// proxy groups
+	m.nodes, m.tests = map[string][]nodeRow{}, map[string]*application.MenuItem{}
 	if running && len(groups) > 0 {
 		menu.AddSeparator()
 		ps := &ProxyService{h: m.h}
@@ -161,20 +437,17 @@ func (m *trayMenu) rebuild() {
 				continue
 			}
 			shown = append(shown, g)
-			label := g.Name
-			if g.Now != "" {
-				label += "    " + g.Now
-			}
-			sub := menu.AddSubmenu(label)
+			sub := menu.AddSubmenu(detail(g.Name, g.Now))
+			// first, and the menu stays up to show the delays coming in
+			m.tests[g.Name] = sub.Add(testLabel(false)).SetTooltip(tr("⌥-click a node to test it alone", "按住 ⌥ 点击节点单独测速")).
+				OnClick(func(*application.Context) { go m.test(ps, g) })
+			sub.AddSeparator()
 			selectable := g.Type == "Selector"
 			for _, mem := range g.Members {
 				name := mem.Name
-				item := mem.Name
-				if d := delayText(mem.Delay); d != "" {
-					item += "    " + d
-				}
 				group := g.Name
-				it := sub.AddCheckbox(item, name == g.Now)
+				it := sub.AddCheckbox(detail(mem.Name, delayBadge(mem.Delay)), name == g.Now)
+				m.nodes[g.Name] = append(m.nodes[g.Name], nodeRow{name, mem.Delay, it})
 				// ⌥-click tests just this node, without switching to it
 				it.OnClick(m.run("select", func() error {
 					if optionHeld() {
@@ -187,35 +460,36 @@ func (m *trayMenu) rebuild() {
 					return ps.Select(group, name)
 				}))
 			}
-			sub.AddSeparator()
-			group := g.Name
-			sub.Add(tr("Test Latency    (⌥-click a node to test it alone)", "测速    （⌥ 点击节点单独测速）")).OnClick(m.run("test", func() error {
-				_, err := ps.GroupDelay(group, g.TestURL)
-				return err
-			}))
 		}
 		// every group at once, so one needn't open each to test it
-		menu.Add(tr("Test All Latency", "全部测速")).OnClick(m.run("test all", func() error {
-			errs := make([]error, len(shown))
-			var wg sync.WaitGroup
-			for i, g := range shown {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					_, errs[i] = ps.GroupDelay(g.Name, g.TestURL)
-				}()
+		menu.Add(stay(tr("Test All Latency", "全部测速"))).OnClick(func(*application.Context) {
+			for _, g := range shown {
+				go m.test(ps, g)
 			}
-			wg.Wait()
-			return errors.Join(errs...)
-		}))
+		})
+	}
+
+	// how the network does, and who uses it
+	m.qualityItem, m.clientItems = nil, nil
+	if running {
+		connections := func(*application.Context) { m.h.showMain("connections") }
+		menu.AddSeparator()
+		m.qualityItem = menu.Add(m.qualityLabel()).SetEnabled(false)
+		menu.AddSeparator()
+		menu.Add(tr("Top Clients", "活跃应用")).SetEnabled(false)
+		for i := range topClients {
+			it := menu.Add(clientLabel(clients, i)).SetEnabled(i < len(clients)).OnClick(connections)
+			m.clientItems = append(m.clientItems, it)
+		}
+		menu.AddSeparator()
+		keyed(menu, menu.Add(tr("Dashboard…", "仪表盘…")), "D", connections)
 	}
 
 	// switches
 	menu.AddSeparator()
-	menu.AddCheckbox(tr("Set as System Proxy", "设置为系统代理"), st.SystemProxy).
-		OnClick(m.run("system proxy", func() error { return b.SetSystemProxy(!st.SystemProxy) }))
-	tun := menu.AddCheckbox(tr("Enhanced Mode (TUN)", "增强模式 (TUN)"), st.Tun)
-	tun.OnClick(func(*application.Context) {
+	keyed(menu, menu.AddCheckbox(tr("Set as System Proxy", "设置为系统代理"), st.SystemProxy), "S",
+		m.run("system proxy", func() error { return b.SetSystemProxy(!st.SystemProxy) }))
+	keyed(menu, menu.AddCheckbox(tr("Enhanced Mode (TUN)", "增强模式 (TUN)"), st.Tun), "E", func(*application.Context) {
 		go func() {
 			if err := b.SetTun(!st.Tun, helperPrompt()); err != nil {
 				log.Println("tun:", err)
@@ -227,7 +501,7 @@ func (m *trayMenu) rebuild() {
 
 	// profiles
 	menu.AddSeparator()
-	pm := menu.AddSubmenu(tr("Profiles", "配置") + "    " + st.ProfileName)
+	pm := menu.AddSubmenu(detail(tr("Profiles", "配置"), st.ProfileName))
 	for _, p := range profiles.List() {
 		id := p.ID
 		pm.AddCheckbox(p.Name, p.ID == st.Profile).OnClick(m.run("use profile", func() error { return b.UseProfile(id) }))
@@ -261,8 +535,8 @@ func (m *trayMenu) rebuild() {
 	}
 
 	menu.AddSeparator()
-	menu.Add(tr("Open Dashboard…", "打开主界面…")).OnClick(func(*application.Context) { m.h.showMain("") })
-	menu.Add(tr("Quit MihomoBar", "退出 MihomoBar")).OnClick(func(*application.Context) { m.h.app.Quit() })
+	keyed(menu, menu.Add(tr("Quit MihomoBar", "退出 MihomoBar")), "Q", func(*application.Context) { m.h.app.Quit() })
 
 	m.h.tray.SetMenu(menu)
+	styleTrayMenu()
 }
