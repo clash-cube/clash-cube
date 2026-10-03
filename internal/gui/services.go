@@ -37,6 +37,12 @@ func (s *AppService) SetTun(on bool) error         { return s.h.b.SetTun(on, hel
 // Connectivity measures router, DNS, internet and proxy latency.
 func (s *AppService) Connectivity() (backend.Connectivity, error) { return s.h.b.Connectivity() }
 
+// ConnectivityItem measures one of "router", "dns", "internet", "proxy";
+// only that item's fields are set.
+func (s *AppService) ConnectivityItem(key string) (backend.Connectivity, error) {
+	return s.h.b.ConnectivityItem(key)
+}
+
 // HelperStatus is service mode's state, for Settings.
 func (s *AppService) HelperStatus() backend.HelperStatus { return s.h.b.HelperStatus() }
 

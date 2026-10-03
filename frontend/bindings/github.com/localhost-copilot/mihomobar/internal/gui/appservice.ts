@@ -29,6 +29,14 @@ export function Connectivity(): $CancellablePromise<backend$0.Connectivity> {
     return $Call.ByID(1676079710);
 }
 
+/**
+ * ConnectivityItem measures one of "router", "dns", "internet", "proxy";
+ * only that item's fields are set.
+ */
+export function ConnectivityItem(key: string): $CancellablePromise<backend$0.Connectivity> {
+    return $Call.ByID(1432809917, key);
+}
+
 export function CopyText(text: string): $CancellablePromise<boolean> {
     return $Call.ByID(1618543495, text);
 }

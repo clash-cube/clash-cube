@@ -1,8 +1,10 @@
 package backend
 
 import (
+	"cmp"
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"os/exec"
 	"regexp"
@@ -30,34 +32,62 @@ type Connectivity struct {
 
 func ms(d time.Duration) int { return max(1, int(d.Milliseconds())) }
 
+// ConnectivityItems are the keys ConnectivityItem takes.
+var ConnectivityItems = []string{"router", "dns", "internet", "proxy"}
+
 // Connectivity measures all four at once.
 func (b *Backend) Connectivity() (Connectivity, error) {
 	var out Connectivity
 	var wg sync.WaitGroup
+	var firstErr error
+	var mu sync.Mutex
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
+	for _, key := range ConnectivityItems {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// each probe writes only its own fields
+			if err := b.probe(ctx, key, &out); err != nil {
+				mu.Lock()
+				firstErr = cmp.Or(firstErr, err)
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	return out, firstErr
+}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+// ConnectivityItem measures one of ConnectivityItems, filling only its
+// fields, so a caller can show each as soon as it is done.
+func (b *Backend) ConnectivityItem(key string) (Connectivity, error) {
+	var out Connectivity
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	defer cancel()
+	err := b.probe(ctx, key, &out)
+	return out, err
+}
+
+func (b *Backend) probe(ctx context.Context, key string, out *Connectivity) error {
+	if key == "router" {
 		out.Gateway = gateway()
 		if out.Gateway == "" {
 			out.Router = -1
-			return
+			return nil
 		}
 		out.Router = pingMS(ctx, out.Gateway)
-	}()
+		return nil
+	}
 
 	c, err := b.Client()
 	if err != nil {
-		wg.Wait()
-		return out, err
+		return err
 	}
 	testURL := settings.Load().TestURL
 
-	wg.Add(3)
-	go func() {
-		defer wg.Done()
+	switch key {
+	case "dns":
 		// a fresh name each time, so no cache answers it
 		name := strconv.FormatInt(time.Now().UnixNano(), 36) + ".apple.com"
 		start := time.Now()
@@ -69,35 +99,32 @@ func (b *Backend) Connectivity() (Connectivity, error) {
 			start = time.Now()
 			if _, err := net.DefaultResolver.LookupHost(ctx, name); err != nil && !isNotFound(err) {
 				out.DNS = -1
-				return
+				return nil
 			}
 			out.DNS = ms(time.Since(start))
-			return
+			return nil
 		}
 		out.DNSVia = "mihomo"
 		if err != nil && !strings.Contains(err.Error(), "rcode 3") { // NXDOMAIN still answered
 			out.DNS = -1
-			return
+			return nil
 		}
 		out.DNS = ms(time.Since(start))
-	}()
-	go func() {
-		defer wg.Done()
+	case "internet":
 		d, err := c.Delay(ctx, "DIRECT", testURL, 5*time.Second)
 		out.Internet = orFail(d, err)
-	}()
-	go func() {
-		defer wg.Done()
+	case "proxy":
 		out.Via = b.mainGroup(ctx)
 		if out.Via == "" {
 			out.Proxy = -1
-			return
+			return nil
 		}
 		d, err := c.Delay(ctx, out.Via, testURL, 5*time.Second)
 		out.Proxy = orFail(d, err)
-	}()
-	wg.Wait()
-	return out, nil
+	default:
+		return fmt.Errorf("unknown connectivity item %q", key)
+	}
+	return nil
 }
 
 func isNotFound(err error) bool {
