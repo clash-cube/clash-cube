@@ -105,7 +105,7 @@ export function Panel() {
                             >
                               <span className="check">{m.name === g.now ? "✓" : ""}</span>
                               <span className="nname">{m.name}</span>
-                              <span className={"delay " + (testing[g.name] || testing["#" + m.name] ? "testing" : delayClass(m.delay))}>{testing[g.name] || testing["#" + m.name] ? "···" : fmtDelay(m.delay)}</span>
+                              <span className={"delay " + (testing["#" + m.name] ? "testing" : delayClass(m.delay))}>{testing["#" + m.name] ? "···" : fmtDelay(m.delay)}</span>
                             </button>
                           ))}
                         </div>

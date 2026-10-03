@@ -135,8 +135,13 @@ type nodeRow struct {
 	item  *application.MenuItem
 }
 
-// test tests a group's nodes, showing them testing and then their delays
-// in the menu as it stays up. The menu is rebuilt once it closes.
+// nodeTests is how many of a group's nodes are tested at once.
+const nodeTests = 16
+
+// test tests a group's nodes one by one, a few at a time, so each delay
+// shows in the menu as it comes in rather than when the slowest answers
+// (mihomo's group test answers all at once). The menu stays up meanwhile,
+// and is rebuilt once it closes.
 func (m *trayMenu) test(ps *ProxyService, g Group) {
 	m.mu.Lock()
 	busy := m.testing[g.Name]
@@ -145,40 +150,57 @@ func (m *trayMenu) test(ps *ProxyService, g Group) {
 	if busy {
 		return
 	}
-	m.showDelays(g.Name, nil)
-	res, err := ps.GroupDelay(g.Name, g.TestURL)
-	if err != nil {
-		log.Printf("test %s: %v", g.Name, err)
+	m.showTesting(g.Name, true)
+	sem := make(chan struct{}, nodeTests)
+	var wg sync.WaitGroup
+	for _, mem := range g.Members {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			d, err := ps.Delay(mem.Name, g.TestURL)
+			if err != nil {
+				log.Printf("test %s: %v", mem.Name, err)
+			}
+			m.showDelay(g.Name, mem.Name, d, err == nil)
+		}()
 	}
+	wg.Wait()
 	m.mu.Lock()
 	delete(m.testing, g.Name)
 	m.mu.Unlock()
-	if res == nil {
-		res = map[string]int{}
-	}
-	m.showDelays(g.Name, res)
+	m.showTesting(g.Name, false)
 	m.refresh()
 }
 
-// showDelays puts a group's delays on its rows, or shows them testing while
-// res is nil. A node the test didn't answer for shows its delay as before.
-func (m *trayMenu) showDelays(group string, res map[string]int) {
+// showTesting marks a group's test as running, its nodes waiting, or done.
+func (m *trayMenu) showTesting(group string, testing bool) {
 	application.InvokeAsync(func() {
-		testing := res == nil
-		rows := m.nodes[group]
-		for i := range rows {
-			r := &rows[i]
-			if testing {
+		if testing {
+			for _, r := range m.nodes[group] {
 				r.item.SetLabel(detail(r.name, badge("none", "···")))
-				continue
 			}
-			if d, ok := res[r.name]; ok {
-				r.delay = d
-			}
-			r.item.SetLabel(detail(r.name, delayBadge(r.delay)))
 		}
 		if it := m.tests[group]; it != nil {
 			it.SetLabel(testLabel(testing))
+		}
+		styleTrayMenu()
+	})
+}
+
+// showDelay puts a node's delay on its row; one the test couldn't measure
+// shows its delay as before.
+func (m *trayMenu) showDelay(group, node string, d int, ok bool) {
+	application.InvokeAsync(func() {
+		rows := m.nodes[group]
+		for i := range rows {
+			if r := &rows[i]; r.name == node {
+				if ok {
+					r.delay = d
+				}
+				r.item.SetLabel(detail(r.name, delayBadge(r.delay)))
+			}
 		}
 		styleTrayMenu()
 	})

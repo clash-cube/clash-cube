@@ -93,10 +93,10 @@ export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne
               <span className="nmeta">
                 <span className="ntype">{m.type}{m.udp ? " · UDP" : ""}</span>
                 <span
-                  className={"delay " + (testing["#" + m.name] || testing[g.name] ? "testing" : delayClass(m.delay))}
+                  className={"delay " + (testing["#" + m.name] ? "testing" : delayClass(m.delay))}
                   onClick={(e) => { e.stopPropagation(); onTestOne(m.name); }}
                 >
-                  {testing["#" + m.name] || testing[g.name] ? "···" : fmtDelay(m.delay)}
+                  {testing["#" + m.name] ? "···" : fmtDelay(m.delay)}
                 </span>
               </span>
             </button>
