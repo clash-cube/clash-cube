@@ -16,7 +16,9 @@ type GroupBy = "none" | "process" | "host" | "rule";
 type Conn = Connection & { up: number; down: number };
 
 const hostOf = (c: Connection) => c.metadata.host || c.metadata.destinationIP;
-const processOf = (c: Connection) => c.metadata.process || c.metadata.sourceIP || "—";
+// Inner connections originate in the core and have no OS process metadata.
+const processName = (c: Connection) => c.metadata.type === "Inner" ? "mihomo" : c.metadata.process;
+const processOf = (c: Connection) => processName(c) || c.metadata.sourceIP || "—";
 const ruleOf = (c: Connection) => (c.rulePayload ? `${c.rule}(${c.rulePayload})` : c.rule);
 const chainOf = (c: Connection) => (c.chains ?? []).slice().reverse().join(" → ");
 
@@ -64,7 +66,7 @@ export function Connections() {
       if (net !== "all" && c.metadata.network !== net) return false;
       if (!s) return true;
       const m = c.metadata;
-      return [m.host, m.destinationIP, m.process, m.processPath, c.rule, c.rulePayload, ...(c.chains ?? [])].some((v) => v?.toLowerCase().includes(s));
+      return [m.host, m.destinationIP, processName(c), m.processPath, c.rule, c.rulePayload, ...(c.chains ?? [])].some((v) => v?.toLowerCase().includes(s));
     });
   }, [conns, q, net]);
 
@@ -166,7 +168,7 @@ function Detail({ c, onClose, onKill }: { c: Conn; onClose: () => void; onKill: 
     [t("Network"), `${m.network.toUpperCase()} · ${m.type}`],
     [t("Rule"), ruleOf(c)],
     [t("Chain"), chainOf(c)],
-    [t("Process"), m.process || "—"],
+    [t("Process"), processName(c) || "—"],
     [t("Path"), m.processPath || "—"],
     [t("Source"), `${m.sourceIP}:${m.sourcePort}`],
     [t("Upload"), `${bytes(c.upload)} · ${speed(c.up)}`],
