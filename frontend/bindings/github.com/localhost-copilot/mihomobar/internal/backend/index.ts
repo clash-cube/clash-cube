@@ -4,6 +4,7 @@
 export type {
     ClientRate,
     Connectivity,
+    Egress,
     HelperStatus,
     State
 } from "./models.js";

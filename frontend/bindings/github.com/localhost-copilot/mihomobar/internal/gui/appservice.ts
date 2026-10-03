@@ -42,6 +42,13 @@ export function CopyText(text: string): $CancellablePromise<boolean> {
 }
 
 /**
+ * DirectEgress is the direct route's interface and public address.
+ */
+export function DirectEgress(): $CancellablePromise<backend$0.Egress> {
+    return $Call.ByID(3018527287);
+}
+
+/**
  * DisableServiceMode runs the core as the user again; uninstall removes the helper.
  */
 export function DisableServiceMode(uninstall: boolean): $CancellablePromise<void> {

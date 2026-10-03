@@ -43,6 +43,9 @@ func (s *AppService) ConnectivityItem(key string) (backend.Connectivity, error) 
 	return s.h.b.ConnectivityItem(key)
 }
 
+// DirectEgress is the direct route's interface and public address.
+func (s *AppService) DirectEgress() (backend.Egress, error) { return s.h.b.DirectEgress() }
+
 // HelperStatus is service mode's state, for Settings.
 func (s *AppService) HelperStatus() backend.HelperStatus { return s.h.b.HelperStatus() }
 

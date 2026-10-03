@@ -40,6 +40,41 @@ export interface Connectivity {
 }
 
 /**
+ * Egress is where direct traffic leaves this Mac: the physical interface
+ * and the public address sites see. Upstream of this Mac (a router running
+ * a proxy, say) traffic may still be split by destination, so it is asked
+ * of two: a mainland site, which sees the broadband line, and Cloudflare,
+ * which sees where overseas traffic comes out. They differ when something
+ * upstream proxies.
+ */
+export interface Egress {
+    /**
+     * e.g. en0
+     */
+    "interface": string;
+
+    /**
+     * its network service, e.g. Wi-Fi
+     */
+    "service": string;
+
+    /**
+     * as a mainland site sees it; "" when unknown
+     */
+    "domesticIp": string;
+
+    /**
+     * as Cloudflare sees it; "" when unknown
+     */
+    "ip": string;
+
+    /**
+     * the country of IP
+     */
+    "loc": string;
+}
+
+/**
  * HelperStatus is what Settings shows of service mode.
  */
 export interface HelperStatus {
