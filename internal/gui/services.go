@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"sort"
@@ -148,6 +149,40 @@ type ProxyService struct {
 	meterMu sync.Mutex
 	meter   backend.ClientMeter // for TopClients
 	meterAt time.Time
+
+	ownerMu sync.Mutex
+	owner   map[string]string // a provider's proxy → the provider, as last listed
+}
+
+// providerProxies is every provider's proxies by name, which /proxies
+// leaves out; it notes whose each is, as Delay needs to know.
+func (s *ProxyService) providerProxies(ctx context.Context, c *mihomoapi.Client) (map[string]mihomoapi.ProxyProvider, map[string]mihomoapi.Proxy, error) {
+	pvs, err := c.ProxyProviders(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	byName := map[string]mihomoapi.Proxy{}
+	owner := map[string]string{}
+	for _, p := range pvs {
+		// the core's own, for groups' proxies: those /proxies has
+		if p.VehicleType == "Compatible" {
+			continue
+		}
+		for _, m := range p.Proxies {
+			byName[m.Name] = m
+			owner[m.Name] = p.Name
+		}
+	}
+	s.ownerMu.Lock()
+	s.owner = owner
+	s.ownerMu.Unlock()
+	return pvs, byName, nil
+}
+
+func (s *ProxyService) ownerOf(name string) string {
+	s.ownerMu.Lock()
+	defer s.ownerMu.Unlock()
+	return s.owner[name]
 }
 
 func (s *ProxyService) client() (*mihomoapi.Client, error) { return s.h.b.Client() }
@@ -173,6 +208,8 @@ func (s *ProxyService) Groups() ([]Group, error) {
 	if err != nil {
 		return nil, err
 	}
+	// a group that uses a provider lists its proxies by name only
+	_, fromProviders, _ := s.providerProxies(context.Background(), c)
 	var order []string
 	if g, ok := all["GLOBAL"]; ok {
 		order = append(order, g.All...)
@@ -186,12 +223,66 @@ func (s *ProxyService) Groups() ([]Group, error) {
 		}
 		g := Group{Name: p.Name, Type: p.Type, Now: p.Now, Hidden: p.Hidden, Icon: p.Icon, TestURL: p.TestURL}
 		for _, m := range p.All {
-			mp := all[m]
+			mp, ok := all[m]
+			if !ok {
+				mp = fromProviders[m]
+			}
 			g.Members = append(g.Members, Member{Name: m, Type: mp.Type, UDP: mp.UDP, Delay: lastDelay(mp), Group: len(mp.All) > 0})
 		}
 		out = append(out, g)
 	}
 	return out, nil
+}
+
+// Provider is a proxy provider with its nodes, as the profile lists them.
+type Provider struct {
+	Name        string    `json:"name"`
+	VehicleType string    `json:"vehicleType"` // HTTP | File | Inline
+	TestURL     string    `json:"testUrl"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+	Upload      int64     `json:"upload"`
+	Download    int64     `json:"download"`
+	Total       int64     `json:"total"`
+	Expire      int64     `json:"expire"`
+	Members     []Member  `json:"members"`
+}
+
+// Providers is the profile's proxy providers, by name; the ones the core
+// makes for groups' own proxies are left out.
+func (s *ProxyService) Providers() ([]Provider, error) {
+	c, err := s.client()
+	if err != nil {
+		return nil, err
+	}
+	all, _, err := s.providerProxies(context.Background(), c)
+	if err != nil {
+		return nil, err
+	}
+	out := []Provider{}
+	for _, p := range all {
+		if p.VehicleType == "Compatible" || p.Name == "default" {
+			continue
+		}
+		pv := Provider{Name: p.Name, VehicleType: p.VehicleType, TestURL: p.TestURL, UpdatedAt: p.UpdatedAt, Members: []Member{}}
+		if si := p.SubscriptionInfo; si != nil {
+			pv.Upload, pv.Download, pv.Total, pv.Expire = si.Upload, si.Download, si.Total, si.Expire
+		}
+		for _, m := range p.Proxies {
+			pv.Members = append(pv.Members, Member{Name: m.Name, Type: m.Type, UDP: m.UDP, Delay: lastDelay(m)})
+		}
+		out = append(out, pv)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
+}
+
+// UpdateProvider fetches a proxy provider again.
+func (s *ProxyService) UpdateProvider(name string) error {
+	c, err := s.client()
+	if err != nil {
+		return err
+	}
+	return c.UpdateProxyProvider(context.Background(), name)
 }
 
 func (s *ProxyService) Select(group, name string) error {
@@ -224,14 +315,30 @@ func (s *ProxyService) testURL(u string) string {
 	return settings.Load().TestURL
 }
 
-// Delay tests one proxy: ms, or -1 when it failed.
+// Delay tests one proxy, a provider's too: ms, or -1 when it failed.
 func (s *ProxyService) Delay(name, testURL string) (int, error) {
 	c, err := s.client()
 	if err != nil {
 		return 0, err
 	}
-	d, err := c.Delay(context.Background(), name, s.testURL(testURL), 5*time.Second)
+	return s.delay(c, name, s.testURL(testURL))
+}
+
+func (s *ProxyService) delay(c *mihomoapi.Client, name, testURL string) (int, error) {
+	ctx := context.Background()
+	d, err := c.Delay(ctx, name, testURL, 5*time.Second)
 	var ae *mihomoapi.APIError
+	// /proxies doesn't know a provider's proxies; its provider does
+	if errors.As(err, &ae) && ae.Status == http.StatusNotFound {
+		owner := s.ownerOf(name)
+		if owner == "" {
+			_, _, _ = s.providerProxies(ctx, c)
+			owner = s.ownerOf(name)
+		}
+		if owner != "" {
+			d, err = c.ProviderProxyDelay(ctx, owner, name, testURL, 5*time.Second)
+		}
+	}
 	if errors.As(err, &ae) {
 		return -1, nil
 	}

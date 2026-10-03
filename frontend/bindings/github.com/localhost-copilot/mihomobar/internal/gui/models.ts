@@ -51,3 +51,22 @@ export interface Patch {
     "traySpeed"?: boolean | null;
     "findProcess"?: boolean | null;
 }
+
+/**
+ * Provider is a proxy provider with its nodes, as the profile lists them.
+ */
+export interface Provider {
+    "name": string;
+
+    /**
+     * HTTP | File | Inline
+     */
+    "vehicleType": string;
+    "testUrl": string;
+    "updatedAt": string;
+    "upload": number;
+    "download": number;
+    "total": number;
+    "expire": number;
+    "members": Member[] | null;
+}

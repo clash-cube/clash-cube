@@ -34,7 +34,7 @@ export function Connections(): $CancellablePromise<mihomoapi$0.Connections> {
 }
 
 /**
- * Delay tests one proxy: ms, or -1 when it failed.
+ * Delay tests one proxy, a provider's too: ms, or -1 when it failed.
  */
 export function Delay(name: string, testURL: string): $CancellablePromise<number> {
     return $Call.ByID(3819145257, name, testURL);
@@ -58,6 +58,14 @@ export function Groups(): $CancellablePromise<$models.Group[] | null> {
     return $Call.ByID(2943322750);
 }
 
+/**
+ * Providers is the profile's proxy providers, by name; the ones the core
+ * makes for groups' own proxies are left out.
+ */
+export function Providers(): $CancellablePromise<$models.Provider[] | null> {
+    return $Call.ByID(1937542960);
+}
+
 export function Rules(): $CancellablePromise<mihomoapi$0.Rule[] | null> {
     return $Call.ByID(647292905);
 }
@@ -77,4 +85,11 @@ export function TopClients(n: number): $CancellablePromise<backend$0.ClientRate[
 
 export function UpdateGeo(): $CancellablePromise<void> {
     return $Call.ByID(1571070136);
+}
+
+/**
+ * UpdateProvider fetches a proxy provider again.
+ */
+export function UpdateProvider(name: string): $CancellablePromise<void> {
+    return $Call.ByID(2461202334, name);
 }

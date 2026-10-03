@@ -146,6 +146,47 @@ func (c *Client) Proxies(ctx context.Context) (map[string]Proxy, error) {
 	return v.Proxies, err
 }
 
+// ProxyProvider is a proxy provider, as /providers/proxies has it.
+type ProxyProvider struct {
+	Name             string            `json:"name"`
+	VehicleType      string            `json:"vehicleType"` // HTTP | File | Inline | Compatible
+	Proxies          []Proxy           `json:"proxies"`
+	TestURL          string            `json:"testUrl"`
+	UpdatedAt        time.Time         `json:"updatedAt"`
+	SubscriptionInfo *SubscriptionInfo `json:"subscriptionInfo,omitempty"`
+}
+
+type SubscriptionInfo struct {
+	Upload   int64 `json:"Upload"`
+	Download int64 `json:"Download"`
+	Total    int64 `json:"Total"`
+	Expire   int64 `json:"Expire"`
+}
+
+func (c *Client) ProxyProviders(ctx context.Context) (map[string]ProxyProvider, error) {
+	var v struct {
+		Providers map[string]ProxyProvider `json:"providers"`
+	}
+	err := c.req(ctx, http.MethodGet, "/providers/proxies", nil, &v)
+	return v.Providers, err
+}
+
+// ProviderProxyDelay tests one of a provider's proxies, which /proxies
+// doesn't know; 0 with an error when it failed or timed out.
+func (c *Client) ProviderProxyDelay(ctx context.Context, provider, name, testURL string, timeout time.Duration) (int, error) {
+	q := url.Values{"url": {testURL}, "timeout": {strconv.Itoa(int(timeout.Milliseconds()))}}
+	var v struct {
+		Delay int `json:"delay"`
+	}
+	err := c.req(ctx, http.MethodGet, "/providers/proxies/"+url.PathEscape(provider)+"/"+url.PathEscape(name)+"/healthcheck?"+q.Encode(), nil, &v)
+	return v.Delay, err
+}
+
+// UpdateProxyProvider fetches a provider again.
+func (c *Client) UpdateProxyProvider(ctx context.Context, name string) error {
+	return c.req(ctx, http.MethodPut, "/providers/proxies/"+url.PathEscape(name), nil, nil)
+}
+
 func (c *Client) Select(ctx context.Context, group, name string) error {
 	return c.req(ctx, http.MethodPut, "/proxies/"+url.PathEscape(group), map[string]string{"name": name}, nil)
 }

@@ -15,5 +15,6 @@ export {
 export type {
     Group,
     Member,
-    Patch
+    Patch,
+    Provider
 } from "./models.js";
