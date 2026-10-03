@@ -124,6 +124,12 @@ select.input { padding-right: 6px; }
 .switch.on::after { transform: translateX(14px); }
 .switch:active::after { width: 20px; }
 .switch.on:active::after { transform: translateX(10px); }
+.switch::before { content: ""; position: absolute; z-index: 1; top: 5px; left: 5px; width: 10px; height: 10px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--fg) 14%, transparent); border-top-color: color-mix(in srgb, var(--fg) 55%, transparent); opacity: 0; transform: scale(.4); transition: translate .28s var(--spring), opacity .18s var(--ease), transform .22s var(--ease-out); pointer-events: none; }
+.switch.on::before { translate: 14px 0; border-color: color-mix(in srgb, var(--accent) 22%, transparent); border-top-color: var(--accent); }
+.switch.pending { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+.switch.pending.on { background: color-mix(in srgb, var(--accent) 55%, transparent); }
+.switch.pending::before { opacity: 1; transform: scale(1); animation: switch-spin .7s linear infinite; }
+@keyframes switch-spin { from { rotate: 0deg; } to { rotate: 360deg; } }
 .switch.busy { opacity: .6; }
 .switch:disabled { opacity: .45; }
 
