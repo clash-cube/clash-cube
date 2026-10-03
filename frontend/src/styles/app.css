@@ -47,9 +47,9 @@ code, .mono { font-family: var(--code); font-size: 11.5px; }
 /* testing: a current runs round the bolt, over its dimmed outline */
 .bolt-base { transition: opacity .2s var(--ease); }
 .bolt-trace { opacity: 0; stroke-dasharray: .3 .7; transition: opacity .2s var(--ease); }
-.icon.zap, .icon.zap:hover { color: var(--accent); }
-.icon.zap .bolt-base { opacity: .28; }
-.icon.zap .bolt-trace { opacity: 1; animation: bolt-trace 1.1s var(--ease) infinite; }
+.icon.zap, .icon.zap:hover, .btn.zap svg { color: var(--accent); }
+.zap .bolt-base { opacity: .28; }
+.zap .bolt-trace { opacity: 1; animation: bolt-trace 1.1s var(--ease) infinite; }
 @keyframes bolt-trace { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 
 /* the core's state, a quiet pill in the header */

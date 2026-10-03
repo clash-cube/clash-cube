@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -154,10 +155,12 @@ func (m *trayMenu) rebuild() {
 	if running && len(groups) > 0 {
 		menu.AddSeparator()
 		ps := &ProxyService{h: m.h}
+		var shown []Group
 		for _, g := range groups {
 			if g.Hidden || (g.Name == "GLOBAL" && st.Mode != "global") {
 				continue
 			}
+			shown = append(shown, g)
 			label := g.Name
 			if g.Now != "" {
 				label += "    " + g.Now
@@ -191,6 +194,20 @@ func (m *trayMenu) rebuild() {
 				return err
 			}))
 		}
+		// every group at once, so one needn't open each to test it
+		menu.Add(tr("Test All Latency", "全部测速")).OnClick(m.run("test all", func() error {
+			errs := make([]error, len(shown))
+			var wg sync.WaitGroup
+			for i, g := range shown {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					_, errs[i] = ps.GroupDelay(g.Name, g.TestURL)
+				}()
+			}
+			wg.Wait()
+			return errors.Join(errs...)
+		}))
 	}
 
 	// switches

@@ -49,6 +49,9 @@ export function Panel() {
           <div className="pname">{running ? state?.profileName : coreLabel()}</div>
           <div className="pspeed num">{running ? <>↑ {speed(traffic.up)} · ↓ {speed(traffic.down)}</> : state?.coreError || " "}</div>
         </div>
+        {running && shown.length > 0 && (
+          <button className={"icon" + (shown.some((g) => testing[g.name]) ? " zap" : "")} title={t("Test all")} onClick={() => shown.forEach((g) => !testing[g.name] && testGroup(g))}><Bolt /></button>
+        )}
         <button className="icon" title={t("Open Dashboard")} onClick={() => App.ShowMain("")}><Window /></button>
         <button className="icon" title={t("Settings")} onClick={() => App.ShowMain("settings")}><Gear /></button>
       </div>

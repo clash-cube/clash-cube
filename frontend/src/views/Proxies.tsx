@@ -33,7 +33,7 @@ export function Proxies() {
         <span className="sub">{shown.length}</span>
         <div className="view-tools">
           <button className={"btn small" + (sorted ? " on" : "")} onClick={() => setSorted(!sorted)}><Sort size={13} />{sorted ? t("Sort by latency") : t("Default order")}</button>
-          <button className="btn small" onClick={() => shown.forEach((g) => testGroup(g))}><Bolt size={13} />{t("Test all")}</button>
+          <button className={"btn small" + (shown.some((g) => testing[g.name]) ? " zap" : "")} onClick={() => shown.forEach((g) => !testing[g.name] && testGroup(g))}><Bolt size={13} />{t("Test all")}</button>
         </div>
       </div>
       {shown.map((g) => (

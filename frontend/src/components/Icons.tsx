@@ -21,7 +21,7 @@ export const Gear = ({ size }: P) => (
     <circle cx="12" cy="12" r="3" />
   </svg>
 );
-// the second outline is the current that runs round the bolt while it tests (.icon.zap)
+// the second outline is the current that runs round the bolt while it tests (.zap)
 const bolt = "M9 1.5 3.5 9H8l-1 5.5L12.5 7H8z";
 export const Bolt = ({ size }: P) => (<svg {...s(size)}><path className="bolt-base" d={bolt} /><path className="bolt-trace" d={bolt} pathLength={1} /></svg>);
 export const Refresh = ({ size }: P) => (<svg {...s(size)}><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" /><path d="M13.5 2.5v3h-3" /></svg>);
