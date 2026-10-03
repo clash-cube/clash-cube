@@ -40,13 +40,8 @@ code, .mono { font-family: var(--code); font-size: 11.5px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* the core's state, a quiet pill in the header */
-.pill-status { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 8px; border-radius: 999px; font-size: 12px; color: var(--fg-2); background: var(--pill); transition: background .15s, color .15s; }
+.pill-status { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; color: var(--fg-2); background: var(--pill); transition: background .15s, color .15s; }
 .pill-status:hover { background: var(--pill-hover); color: var(--fg); }
-.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; transition: background .3s; }
-.dot.running { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 22%, transparent); animation: breathe 2.4s ease-in-out infinite; }
-.dot.starting, .dot.stopping { background: var(--amber); animation: blink 1s ease-in-out infinite; }
-.dot.crashed { background: var(--red); }
-@keyframes breathe { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--green) 8%, transparent); } }
 @keyframes blink { 50% { opacity: .35; } }
 
 /* ---- segmented controls: one thumb glides to the chosen option -------- */

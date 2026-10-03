@@ -44,7 +44,7 @@ export function Panel() {
       <div className="ptop" ref={top}>
         <span className="plogo"><Logo size={16} /></span>
         <div className="pstatus">
-          <div className="pname"><span className={"dot " + core} />{running ? state?.profileName : coreLabel()}</div>
+          <div className="pname">{running ? state?.profileName : coreLabel()}</div>
           <div className="pspeed num">{running ? <>↑ {speed(traffic.up)} · ↓ {speed(traffic.down)}</> : state?.coreError || " "}</div>
         </div>
         <button className="icon" title={t("Open Dashboard")} onClick={() => App.ShowMain("")}><Window /></button>

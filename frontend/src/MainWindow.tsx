@@ -52,7 +52,6 @@ export function MainWindow() {
         <div className="actions">
           {running && <span className="hdr-speed num">↑ {speed(traffic.up)}  ↓ {speed(traffic.down)}</span>}
           <button className="pill-status" onClick={(e) => setCoreAt(coreAt ? null : e.currentTarget)} title={state?.coreError}>
-            <span className={"dot " + core} />
             {coreLabel()}
           </button>
           <button className={"icon" + (view === "settings" ? " on" : "")} title={t("Settings")} onClick={() => setView("settings")}><Gear /></button>
