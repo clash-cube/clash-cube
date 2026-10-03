@@ -8,5 +8,6 @@ export type {
     Memory,
     Metadata,
     Rule,
+    RuleExtra,
     Traffic
 } from "./models.js";

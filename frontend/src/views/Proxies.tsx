@@ -85,8 +85,8 @@ export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne
               key={m.name}
               className={"node stagger" + (m.name === g.now ? " on" : "") + (selectable ? "" : " fixed") + (flash === g.name + "/" + m.name ? " flash" : "")}
               style={{ ["--i" as string]: Math.min(i, 24) }}
-              onClick={() => selectable && m.name !== g.now && onSelect(m.name)}
-              title={m.name}
+              onClick={(e) => (e.altKey ? onTestOne(m.name) : selectable && m.name !== g.now && onSelect(m.name))}
+              title={m.name + "\n⌥-click: " + t("test this node only")}
             >
               <span className="nname">{m.name}</span>
               <span className="nmeta">

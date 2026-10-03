@@ -172,15 +172,21 @@ func (m *trayMenu) rebuild() {
 				}
 				group := g.Name
 				it := sub.AddCheckbox(item, name == g.Now)
-				if selectable {
-					it.OnClick(m.run("select", func() error { return ps.Select(group, name) }))
-				} else {
-					it.SetEnabled(name == g.Now)
-				}
+				// ⌥-click tests just this node, without switching to it
+				it.OnClick(m.run("select", func() error {
+					if optionHeld() {
+						_, err := ps.Delay(name, g.TestURL)
+						return err
+					}
+					if !selectable {
+						return nil
+					}
+					return ps.Select(group, name)
+				}))
 			}
 			sub.AddSeparator()
 			group := g.Name
-			sub.Add(tr("Test Latency", "测速")).OnClick(m.run("test", func() error {
+			sub.Add(tr("Test Latency    (⌥-click a node to test it alone)", "测速    （⌥ 点击节点单独测速）")).OnClick(m.run("test", func() error {
 				_, err := ps.GroupDelay(group, g.TestURL)
 				return err
 			}))
@@ -217,8 +223,15 @@ func (m *trayMenu) rebuild() {
 		return nil
 	}))
 	pm.Add(tr("Manage Profiles…", "管理配置…")).OnClick(func(*application.Context) { m.h.showMain("profiles") })
+	// ⌥-click copies it for the LAN address, for another machine to use
 	menu.Add(tr("Copy Shell Export Command", "复制终端代理命令")).OnClick(func(*application.Context) {
-		m.h.app.Clipboard.SetText((&AppService{m.h}).ProxyCommand())
+		host := "127.0.0.1"
+		if optionHeld() {
+			if ip := lanIP(); ip != "" {
+				host = ip
+			}
+		}
+		m.h.app.Clipboard.SetText(proxyCommand(host))
 	})
 
 	// core

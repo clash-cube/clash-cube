@@ -115,4 +115,3 @@ func (b *Backend) SetTun(on bool, prompt string) error {
 	}
 	return b.Reload()
 }
-

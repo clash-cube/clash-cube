@@ -49,6 +49,17 @@ export interface Rule {
     "payload": string;
     "proxy": string;
     "size": number;
+    "extra"?: RuleExtra | null;
+}
+
+/**
+ * RuleExtra is what the core counts for a top-level rule.
+ */
+export interface RuleExtra {
+    "disabled": boolean;
+    "hitCount": number;
+    "hitAt": string;
+    "missCount": number;
 }
 
 export interface Traffic {

@@ -308,4 +308,3 @@ func (s *server) giveBack(home string) {
 		return nil
 	})
 }
-

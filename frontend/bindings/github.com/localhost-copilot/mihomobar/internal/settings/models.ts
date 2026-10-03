@@ -54,6 +54,11 @@ export interface Settings {
     "testUrl": string;
 
     /**
+     * look up the process of every connection
+     */
+    "findProcess": boolean;
+
+    /**
      * speed beside the menu bar icon
      */
     "traySpeed": boolean;

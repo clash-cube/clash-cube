@@ -169,11 +169,20 @@ func (c *Client) GroupDelay(ctx context.Context, group, testURL string, timeout 
 }
 
 type Rule struct {
-	Index   int    `json:"index"`
-	Type    string `json:"type"`
-	Payload string `json:"payload"`
-	Proxy   string `json:"proxy"`
-	Size    int    `json:"size"`
+	Index   int        `json:"index"`
+	Type    string     `json:"type"`
+	Payload string     `json:"payload"`
+	Proxy   string     `json:"proxy"`
+	Size    int        `json:"size"`
+	Extra   *RuleExtra `json:"extra,omitempty"`
+}
+
+// RuleExtra is what the core counts for a top-level rule.
+type RuleExtra struct {
+	Disabled  bool      `json:"disabled"`
+	HitCount  uint64    `json:"hitCount"`
+	HitAt     time.Time `json:"hitAt"`
+	MissCount uint64    `json:"missCount"`
 }
 
 func (c *Client) Rules(ctx context.Context) ([]Rule, error) {
@@ -295,4 +304,18 @@ func Stream[T any](ctx context.Context, c *Client, path string, fn func(T)) erro
 		return err
 	}
 	return io.ErrUnexpectedEOF
+}
+
+// DNSQuery resolves name through the core's resolver.
+func (c *Client) DNSQuery(ctx context.Context, name string) error {
+	var v struct {
+		Status int `json:"Status"`
+	}
+	if err := c.req(ctx, http.MethodGet, "/dns/query?name="+url.QueryEscape(name)+"&type=A", nil, &v); err != nil {
+		return err
+	}
+	if v.Status != 0 {
+		return fmt.Errorf("dns rcode %d", v.Status)
+	}
+	return nil
 }

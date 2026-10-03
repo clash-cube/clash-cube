@@ -55,6 +55,7 @@ export function Settings() {
             {["debug", "info", "warning", "error", "silent"].map((l) => <option key={l}>{l}</option>)}
           </select>
         </Row>
+        <Row label={t("Identify processes")} sub={t("Show which app made each connection")}><Switch on={s.findProcess} onChange={(v) => patch({ findProcess: v })} /></Row>
         <Row label={t("Latency test URL")}><TextInput value={s.testUrl} onCommit={(v) => patch({ testUrl: v })} /></Row>
         <BypassRow value={s.bypass ?? []} onSave={(v) => patch({ bypass: v })} />
       </Section>
@@ -70,7 +71,7 @@ export function Settings() {
       <Section title={t("Core")}>
         <Row label={t("Flush DNS cache")}><button className="btn small" disabled={state?.core !== "running"} onClick={() => run(Proxy.FlushDNS(), t("Saved"))}>{t("Clear")}</button></Row>
         <Row label={t("Update GEO databases")}><button className="btn small" disabled={state?.core !== "running"} onClick={() => run(Proxy.UpdateGeo(), t("Saved"))}>{t("Update")}</button></Row>
-        <Row label={t("Copy shell export command")}><button className="btn small" onClick={async () => { App.CopyText(await App.ProxyCommand()); toast(t("Copied")); }}>{t("Copy")}</button></Row>
+        <Row label={t("Copy shell export command")}><button className="btn small" title={t("⌥-click: use this Mac's LAN address")} onClick={async (e) => { App.CopyText(await (e.altKey ? App.LANProxyCommand() : App.ProxyCommand())); toast(t("Copied")); }}>{t("Copy")}</button></Row>
         <Row label={t("Open data folder")}><button className="btn small" onClick={() => run(App.RevealData())}>Finder</button></Row>
       </Section>
 
@@ -105,7 +106,7 @@ function ServiceModeRow() {
         {hs?.enabled && <div className="sub wrap">{hs.active ? t("Core runs as root") : t("Core runs as you")} · {t("The root core reads its configuration from your user folder, so programs running as you can influence it.")}</div>}
       </div>
       <div className="end">
-        {(!hs?.installed || !hs.current || !hs.enabled) && <button className="btn small primary" disabled={busy} onClick={() => act(App.EnableServiceMode())}>{hs?.installed && !hs.current ? t("Update") : t("Install")}</button>}
+        {(!hs?.installed || !hs.current || !hs.enabled) && <button className="btn small primary" disabled={busy} onClick={() => act(hs?.installed && !hs.current ? App.EnableServiceMode() : App.SetTun(true))}>{hs?.installed && !hs.current ? t("Update") : t("Install and turn on TUN")}</button>}
         {hs?.installed && <button className="btn small danger" disabled={busy} onClick={() => act(App.DisableServiceMode(true))}>{t("Uninstall")}</button>}
       </div>
     </div>

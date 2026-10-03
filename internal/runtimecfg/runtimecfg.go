@@ -39,6 +39,11 @@ func Build(profile []byte, s settings.Settings, ctl Controller) ([]byte, error) 
 	if s.LogLevel != "" {
 		m["log-level"] = s.LogLevel
 	}
+	// the connections page groups by process, which needs it looked up
+	// for every connection, not only those a PROCESS-NAME rule asks about
+	if s.FindProcess {
+		m["find-process-mode"] = "always"
+	}
 	// The app is the only controller: a profile's own (or a unix socket,
 	// which takes no secret) must not open another way in.
 	m["external-controller"] = ctl.Addr

@@ -3,6 +3,7 @@ package gui
 import (
 	"context"
 	"errors"
+	"net"
 	"os"
 	"os/exec"
 	"sort"
@@ -32,6 +33,9 @@ func (s *AppService) SetMode(mode string) error {
 }
 func (s *AppService) SetSystemProxy(on bool) error { return s.h.b.SetSystemProxy(on) }
 func (s *AppService) SetTun(on bool) error         { return s.h.b.SetTun(on, helperPrompt()) }
+
+// Connectivity measures router, DNS, internet and proxy latency.
+func (s *AppService) Connectivity() (backend.Connectivity, error) { return s.h.b.Connectivity() }
 
 // HelperStatus is service mode's state, for Settings.
 func (s *AppService) HelperStatus() backend.HelperStatus { return s.h.b.HelperStatus() }
@@ -63,11 +67,36 @@ func (s *AppService) CopyText(text string) bool { return s.h.app.Clipboard.SetTe
 
 func (s *AppService) OpenURL(url string) error { return s.h.app.Browser.OpenURL(url) }
 
-// CopyProxyCommand is the shell export line for the mixed port.
-func (s *AppService) ProxyCommand() string {
-	p := settings.Load().MixedPort
-	addr := "http://127.0.0.1:" + itoa(p)
-	return "export https_proxy=" + addr + " http_proxy=" + addr + " all_proxy=socks5://127.0.0.1:" + itoa(p)
+// ProxyCommand is the shell export line for the mixed port.
+func (s *AppService) ProxyCommand() string { return proxyCommand("127.0.0.1") }
+
+// LANProxyCommand is the same for this Mac's LAN address, for another
+// machine to use (Allow LAN must be on).
+func (s *AppService) LANProxyCommand() string {
+	if ip := lanIP(); ip != "" {
+		return proxyCommand(ip)
+	}
+	return proxyCommand("127.0.0.1")
+}
+
+func proxyCommand(host string) string {
+	p := itoa(settings.Load().MixedPort)
+	addr := "http://" + host + ":" + p
+	return "export https_proxy=" + addr + " http_proxy=" + addr + " all_proxy=socks5://" + host + ":" + p
+}
+
+// lanIP is the address of the interface the default route leaves by.
+func lanIP() string {
+	c, err := net.Dial("udp", "192.0.2.1:9") // no packet is sent
+	if err != nil {
+		return ""
+	}
+	defer c.Close()
+	ip := c.LocalAddr().(*net.UDPAddr).IP
+	if ip.IsLoopback() || strings.HasPrefix(ip.String(), "198.18.") {
+		return ""
+	}
+	return ip.String()
 }
 
 // RevealData opens the app's data folder in Finder.
@@ -372,6 +401,7 @@ type Patch struct {
 	Dock          *string   `json:"dock,omitempty"`
 	TestURL       *string   `json:"testUrl,omitempty"`
 	TraySpeed     *bool     `json:"traySpeed,omitempty"`
+	FindProcess   *bool     `json:"findProcess,omitempty"`
 }
 
 func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
@@ -401,6 +431,7 @@ func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
 		set(&st.Dock, p.Dock)
 		set(&st.TestURL, p.TestURL)
 		set(&st.TraySpeed, p.TraySpeed)
+		set(&st.FindProcess, p.FindProcess)
 	})
 	if p.Dock != nil {
 		application.InvokeAsync(func() { s.h.dock(s.h.main.IsVisible()) })

@@ -14,6 +14,13 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // @ts-ignore: Unused imports
 import * as backend$0 from "../backend/models.js";
 
+/**
+ * Connectivity measures router, DNS, internet and proxy latency.
+ */
+export function Connectivity(): $CancellablePromise<backend$0.Connectivity> {
+    return $Call.ByID(1676079710);
+}
+
 export function CopyText(text: string): $CancellablePromise<boolean> {
     return $Call.ByID(1618543495, text);
 }
@@ -51,12 +58,20 @@ export function HidePanel(): $CancellablePromise<void> {
     return $Call.ByID(3127844849);
 }
 
+/**
+ * LANProxyCommand is the same for this Mac's LAN address, for another
+ * machine to use (Allow LAN must be on).
+ */
+export function LANProxyCommand(): $CancellablePromise<string> {
+    return $Call.ByID(3811387141);
+}
+
 export function OpenURL(url: string): $CancellablePromise<void> {
     return $Call.ByID(1821707918, url);
 }
 
 /**
- * CopyProxyCommand is the shell export line for the mixed port.
+ * ProxyCommand is the shell export line for the mixed port.
  */
 export function ProxyCommand(): $CancellablePromise<string> {
     return $Call.ByID(4092743996);

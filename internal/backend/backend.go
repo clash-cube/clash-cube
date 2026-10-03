@@ -347,7 +347,8 @@ func (b *Backend) PatchSettings(fn func(*settings.Settings)) (settings.Settings,
 	}
 	b.emitState()
 	coreChanged := before.MixedPort != after.MixedPort || before.AllowLan != after.AllowLan ||
-		before.IPv6 != after.IPv6 || before.LogLevel != after.LogLevel || before.TunStack != after.TunStack
+		before.IPv6 != after.IPv6 || before.LogLevel != after.LogLevel || before.TunStack != after.TunStack ||
+		before.FindProcess != after.FindProcess
 	if coreChanged {
 		if err := b.Reload(); err != nil {
 			return after, err

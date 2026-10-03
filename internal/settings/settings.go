@@ -36,7 +36,8 @@ type Settings struct {
 	Lang          string `json:"lang"`  // system | en | zh
 	Dock          string `json:"dock"`  // never | always | window
 	TestURL       string `json:"testUrl"`
-	TraySpeed     bool   `json:"traySpeed"` // speed beside the menu bar icon
+	FindProcess   bool   `json:"findProcess"` // look up the process of every connection
+	TraySpeed     bool   `json:"traySpeed"`   // speed beside the menu bar icon
 	Window        []int  `json:"window,omitempty"`
 }
 
@@ -50,11 +51,12 @@ func Defaults() Settings {
 			"127.0.0.1", "192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12",
 			"localhost", "*.local", "*.crashlytics.com", "<local>",
 		},
-		AutoStart: true,
-		Theme:     "system",
-		Lang:      "system",
-		Dock:      "window",
-		TestURL:   "https://www.gstatic.com/generate_204",
+		AutoStart:   true,
+		FindProcess: true,
+		Theme:       "system",
+		Lang:        "system",
+		Dock:        "window",
+		TestURL:     "https://www.gstatic.com/generate_204",
 	}
 }
 

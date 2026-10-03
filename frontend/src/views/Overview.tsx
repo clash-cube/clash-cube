@@ -2,6 +2,7 @@ import { useStore } from "../store";
 import { useT } from "../i18n";
 import { bytes, speed } from "../format";
 import { Sparkline } from "../components/Sparkline";
+import { ConnectivityCards } from "../components/ConnectivityCards";
 import { Segmented } from "../components/Segmented";
 import { Switch } from "../components/Switch";
 import { Arrow, Globe, Shield, File, Chevron } from "../components/Icons";
@@ -38,6 +39,8 @@ export function Overview() {
         </div>
         <Sparkline data={history} height={96} />
       </div>
+
+      <ConnectivityCards />
 
       <div className="stats">
         <Stat label={t("Total") + " ↑"} value={bytes(traffic.upTotal)} />

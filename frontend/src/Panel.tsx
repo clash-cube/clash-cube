@@ -20,7 +20,7 @@ export function Panel() {
   const state = useStore((s) => s.state);
   const traffic = useStore((s) => s.traffic);
   const history = useStore((s) => s.history);
-  const { groups, select, testGroup, testing, flash } = useGroups();
+  const { groups, select, testGroup, testOne, testing, flash } = useGroups();
   const [open, setOpen] = useState<string>("");
   const top = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
@@ -96,11 +96,11 @@ export function Panel() {
                               key={m.name}
                               className={"pnode stagger" + (m.name === g.now ? " on" : "") + (flash === g.name + "/" + m.name ? " flash" : "")}
                               style={{ ["--i" as string]: Math.min(i, 16) }}
-                              onClick={() => g.type === "Selector" && m.name !== g.now && select(g.name, m.name)}
+                              onClick={(e) => (e.altKey ? testOne(m.name) : g.type === "Selector" && m.name !== g.now && select(g.name, m.name))}
                             >
                               <span className="check">{m.name === g.now ? "✓" : ""}</span>
                               <span className="nname">{m.name}</span>
-                              <span className={"delay " + (testing[g.name] ? "testing" : delayClass(m.delay))}>{testing[g.name] ? "···" : fmtDelay(m.delay)}</span>
+                              <span className={"delay " + (testing[g.name] || testing["#" + m.name] ? "testing" : delayClass(m.delay))}>{testing[g.name] || testing["#" + m.name] ? "···" : fmtDelay(m.delay)}</span>
                             </button>
                           ))}
                         </div>

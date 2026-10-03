@@ -48,4 +48,5 @@ export interface Patch {
     "dock"?: string | null;
     "testUrl"?: string | null;
     "traySpeed"?: boolean | null;
+    "findProcess"?: boolean | null;
 }
