@@ -9,7 +9,13 @@ export const Logo = ({ size = 18 }: P) => (
     <path d="M11 11 18.2 6.8v8.4L11 19.4Z" fill="currentColor" stroke="none" />
   </svg>
 );
-export const Gear = ({ size }: P) => (<svg {...s(size)}><circle cx="8" cy="8" r="2.2" /><path d="M8 1.5v1.8M8 12.7v1.8M14.5 8h-1.8M3.3 8H1.5M12.6 3.4l-1.3 1.3M4.7 11.3l-1.3 1.3M12.6 12.6l-1.3-1.3M4.7 4.7 3.4 3.4" /></svg>);
+// Lucide's "settings" icon, drawn on a 24px grid.
+export const Gear = ({ size }: P) => (
+  <svg {...s(size)} viewBox="0 0 24 24" strokeWidth={2}>
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
 export const Bolt = ({ size }: P) => (<svg {...s(size)}><path d="M9 1.5 3.5 9H8l-1 5.5L12.5 7H8z" /></svg>);
 export const Refresh = ({ size }: P) => (<svg {...s(size)}><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" /><path d="M13.5 2.5v3h-3" /></svg>);
 export const Chevron = ({ size = 12, className = "" }: P & { className?: string }) => (<svg {...s(size)} className={className}><path d="m6 3.5 4.5 4.5L6 12.5" /></svg>);
