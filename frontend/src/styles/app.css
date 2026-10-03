@@ -351,6 +351,14 @@ select.input { padding-right: 6px; }
 
 /* ---- connections: groups and detail ------------------------------------- */
 .conns-view { overflow: hidden; }
+.conns-view .view-head, .conn-controls, .conn-notice { flex-shrink: 0; }
+.conns-view .view-tools { flex-wrap: wrap; }
+.conn-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.conn-controls .search { flex: 1; min-width: 140px; }
+.conn-sort { width: auto; max-width: 160px; padding: 4px 8px; font-size: 12px; }
+.conn-notice { font-size: 12px; color: var(--muted); padding: 6px 10px; background: var(--pill); border-radius: 8px; }
+.conn-notice span { overflow-wrap: anywhere; }
+.conn-rates { display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; }
 .conns-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr; gap: 12px; }
 .conns-body.with-detail { grid-template-columns: minmax(0, 1fr) clamp(240px, 34%, 300px); }
 .conns-list { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; container-type: inline-size; }
@@ -365,6 +373,7 @@ select.input { padding-right: 6px; }
 .cgname { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .cgcount { font-size: 11px; color: var(--muted); background: var(--pill); border-radius: 999px; padding: 0 7px; line-height: 17px; font-variant-numeric: tabular-nums; }
 .cgspeed { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.conns-view .cgspeed { max-width: 65%; overflow: hidden; text-overflow: ellipsis; }
 .cgroup .table { border-top: 1px solid var(--line-2); }
 .trow.sel { background: var(--sel); }
 .live { color: var(--accent); font-weight: 500; }

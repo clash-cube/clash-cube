@@ -36,8 +36,8 @@ export function ago(iso: string | number | Date, t: (s: string, v?: Record<strin
   return t("{n}d ago", { n: Math.floor(h / 24) });
 }
 
-export function duration(from: string): string {
-  const s = Math.max(0, Math.floor((Date.now() - new Date(from).getTime()) / 1000));
+export function duration(from: string, until = Date.now()): string {
+  const s = Math.max(0, Math.floor((until - new Date(from).getTime()) / 1000));
   if (s < 60) return s + "s";
   if (s < 3600) return Math.floor(s / 60) + "m" + String(s % 60).padStart(2, "0") + "s";
   return Math.floor(s / 3600) + "h" + String(Math.floor((s % 3600) / 60)).padStart(2, "0") + "m";

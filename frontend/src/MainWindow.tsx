@@ -14,12 +14,14 @@ import { Rules } from "./views/Rules";
 import { Logs } from "./views/Logs";
 import { Settings } from "./views/Settings";
 import { Prewarm } from "./components/Prewarm";
+import { useConnectionFeed } from "./connectionStore";
 
 const VIEWS: Record<View, () => JSX.Element> = {
   overview: Overview, proxies: Proxies, profiles: Profiles, connections: Connections, rules: Rules, logs: Logs, settings: Settings,
 };
 
 export function MainWindow() {
+  useConnectionFeed();
   const t = useT();
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
@@ -71,4 +73,3 @@ export function MainWindow() {
     </div>
   );
 }
-
