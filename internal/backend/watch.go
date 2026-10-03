@@ -74,7 +74,11 @@ func (b *Backend) watch() {
 	network := networkKey()
 	misses := 0
 	for i := 1; ; i++ {
-		<-t.C
+		select {
+		case <-b.done:
+			return
+		case <-t.C:
+		}
 		now := time.Now().Round(0)
 		if now.Sub(last) > watchEvery+30*time.Second {
 			b.Woke()
@@ -84,6 +88,7 @@ func (b *Backend) watch() {
 			network = k
 			b.networkChanged(k)
 		}
+		b.checkNetwork(network)
 		b.checkProxy(&misses, network != "")
 		if i%4 == 0 {
 			b.checkGroups()

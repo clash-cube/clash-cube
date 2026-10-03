@@ -20,6 +20,7 @@ import (
 	"github.com/localhost-copilot/mihomobar/internal/profiles"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
 	"github.com/localhost-copilot/mihomobar/internal/userrules"
+	"github.com/localhost-copilot/mihomobar/internal/wifi"
 )
 
 // AppService is the app and its windows.
@@ -298,28 +299,9 @@ func (s *ProxyService) UpdateProvider(name string) error {
 	return c.UpdateProxyProvider(context.Background(), name)
 }
 
-func (s *ProxyService) Select(group, name string) error {
-	c, err := s.client()
-	if err != nil {
-		return err
-	}
-	if err := c.Select(context.Background(), group, name); err != nil {
-		return err
-	}
-	// the old proxy's connections are closed so the switch shows at once
-	conns, err := c.Connections(context.Background())
-	if err == nil {
-		for _, cn := range conns.Connections {
-			for _, ch := range cn.Chains {
-				if ch == group {
-					_ = c.CloseConnection(context.Background(), cn.ID)
-					break
-				}
-			}
-		}
-	}
-	return nil
-}
+// Select picks a group's member; the old one's connections are closed so
+// the switch shows at once.
+func (s *ProxyService) Select(group, name string) error { return s.h.b.SelectProxy(group, name) }
 
 // TestLatency shares scheduling, progress and results across all surfaces.
 func (s *ProxyService) TestLatency(kind, name string) (backend.LatencyResult, error) {
@@ -542,6 +524,23 @@ type SettingsService struct{ h *host }
 
 func (s *SettingsService) Get() settings.Settings { return settings.Load() }
 
+// SetNetworkAuto turns the network rules on or off.
+func (s *SettingsService) SetNetworkAuto(on bool) (settings.Settings, error) {
+	return s.h.b.SetNetworkAuto(on)
+}
+
+// SetNetworkRules replaces the network rules; the one in effect is applied.
+func (s *SettingsService) SetNetworkRules(rules []settings.NetworkRule) (settings.Settings, error) {
+	return s.h.b.SetNetworkRules(rules)
+}
+
+// ResumeNetworkAuto drops the changes made by hand and applies the rule again.
+func (s *SettingsService) ResumeNetworkAuto() { s.h.b.ResumeNetworkAuto() }
+
+func (s *SettingsService) RequestWiFiPermission() { wifi.RequestPermission() }
+
+func (s *SettingsService) SavedWiFiNetworks() ([]string, error) { return wifi.SavedNetworks() }
+
 // Patch is a partial update: the keys of p (as settings.json names them)
 // that are present are changed.
 type Patch struct {
@@ -561,6 +560,7 @@ type Patch struct {
 	TraySpeed      *bool     `json:"traySpeed,omitempty"`
 	FindProcess    *bool     `json:"findProcess,omitempty"`
 	Notify         *bool     `json:"notify,omitempty"`
+	SaveData       *bool     `json:"saveData,omitempty"`
 }
 
 func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
@@ -593,6 +593,7 @@ func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
 		set(&st.TraySpeed, p.TraySpeed)
 		set(&st.FindProcess, p.FindProcess)
 		set(&st.Notify, p.Notify)
+		set(&st.SaveData, p.SaveData)
 	})
 	if p.Dock != nil {
 		application.InvokeAsync(func() { s.h.dock(s.h.main.IsVisible()) })

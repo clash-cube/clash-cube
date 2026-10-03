@@ -6,6 +6,7 @@ import { Switch } from "../components/Switch";
 import { Segmented } from "../components/Segmented";
 import { toast, toastError } from "../components/Toast";
 import { run } from "../actions";
+import { NetworkRules } from "../components/NetworkRules";
 
 export function Settings() {
   const t = useT();
@@ -28,7 +29,7 @@ export function Settings() {
         <Row label={t("Start core when the app opens")}><Switch on={s.autoStart} onChange={(v) => patch({ autoStart: v })} /></Row>
         <Row label={t("Open at login")}><Switch on={s.launchAtLogin} onChange={(v) => patch({ launchAtLogin: v })} /></Row>
         <Row label={t("Show speed in the menu bar")}><Switch on={s.traySpeed} onChange={(v) => patch({ traySpeed: v })} /></Row>
-        <Row label={t("Notifications")} sub={t("Core errors, failed updates, and the system proxy taken by another app")}><Switch on={s.notify} onChange={(v) => patch({ notify: v })} /></Row>
+        <Row label={t("Notifications")} sub={t("Core errors, failed updates, the system proxy taken by another app, and network rules applied")}><Switch on={s.notify} onChange={(v) => patch({ notify: v })} /></Row>
         <Row label={t("Show in Dock")}>
           <select className="input" value={s.dock} onChange={(e) => patch({ dock: e.target.value })}>
             <option value="window">{t("While the window is open")}</option>
@@ -58,8 +59,14 @@ export function Settings() {
         </Row>
         <Row label={t("Identify processes")} sub={t("Show which app made each connection")}><Switch on={s.findProcess} onChange={(v) => patch({ findProcess: v })} /></Row>
         <Row label={t("Latency test URL")}><TextInput value={s.testUrl} onCommit={(v) => patch({ testUrl: v })} /></Row>
+        <Row label={t("Save data on metered networks")} sub={t("On a personal hotspot or in Low Data Mode, subscriptions aren't updated and connectivity isn't measured in the background.")} wrap>
+          {state?.network.savingData && <span className="badge">{t("Saving data")}</span>}
+          <Switch on={s.saveData} onChange={(v) => patch({ saveData: v })} />
+        </Row>
         <BypassRow value={s.bypass ?? []} onSave={(v) => patch({ bypass: v })} />
       </Section>
+
+      <NetworkRules settings={s} />
 
       <div ref={tunRef} />
       <Section title={t("Enhanced Mode")}>

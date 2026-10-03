@@ -381,6 +381,15 @@ select.input { padding-right: 6px; }
 /* ---- settings ---------------------------------------------------------- */
 .settings .row { min-height: 46px; }
 .settings .section-title { margin-top: 4px; }
+.name > .badge.net { margin-left: 6px; }
+.network-rule.off .who { opacity: .55; }
+.network-rule-form { width: auto; }
+.network-rule-form .rule-choices { max-height: 92px; overflow-y: auto; }
+.network-rule-form .hint.err { color: var(--red); }
+.network-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.network-group { display: flex; align-items: center; gap: 8px; }
+.network-group .gname { flex: 1; min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.network-group .input { flex: 1.4; min-width: 0; width: 0; }
 .muted { color: var(--muted); }
 .bypass { align-items: flex-start; }
 .bypass textarea { width: 100%; margin-top: 8px; }

@@ -43,6 +43,30 @@ type Settings struct {
 	TraySpeed     bool   `json:"traySpeed"`   // speed beside the menu bar icon
 	Notify        bool   `json:"notify"`      // notifications for the events that ask for one
 	Window        []int  `json:"window,omitempty"`
+
+	// NetworkAuto applies NetworkRules as the Mac moves between networks.
+	NetworkAuto  bool          `json:"networkAuto"`
+	NetworkRules []NetworkRule `json:"networkRules"`
+	// SaveData pauses the app's own background traffic on networks macOS
+	// marks expensive (a personal hotspot) or constrained (Low Data Mode).
+	SaveData bool `json:"saveData"`
+}
+
+// NetworkRule is what to set while on the networks it matches: a Wi-Fi
+// network by its exact, case-sensitive SSID, any wired network, or, for the
+// one "other" rule, every other network. Unset actions leave things be.
+type NetworkRule struct {
+	Match   string         `json:"match"` // ssid | wired | other
+	SSID    string         `json:"ssid,omitempty"`
+	Actions NetworkActions `json:"actions"`
+}
+
+type NetworkActions struct {
+	Profile     string            `json:"profile,omitempty"`
+	Mode        string            `json:"mode,omitempty"` // rule | global | direct
+	SystemProxy *bool             `json:"systemProxy,omitempty"`
+	Tun         *bool             `json:"tun,omitempty"`
+	Groups      map[string]string `json:"groups,omitempty"` // selector group → member
 }
 
 func Defaults() Settings {
@@ -59,6 +83,7 @@ func Defaults() Settings {
 		AutoStart:   true,
 		FindProcess: true,
 		Notify:      true,
+		SaveData:    true,
 		Theme:       "system",
 		Lang:        "system",
 		Dock:        "window",

@@ -68,6 +68,7 @@ export interface Patch {
     "traySpeed"?: boolean | null;
     "findProcess"?: boolean | null;
     "notify"?: boolean | null;
+    "saveData"?: boolean | null;
 }
 
 /**

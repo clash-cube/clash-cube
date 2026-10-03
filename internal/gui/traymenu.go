@@ -215,7 +215,10 @@ func (m *trayMenu) update(st backend.State) {
 	}
 	// what the quality says depends on the path traffic takes
 	retest := st.Core == "running" && (prev.Core != "running" || prev.Mode != st.Mode || prev.Profile != st.Profile)
-	if retest {
+	if retest && st.Network.SavingData {
+		// on a metered network it waits for the menu to be opened
+		m.measured, retest = time.Time{}, false
+	} else if retest {
 		m.measured = time.Time{}
 	}
 	m.mu.Unlock()
@@ -288,6 +291,17 @@ func (m *trayMenu) run(name string, fn func() error) func(*application.Context) 
 			m.refresh()
 		}()
 	}
+}
+
+// networkLabel names the network rule in effect.
+func networkLabel(match string) string {
+	switch {
+	case match == "wired":
+		return tr("Wired Network", "有线网络")
+	case strings.HasPrefix(match, "ssid:"):
+		return "Wi-Fi " + strings.TrimPrefix(match, "ssid:")
+	}
+	return tr("Other Networks", "其他网络")
 }
 
 func delayText(d int) string {
@@ -372,12 +386,15 @@ func (m *trayMenu) sample(stop chan struct{}) {
 	}
 }
 
-// remeasure takes the quality again, the network having changed.
+// remeasure takes the quality again, the network having changed; on a
+// metered network, when the menu is next opened.
 func (m *trayMenu) remeasure() {
 	m.mu.Lock()
 	m.measured = time.Time{}
 	m.mu.Unlock()
-	go m.measure()
+	if !m.h.b.SavingData() {
+		go m.measure()
+	}
 }
 
 // measure takes the connectivity quality, once at a time.
@@ -561,6 +578,16 @@ func (m *trayMenu) rebuild() {
 			m.refresh()
 		}()
 	})
+	if n := st.Network; n.Match != "" {
+		state := tr("Automatic", "自动")
+		if len(n.Manual) > 0 {
+			state = tr("Changed by hand", "已手动更改")
+		}
+		menu.Add(detail(networkLabel(n.Match), state)).SetEnabled(false)
+		if len(n.Manual) > 0 {
+			menu.Add(tr("Resume Network Rule", "恢复网络规则")).OnClick(m.run("resume network rule", func() error { b.ResumeNetworkAuto(); return nil }))
+		}
+	}
 
 	// profiles
 	menu.AddSeparator()

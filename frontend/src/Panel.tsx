@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useStore } from "./store";
 import { useT } from "./i18n";
-import { App, Proxy, type ClientRate } from "./api";
+import { App, Proxy, Settings, type ClientRate } from "./api";
 import { usePoll } from "./usePoll";
 import { Segmented } from "./components/Segmented";
 import { Switch } from "./components/Switch";
@@ -12,6 +12,8 @@ import { AppIcon } from "./components/AppIcon";
 import { coreLabel, restartCore, setMode, setSystemProxy, setTun, startCore } from "./actions";
 import { speed, delayClass } from "./format";
 import { useGroups } from "./useGroups";
+import { matchName } from "./components/NetworkRules";
+import { toastError } from "./components/Toast";
 import { fmtDelay } from "./views/Proxies";
 
 // The tray panel: the switches one reaches for most, the groups to pick a
@@ -78,6 +80,14 @@ export function Panel() {
               <div className="who"><div className="name">{t("Enhanced Mode")}</div>{!state?.serviceMode && <div className="sub">{t("Installs a privileged helper on first use")}</div>}</div>
               <Switch on={!!state?.tun} onChange={setTun} />
             </div>
+            {state?.network.match && (
+              <div className="row">
+                <div className="who">
+                  <div className="name">{t("Network rule")}<span className="badge net">{matchName(state.network.match, t)}</span></div>
+                  {(state.network.manual?.length ?? 0) > 0 && <div className="sub warn">{t("Changed by hand")} · <button className="link" onClick={() => Settings.ResumeNetworkAuto().catch(toastError)}>{t("Resume rule")}</button></div>}
+                </div>
+              </div>
+            )}
           </div>
 
           {running ? (

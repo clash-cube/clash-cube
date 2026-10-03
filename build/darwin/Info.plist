@@ -19,6 +19,8 @@
 		<key>CFBundleTypeRole</key><string>Viewer</string>
 	</dict></array>
 	<key>NSHighResolutionCapable</key><true/>
+	<key>NSLocationUsageDescription</key><string>MihomoBar uses location permission to read the Wi-Fi name and switch to your chosen configuration.</string>
+	<key>NSLocationWhenInUseUsageDescription</key><string>MihomoBar uses location permission to read the Wi-Fi name and switch to your chosen configuration.</string>
 	<key>NSHumanReadableCopyright</key><string>© localhost-copilot. mihomo is GPL-3.0.</string>
 </dict>
 </plist>

@@ -96,7 +96,8 @@ export function ConnectivityCards() {
   useEffect(() => {
     if (!running) { seq.current++; setC({}); setPending(new Set()); return; }
     measure();
-    const id = setInterval(() => { if (!document.hidden) measure(); }, 30000);
+    // on a metered network only what is asked for is measured
+    const id = setInterval(() => { if (!document.hidden && !useStore.getState().state?.network.savingData) measure(); }, 30000);
     return () => clearInterval(id);
   }, [running, mode, profile, reset]);
 

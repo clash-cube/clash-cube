@@ -88,6 +88,10 @@ export function Rules(): $CancellablePromise<mihomoapi$0.Rule[] | null> {
     return $Call.ByID(647292905);
 }
 
+/**
+ * Select picks a group's member; the old one's connections are closed so
+ * the switch shows at once.
+ */
 export function Select(group: string, name: string): $CancellablePromise<void> {
     return $Call.ByID(141765054, group, name);
 }

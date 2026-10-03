@@ -11,6 +11,7 @@ export type {
     LatencyEvent,
     LatencyResult,
     Lookup,
+    Network,
     ProxyEgress,
     Record,
     State

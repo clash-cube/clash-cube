@@ -2,6 +2,7 @@ package backend
 
 import (
 	"log"
+	"strconv"
 
 	"github.com/localhost-copilot/mihomobar/internal/appdir"
 	"github.com/localhost-copilot/mihomobar/internal/coremgr"
@@ -90,6 +91,14 @@ func (b *Backend) DisableServiceMode(uninstall bool, prompt string) error {
 // SetTun turns TUN on or off. TUN needs the core to run as root, so turning
 // it on first moves the core to the helper (installing it if need be).
 func (b *Backend) SetTun(on bool, prompt string) error {
+	if err := b.setTun(on, prompt); err != nil {
+		return err
+	}
+	b.noteManual("tun", strconv.FormatBool(on))
+	return nil
+}
+
+func (b *Backend) setTun(on bool, prompt string) error {
 	if on {
 		if _, active := b.core.Runner().(*helper.Runner); !active || !settings.Load().ServiceMode {
 			if _, err := settings.Update(func(s *settings.Settings) { s.Tun = true }); err != nil {

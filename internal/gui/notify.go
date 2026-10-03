@@ -106,6 +106,8 @@ func eventText(e backend.Event) (title, body string) {
 		title = tr("System Proxy", "系统代理")
 	case "profile":
 		title = tr("Profiles", "配置")
+	case "network":
+		title = tr("Network Rules", "网络规则")
 	default:
 		title = "MihomoBar"
 	}
@@ -118,4 +120,10 @@ var eventsZh = map[string]string{
 	"Another app changed the system proxy":                             "其他应用修改了系统代理",
 	"Couldn't update {name}: {error}":                                  "无法更新 {name}：{error}",
 	"The updated profile was refused, the previous one stays: {error}": "更新后的配置未通过校验，继续使用之前的配置：{error}",
+	"Applied the settings for Wi-Fi {ssid}":                            "已应用 Wi-Fi {ssid} 的设置",
+	"Applied the settings for wired networks":                          "已应用有线网络的设置",
+	"Applied the settings for other networks":                          "已应用其他网络的设置",
+	"Couldn't apply all of the settings for Wi-Fi {ssid}: {error}":     "Wi-Fi {ssid} 的设置未能全部应用：{error}",
+	"Couldn't apply all of the settings for wired networks: {error}":   "有线网络的设置未能全部应用：{error}",
+	"Couldn't apply all of the settings for other networks: {error}":   "其他网络的设置未能全部应用：{error}",
 }

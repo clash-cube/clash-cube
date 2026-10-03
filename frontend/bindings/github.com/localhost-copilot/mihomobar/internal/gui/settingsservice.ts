@@ -25,3 +25,32 @@ export function Get(): $CancellablePromise<settings$0.Settings> {
 export function Patch(p: $models.Patch): $CancellablePromise<settings$0.Settings> {
     return $Call.ByID(3772147429, p);
 }
+
+export function RequestWiFiPermission(): $CancellablePromise<void> {
+    return $Call.ByID(2890113444);
+}
+
+/**
+ * ResumeNetworkAuto drops the changes made by hand and applies the rule again.
+ */
+export function ResumeNetworkAuto(): $CancellablePromise<void> {
+    return $Call.ByID(871465971);
+}
+
+export function SavedWiFiNetworks(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(1851823466);
+}
+
+/**
+ * SetNetworkAuto turns the network rules on or off.
+ */
+export function SetNetworkAuto(on: boolean): $CancellablePromise<settings$0.Settings> {
+    return $Call.ByID(3109919596, on);
+}
+
+/**
+ * SetNetworkRules replaces the network rules; the one in effect is applied.
+ */
+export function SetNetworkRules(rules: settings$0.NetworkRule[] | null): $CancellablePromise<settings$0.Settings> {
+    return $Call.ByID(2011321974, rules);
+}

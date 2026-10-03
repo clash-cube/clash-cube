@@ -33,14 +33,15 @@ type State struct {
 	Mode        string `json:"mode"`
 	SystemProxy bool   `json:"systemProxy"`
 	// another app took the system proxy over; ours is no longer in effect
-	ProxyLost   bool   `json:"proxyLost"`
-	Tun         bool   `json:"tun"`
-	TunStack    string `json:"tunStack"`
-	ServiceMode bool   `json:"serviceMode"`
-	MixedPort   int    `json:"mixedPort"`
-	Profile     string `json:"profile"`
-	ProfileName string `json:"profileName"`
-	Busy        string `json:"busy,omitempty"` // what is being done, e.g. "restarting"
+	ProxyLost   bool    `json:"proxyLost"`
+	Tun         bool    `json:"tun"`
+	TunStack    string  `json:"tunStack"`
+	ServiceMode bool    `json:"serviceMode"`
+	MixedPort   int     `json:"mixedPort"`
+	Profile     string  `json:"profile"`
+	ProfileName string  `json:"profileName"`
+	Busy        string  `json:"busy,omitempty"` // what is being done, e.g. "restarting"
+	Network     Network `json:"network"`
 }
 
 // Sink is told what changes; the GUI turns these into events.
@@ -82,10 +83,16 @@ type Backend struct {
 	groupNow     map[string]string
 	groupClient  *mihomoapi.Client
 	groupProfile string
+	shutdown     bool
+	done         chan struct{}
+
+	// network.go
+	net     netWatch
+	applyMu sync.Mutex // one network rule applied at a time
 }
 
 func New(version, coreVersion string, defaultYAML []byte, sink Sink) *Backend {
-	b := &Backend{Version: version, CoreVersion: coreVersion, DefaultYAML: defaultYAML, sink: sink}
+	b := &Backend{Version: version, CoreVersion: coreVersion, DefaultYAML: defaultYAML, sink: sink, done: make(chan struct{})}
 	b.core = coremgr.New(localRunner, appdir.CoreHome(), appdir.RuntimeConfig())
 	b.core.OnChange(b.coreChanged)
 	b.core.OnLog(func(l string) {}) // the core's stdout duplicates /logs
@@ -157,7 +164,7 @@ func (b *Backend) State() State {
 		Core: string(st), CoreError: errText, CoreVersion: b.CoreVersion, AppVersion: b.Version,
 		Mode: s.Mode, SystemProxy: s.SystemProxy, ProxyLost: lost && s.SystemProxy, Tun: s.Tun, TunStack: s.TunStack,
 		ServiceMode: s.ServiceMode, MixedPort: s.MixedPort,
-		Profile: s.Profile, ProfileName: name, Busy: busy,
+		Profile: s.Profile, ProfileName: name, Busy: busy, Network: b.network(s),
 	}
 }
 
@@ -213,8 +220,12 @@ func (b *Backend) writeRuntime(fresh bool) error {
 // Start runs the core.
 func (b *Backend) Start() error {
 	b.opMu.Lock()
-	defer b.opMu.Unlock()
-	return b.start()
+	err := b.start()
+	b.opMu.Unlock()
+	if err == nil {
+		b.followGroups()
+	}
+	return err
 }
 
 func (b *Backend) start() error {
@@ -267,10 +278,14 @@ func (b *Backend) stop() error {
 
 func (b *Backend) Restart() error {
 	b.opMu.Lock()
-	defer b.opMu.Unlock()
 	b.setBusy("restarting")
 	_ = b.core.Stop()
-	return b.start()
+	err := b.start()
+	b.opMu.Unlock()
+	if err == nil {
+		b.followGroups()
+	}
+	return err
 }
 
 // Reload makes the running core take the profile and settings again,
@@ -278,6 +293,11 @@ func (b *Backend) Restart() error {
 func (b *Backend) Reload() error {
 	b.opMu.Lock()
 	defer b.opMu.Unlock()
+	return b.reload()
+}
+
+// reload requires opMu; profile selection and its reload are one transaction.
+func (b *Backend) reload() error {
 	c := b.core.Client()
 	if c == nil {
 		return nil
@@ -299,12 +319,25 @@ func (b *Backend) Reload() error {
 func (b *Backend) Shutdown() {
 	b.opMu.Lock()
 	defer b.opMu.Unlock()
+	if b.shutdown {
+		return
+	}
+	b.shutdown = true
+	close(b.done)
 	b.releaseProxy()
 	_ = b.core.Stop()
 }
 
 // SetMode switches rule / global / direct.
 func (b *Backend) SetMode(mode string) error {
+	if err := b.setMode(mode); err != nil {
+		return err
+	}
+	b.noteManual("mode", mode)
+	return nil
+}
+
+func (b *Backend) setMode(mode string) error {
 	switch mode {
 	case "rule", "global", "direct":
 	default:
@@ -324,6 +357,14 @@ func (b *Backend) SetMode(mode string) error {
 
 // SetSystemProxy turns the system proxy on or off.
 func (b *Backend) SetSystemProxy(on bool) error {
+	if err := b.setSystemProxy(on); err != nil {
+		return err
+	}
+	b.noteManual("systemProxy", strconv.FormatBool(on))
+	return nil
+}
+
+func (b *Backend) setSystemProxy(on bool) error {
 	if _, err := settings.Update(func(s *settings.Settings) { s.SystemProxy = on }); err != nil {
 		return err
 	}
@@ -411,6 +452,18 @@ func (b *Backend) PatchSettings(fn func(*settings.Settings)) (settings.Settings,
 
 // UseProfile switches to another profile.
 func (b *Backend) UseProfile(id string) error {
+	b.opMu.Lock()
+	err := b.useProfile(id)
+	b.opMu.Unlock()
+	if err != nil {
+		return err
+	}
+	b.noteManual("profile", id)
+	b.followGroups()
+	return nil
+}
+
+func (b *Backend) useProfile(id string) error {
 	if _, ok := profiles.Get(id); !ok {
 		return errors.New("no such profile")
 	}
@@ -418,7 +471,7 @@ func (b *Backend) UseProfile(id string) error {
 	if _, err := settings.Update(func(s *settings.Settings) { s.Profile = id }); err != nil {
 		return err
 	}
-	if err := b.Reload(); err != nil {
+	if err := b.reload(); err != nil {
 		_, _ = settings.Update(func(s *settings.Settings) { s.Profile = before })
 		b.emitState()
 		return err
@@ -449,6 +502,8 @@ func (b *Backend) ProfileChanged(id string) {
 
 // RemoveProfile deletes a profile that is not in use.
 func (b *Backend) RemoveProfile(id string) error {
+	b.opMu.Lock()
+	defer b.opMu.Unlock()
 	if id == settings.Load().Profile {
 		return errors.New("the profile in use can't be removed")
 	}
@@ -465,6 +520,9 @@ func (b *Backend) autoUpdate() {
 	defer t.Stop()
 	for {
 		for _, p := range profiles.Due(time.Now()) {
+			if b.SavingData() {
+				break // they stay due, for a network that isn't metered
+			}
 			if _, err := profiles.Update(p.ID); err != nil {
 				log.Printf("update %s: %v", p.Name, err)
 				b.event("profile", "warning", "Couldn't update {name}: {error}", map[string]string{"name": p.Name, "error": err.Error()}, true)
