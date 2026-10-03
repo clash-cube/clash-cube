@@ -15,6 +15,7 @@ func init() {
 	application.RegisterEvent[mihomoapi.Log]("log")
 	application.RegisterEvent[[]profiles.Profile]("profiles")
 	application.RegisterEvent[string]("navigate")
+	application.RegisterEvent[bool]("import-request")
 	application.RegisterEvent[backend.LatencyEvent]("proxy-latency")
 	application.RegisterEvent[backend.Event]("event")
 }

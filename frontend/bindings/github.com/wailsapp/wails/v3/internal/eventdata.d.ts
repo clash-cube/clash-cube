@@ -19,6 +19,7 @@ declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
             "event": backend$0.Event;
+            "import-request": boolean;
             "log": mihomoapi$0.Log;
             "memory": mihomoapi$0.Memory;
             "navigate": string;

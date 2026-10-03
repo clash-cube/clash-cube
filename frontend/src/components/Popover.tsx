@@ -58,7 +58,7 @@ export function Popover({ anchor, open, onClose, children, align = "start", widt
     document.addEventListener("mousedown", down, true);
     document.addEventListener("keydown", key, true);
     return () => { document.removeEventListener("mousedown", down, true); document.removeEventListener("keydown", key, true); };
-  }, [open, anchor]);
+  }, [open, anchor, onClose]);
 
   if (!shown) return null;
   return createPortal(

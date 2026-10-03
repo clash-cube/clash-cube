@@ -52,6 +52,13 @@ export function Reveal(id: string): $CancellablePromise<void> {
     return $Call.ByID(1550090246, id);
 }
 
+/**
+ * TakeImportRequests transfers pending links to the main window's import queue.
+ */
+export function TakeImportRequests(): $CancellablePromise<profiles$0.ImportRequest[] | null> {
+    return $Call.ByID(3937850699);
+}
+
 export function Update(id: string): $CancellablePromise<profiles$0.Profile> {
     return $Call.ByID(52250130, id);
 }

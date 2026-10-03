@@ -18,6 +18,7 @@ import (
 	"github.com/localhost-copilot/mihomobar/internal/backend"
 	"github.com/localhost-copilot/mihomobar/internal/core"
 	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
+	"github.com/localhost-copilot/mihomobar/internal/profiles"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
 )
 
@@ -49,6 +50,8 @@ type host struct {
 
 	panelHeight int
 	closing     atomic.Bool // a full-screen main window leaving it, to hide after
+	importMu    sync.Mutex
+	imports     []profiles.ImportRequest
 
 	trayMu           sync.Mutex
 	trayOn           bool
@@ -173,6 +176,9 @@ func Run(version string) error {
 
 	h.app.Event.OnApplicationEvent(events.Common.SystemDidWake, func(*application.ApplicationEvent) {
 		go h.b.Woke()
+	})
+	h.app.Event.OnApplicationEvent(events.Common.ApplicationLaunchedWithUrl, func(e *application.ApplicationEvent) {
+		h.receiveImportLink(e.Context().URL())
 	})
 	h.app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
 		h.startNotifications()

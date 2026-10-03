@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n";
 import { useStore } from "../store";
-import { Profiles as P, App, type Profile } from "../api";
+import { Profiles as P, App, type Profile, type ImportRequest } from "../api";
 import { Popover, Menu } from "../components/Popover";
 import { toast, toastError } from "../components/Toast";
 import { Globe, File, More, Plus, Refresh } from "../components/Icons";
@@ -12,8 +12,24 @@ export function Profiles() {
   const profiles = useStore((s) => s.profiles);
   const current = useStore((s) => s.state?.profile);
   const [importAt, setImportAt] = useState<HTMLElement | null>(null);
+  const importButton = useRef<HTMLButtonElement>(null);
+  const pendingImport = useStore((s) => s.imports[0]);
+  const [activeImport, setActiveImport] = useState<ImportRequest | null>(null);
   const [updatingAll, setUpdatingAll] = useState(false);
   const [flash, setFlash] = useState("");
+
+  useEffect(() => {
+    if (pendingImport && !importAt) {
+      setActiveImport(pendingImport);
+      setImportAt(importButton.current);
+    }
+  }, [pendingImport, importAt]);
+
+  const closeImport = () => {
+    if (activeImport) useStore.setState((s) => ({ imports: s.imports.filter((r) => r !== activeImport) }));
+    setActiveImport(null);
+    setImportAt(null);
+  };
 
   const flashRow = (id: string) => { setFlash(id); setTimeout(() => setFlash(""), 900); };
 
@@ -33,10 +49,10 @@ export function Profiles() {
         <span className="sub">{profiles.length}</span>
         <div className="view-tools">
           <button className="btn small" disabled={updatingAll} onClick={updateAll}><Refresh size={13} />{updatingAll ? t("Updating…") : t("Update all")}</button>
-          <button className="btn small primary" onClick={(e) => setImportAt(importAt ? null : e.currentTarget)}><Plus size={13} />{t("Import")}</button>
+          <button ref={importButton} className="btn small primary" onClick={(e) => { if (!importAt) setImportAt(e.currentTarget); }}><Plus size={13} />{t("Import")}</button>
         </div>
       </div>
-      <ImportPopover anchor={importAt} onClose={() => setImportAt(null)} onDone={(p) => { setImportAt(null); flashRow(p.id); }} />
+      <ImportPopover key={activeImport ? JSON.stringify(activeImport) : "manual"} request={activeImport} anchor={importAt} onClose={closeImport} onDone={(p) => { closeImport(); flashRow(p.id); }} />
       <div className="list">
         {profiles.map((p) => <ProfileRow key={p.id} p={p} current={p.id === current} flash={flash === p.id} onFlash={() => flashRow(p.id)} />)}
       </div>
@@ -136,17 +152,17 @@ function RenameInput({ value, done }: { value: string; done: (v: string) => void
 
 const INTERVALS = [0, 6, 12, 24, 72];
 
-function ImportPopover({ anchor, onClose, onDone }: { anchor: HTMLElement | null; onClose: () => void; onDone: (p: Profile) => void }) {
+function ImportPopover({ anchor, request, onClose, onDone }: { anchor: HTMLElement | null; request: ImportRequest | null; onClose: () => void; onDone: (p: Profile) => void }) {
   const t = useT();
-  const [url, setUrl] = useState("");
-  const [name, setName] = useState("");
+  const [url, setUrl] = useState(request?.url ?? "");
+  const [name, setName] = useState(request?.name ?? "");
   const [interval, setInterval] = useState(24);
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => { if (anchor) setTimeout(() => input.current?.focus(), 60); }, [anchor]);
 
   const submit = async () => {
-    if (!url.trim()) return;
+    if (busy || !url.trim()) return;
     setBusy(true);
     try {
       const p = await P.ImportURL(url.trim(), name.trim(), interval);
@@ -157,14 +173,17 @@ function ImportPopover({ anchor, onClose, onDone }: { anchor: HTMLElement | null
     setBusy(false);
   };
   const file = async () => {
+    if (busy) return;
+    setBusy(true);
     try {
       const p = await P.ImportFile();
       if (p?.id) { toast(t("Imported {name}", { name: p.name })); onDone(p); }
     } catch (e) { toastError(e); }
+    setBusy(false);
   };
 
   return (
-    <Popover anchor={anchor} open={!!anchor} onClose={onClose} align="end" width={360}>
+    <Popover anchor={anchor} open={!!anchor} onClose={() => { if (!busy) onClose(); }} align="end" width={360}>
       <form className="pop-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <h3>{t("Import from URL")}</h3>
         <label>{t("Subscription URL")}<input ref={input} className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" /></label>
@@ -175,7 +194,7 @@ function ImportPopover({ anchor, onClose, onDone }: { anchor: HTMLElement | null
           </select>
         </label>
         <div className="foot">
-          <button type="button" className="btn" onClick={file}>{t("Import a file…")}</button>
+          <button type="button" className="btn" disabled={busy} onClick={file}>{t("Import a file…")}</button>
           <div className="grow" />
           <button type="submit" className="btn primary" disabled={busy || !url.trim()}>{busy ? t("Updating…") : t("Import")}</button>
         </div>

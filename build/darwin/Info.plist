@@ -12,6 +12,12 @@
 	<key>CFBundleIconFile</key><string>icons</string>
 	<key>LSMinimumSystemVersion</key><string>12.0</string>
 	<key>LSUIElement</key><true/>
+	<key>CFBundleURLTypes</key>
+	<array><dict>
+		<key>CFBundleURLName</key><string>Clash subscription</string>
+		<key>CFBundleURLSchemes</key><array><string>clash</string></array>
+		<key>CFBundleTypeRole</key><string>Viewer</string>
+	</dict></array>
 	<key>NSHighResolutionCapable</key><true/>
 	<key>NSHumanReadableCopyright</key><string>© localhost-copilot. mihomo is GPL-3.0.</string>
 </dict>

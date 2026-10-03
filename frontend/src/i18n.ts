@@ -43,6 +43,7 @@ const zh: Record<string, string> = {
   "Core is not running": "内核未运行", "Start the core to see proxies.": "启动内核后即可查看代理。",
   "No proxy groups": "没有代理组", "This profile has no proxy groups.": "此配置没有代理组。",
   "Import": "导入", "Import from URL": "从 URL 导入", "Import a file…": "导入本地文件…", "Subscription URL": "订阅链接", "Name (optional)": "名称（可选）",
+  "Invalid Clash import link": "无效的 Clash 导入链接",
   "Auto update": "自动更新", "Never": "从不", "Every {n}h": "每 {n} 小时", "Cancel": "取消", "Update": "更新", "Update all": "全部更新", "Updating…": "正在更新…",
   "Use": "使用", "In use": "使用中", "Local file": "本地文件", "Updated {t}": "更新于 {t}", "Expires {d}": "{d} 到期", "Expired": "已过期",
   "Copy URL": "复制链接", "Show in Finder": "在 Finder 中显示", "Open in editor": "在编辑器中打开", "Rename": "重命名", "Remove": "删除", "Click again to remove": "再次点击以删除",

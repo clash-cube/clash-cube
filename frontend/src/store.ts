@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { Events } from "@wailsio/runtime";
-import { App, Profiles, Settings, type State, type Profile, type SettingsT, type Log, type Event } from "./api";
+import { App, Profiles, Settings, type State, type Profile, type ImportRequest, type SettingsT, type Log, type Event } from "./api";
+import { translate as t } from "./i18n";
+import { toast, toastError } from "./components/Toast";
 
 export type View = "overview" | "proxies" | "profiles" | "connections" | "rules" | "logs" | "events" | "settings";
 
@@ -15,6 +17,7 @@ type Store = {
   state: State | null;
   settings: SettingsT | null;
   profiles: Profile[];
+  imports: ImportRequest[];
   traffic: { up: number; down: number; upTotal: number; downTotal: number };
   history: Sample[];
   memory: number;
@@ -35,6 +38,7 @@ export const useStore = create<Store>((set) => ({
   state: null,
   settings: null,
   profiles: [],
+  imports: [],
   traffic: { up: 0, down: 0, upTotal: 0, downTotal: 0 },
   history: Array.from({ length: HISTORY }, () => ({ up: 0, down: 0 })),
   memory: 0,
@@ -80,6 +84,26 @@ export async function boot() {
     }));
   });
   Events.On("navigate", (e) => useStore.setState({ view: e.data as View }));
+  if (new URLSearchParams(location.search).get("mode") !== "panel") {
+    // Subscribe before draining so a cold-start link cannot fall between the
+    // initial read and the event listener. Serialize drains to preserve order.
+    let draining = Promise.resolve();
+    const receiveImports = () => {
+      draining = draining.then(async () => {
+        const requests = await Profiles.TakeImportRequests();
+        for (const request of requests ?? []) {
+          if (request.error) { toast(t(request.error), "err", 4000); continue; }
+          useStore.setState((s) => ({
+            view: "profiles",
+            imports: s.imports.some((r) => r.url === request.url && r.name === request.name)
+              ? s.imports : [...s.imports, request],
+          }));
+        }
+      }).catch(toastError);
+    };
+    Events.On("import-request", receiveImports);
+    receiveImports();
+  }
   Events.On("log", (e) => {
     const line: LogLine = { ...e.data, id: ++logSeq, at: Date.now() };
     useStore.setState((s) => {
