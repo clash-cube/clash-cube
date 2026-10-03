@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22">
   <!-- a meta-cube: an isometric cube, the mihomo mark simplified -->
-  <path d="M11 2.2 18.6 6.6v8.8L11 19.8 3.4 15.4V6.6Z" fill="none" stroke="#000" stroke-width="1.7" stroke-linejoin="round"/>
-  <path d="M3.8 6.8 11 11l7.2-4.2M11 11v8.4" fill="none" stroke="#000" stroke-width="1.7" stroke-linejoin="round"/>
-  <path d="M11 11 18.2 6.8v8.4L11 19.4Z" fill="#000"/>
+  <!-- 1.5pt strokes on x = 3.75, 11.25, 18.75: their edges fall on whole pixels at 2x -->
+  <path d="M11.25 2.2 18.75 6.55v8.9l-7.5 4.35-7.5-4.35v-8.9Z" fill="none" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M3.75 6.55 11.25 10.9l7.5-4.35M11.25 10.9v8.9" fill="none" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M11.25 10.9 18.75 6.55v8.9l-7.5 4.35Z" fill="#000"/>
 </svg>

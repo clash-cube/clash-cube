@@ -50,9 +50,9 @@ type host struct {
 	panelHeight int
 	closing     atomic.Bool // a full-screen main window leaving it, to hide after
 
-	trayMu    sync.Mutex
-	trayOn    bool
-	trayLabel string
+	trayMu           sync.Mutex
+	trayOn           bool
+	trayUp, trayDown string
 }
 
 // Run starts the GUI.
@@ -263,23 +263,24 @@ func (h *host) fitPanel(height, ms int) {
 func (h *host) stateChanged(st backend.State) {
 	// filled only while traffic is actually taken over (docs/design.md §10.3)
 	on := st.Core == "running" && (st.SystemProxy || st.Tun)
+	stopped := st.Core != "running"
 	h.trayMu.Lock()
 	changed := on != h.trayOn
 	h.trayOn = on
+	if stopped {
+		h.trayUp, h.trayDown = "", ""
+	}
+	icon, up, down := h.trayIcon(), h.trayUp, h.trayDown
 	h.trayMu.Unlock()
 	application.InvokeAsync(func() {
 		if h.tray == nil {
 			return
 		}
 		if changed {
-			if on {
-				h.tray.SetTemplateIcon(trayIcon)
-			} else {
-				h.tray.SetTemplateIcon(trayIconOff)
-			}
+			h.tray.SetTemplateIcon(icon)
 		}
-		if st.Core != "running" {
-			h.tray.SetLabel("")
+		if changed || stopped {
+			setTraySpeed(icon, up, down)
 		}
 		if h.menu != nil {
 			h.menu.update(st)
@@ -289,28 +290,41 @@ func (h *host) stateChanged(st backend.State) {
 
 // trafficChanged shows the speed beside the icon.
 func (h *host) trafficChanged(t mihomoapi.Traffic) {
-	label := ""
+	up, down := "", ""
 	if settings.Load().TraySpeed {
-		label = "↑" + speed(t.Up) + " ↓" + speed(t.Down)
+		up, down = speed(t.Up), speed(t.Down)
 	}
 	h.trayMu.Lock()
-	same := label == h.trayLabel
-	h.trayLabel = label
+	same := up == h.trayUp && down == h.trayDown
+	h.trayUp, h.trayDown = up, down
+	icon := h.trayIcon()
 	h.trayMu.Unlock()
 	if !same {
-		application.InvokeAsync(func() { h.tray.SetLabel(label) })
+		setTraySpeed(icon, up, down)
 	}
 }
 
-func speed(b int64) string {
-	switch {
-	case b < 1000:
-		return fmt.Sprintf("%dB", b)
-	case b < 1000*1000:
-		return fmt.Sprintf("%.0fK", float64(b)/1000)
-	default:
-		return fmt.Sprintf("%.1fM", float64(b)/1e6)
+// trayIcon is the icon for the current state; trayMu must be held.
+func (h *host) trayIcon() []byte {
+	if h.trayOn {
+		return trayIcon
 	}
+	return trayIconOff
+}
+
+// speed is a rate as the menu bar shows it, three digits at most: "52 KB/s",
+// "1.2 MB/s", "12 MB/s".
+func speed(b int64) string {
+	units := []string{"B", "KB", "MB", "GB"}
+	v, i := float64(max(b, 0)), 0
+	for v >= 999.5 && i < len(units)-1 {
+		v /= 1024
+		i++
+	}
+	if i < 2 || v >= 9.95 {
+		return fmt.Sprintf("%.0f %s/s", v, units[i])
+	}
+	return fmt.Sprintf("%.1f %s/s", v, units[i])
 }
 
 func (h *host) relabelTray() {
