@@ -57,7 +57,7 @@ export function Modules({ newAt, onNewClose }: { newAt: HTMLElement | null; onNe
   const route = (svc: Service) => {
     onNewClose();
     setOpen("");
-    setDraft({ id: "", name: svc.name, enabled: true, body: "", route: { service: svc.name, policy: "select", region: svc.region ?? "" } });
+    setDraft({ id: "", name: t(svc.name), enabled: true, body: "", route: { service: svc.name, policy: "select", region: svc.region ?? "" } });
   };
   const added = new Set(mods?.map((m) => m.name) ?? []);
   const routed = new Set(mods?.flatMap((m) => (m.route ? [m.route.service] : [])) ?? []);
@@ -90,7 +90,7 @@ export function Modules({ newAt, onNewClose }: { newAt: HTMLElement | null; onNe
           <div className="mhead">{t("Route a service")}</div>
           {services.map((svc) => (
             <button key={svc.name} onClick={() => route(svc)}>
-              <span className="tname">{svc.name}{routed.has(svc.name) && <span className="badge muted">{t("Added")}</span>}</span>
+              <span className="tname">{t(svc.name)}{routed.has(svc.name) && <span className="badge muted">{t("Added")}</span>}</span>
               <span className="thint">{t(svc.hint)}</span>
             </button>
           ))}
@@ -120,7 +120,7 @@ export function Modules({ newAt, onNewClose }: { newAt: HTMLElement | null; onNe
           <div className="sect" style={{ ["--i" as string]: templates.length }}>{t("Route a service")}</div>
           {services.map((svc, i) => (
             <button className="row click" key={svc.name} style={{ ["--i" as string]: templates.length + 1 + i }} onClick={() => route(svc)}>
-              <div className="who"><div className="name">{svc.name}</div><div className="sub">{t(svc.hint)}</div></div>
+              <div className="who"><div className="name">{t(svc.name)}</div><div className="sub">{t(svc.hint)}</div></div>
               <span className="btn small">{t("Add…")}</span>
             </button>
           ))}

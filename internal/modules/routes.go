@@ -36,7 +36,28 @@ type Service struct {
 var Services = []Service{
 	{Name: "Google", Hint: "Search, Gmail, Maps and Google's other sites and apps", Rules: []string{"GEOSITE,google"}},
 	{Name: "YouTube", Hint: "Videos, Shorts and YouTube Music", Rules: []string{"GEOSITE,youtube"}},
-	{Name: "OpenAI", Hint: "ChatGPT and the OpenAI API, which refuse some regions", Rules: []string{"GEOSITE,openai"}, Region: "us"},
+	{Name: "OpenAI", Hint: "ChatGPT and the OpenAI API, which refuse some regions", Rules: []string{
+		"PROCESS-NAME,ChatGPT", "DOMAIN-SUFFIX,ai.com", "GEOSITE,openai",
+	}, Region: "us"},
+	{Name: "Claude", Hint: "Claude apps, Anthropic domains and IP ranges, including shared telemetry services", Rules: []string{
+		"PROCESS-NAME,Claude", "PROCESS-NAME,Claude Helper", "PROCESS-NAME,claude",
+		// Keep core domains inline so coverage does not depend on the geosite version.
+		"DOMAIN-SUFFIX,anthropic.com", "DOMAIN-SUFFIX,claude.ai", "DOMAIN-SUFFIX,claude.com",
+		"DOMAIN-SUFFIX,clau.de", "DOMAIN-SUFFIX,claudeusercontent.com",
+		"DOMAIN-SUFFIX,claudemcpclient.com", "DOMAIN-SUFFIX,claudemcpcontent.com",
+		"DOMAIN,servd-anthropic-website.b-cdn.net",
+		// These shared services deliberately follow the reference profile's Claude policy.
+		"DOMAIN-SUFFIX,sentry.io", "DOMAIN-SUFFIX,statsigapi.net", "DOMAIN-SUFFIX,datadoghq.com",
+		"DOMAIN-SUFFIX,intercom.io", "DOMAIN-SUFFIX,intercomcdn.com",
+		"DOMAIN,anthropic.com.cdn.cloudflare.net", "DOMAIN,anthropic.auth0.com", "DOMAIN,anthropic-com.ghost.io",
+		"DOMAIN,browser-intake-us5-datadoghq.com", "DOMAIN,cdn.usefathom.com",
+		"DOMAIN-KEYWORD,datadog", "DOMAIN-KEYWORD,sift", "DOMAIN-KEYWORD,sentry",
+		"GEOSITE,anthropic",
+		"IP-CIDR,160.79.104.0/21,no-resolve", "IP-CIDR6,2607:6bc0::/32,no-resolve", "IP-ASN,399358,no-resolve",
+	}, Region: "us"},
+	{Name: "AI services", Hint: "Non-Chinese AI services and GrowthBook; place above OpenAI and Claude so their rules take priority", Rules: []string{
+		"DOMAIN-SUFFIX,growthbook.io", "GEOSITE,category-ai-chat-!cn",
+	}, Region: "us"},
 	// Telegram's apps connect by address: its published ranges
 	// (core.telegram.org/resources/cidr.txt)
 	{Name: "Telegram", Hint: "Telegram's sites and the addresses its apps connect to", Rules: []string{
