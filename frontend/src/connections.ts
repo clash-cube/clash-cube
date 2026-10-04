@@ -2,7 +2,7 @@ import type { Connection } from "../bindings/github.com/localhost-copilot/mihomo
 
 export type Conn = Connection & { up: number; down: number; closedAt?: number };
 export type ConnectionSnapshot = { active: Conn[]; closed: Conn[]; at: number };
-export type ConnectionSort = "time" | "host" | "up" | "down" | "upload" | "download" | "total" | "process" | "source" | "rule" | "chain" | "network";
+export type ConnectionSort = "time" | "host" | "speed" | "up" | "down" | "upload" | "download" | "total" | "process" | "source" | "rule" | "chain" | "network";
 export type ConnectionTab = "active" | "closed" | "all";
 export type ConnectionGroupBy = "none" | "process" | "host" | "rule" | "source";
 
@@ -57,6 +57,7 @@ export function compareConnections(key: ConnectionSort, ascending: boolean) {
         case "rule": return ruleOf(c);
         case "chain": return chainOf(c);
         case "network": return c.metadata.network;
+        case "speed": return c.up + c.down;
         case "total": return c.upload + c.download;
         case "time": return Date.parse(c.start);
         default: return c[key];
@@ -157,4 +158,23 @@ export class ConnectionTracker {
     await Promise.all(Array.from({ length: Math.min(5, targets.length) }, worker));
     return failures;
   }
+}
+
+// Connections closed in the last poll stay one cycle so they can fade out.
+// Without a running core no later snapshot comes to retire them.
+export function lingering(s: ConnectionSnapshot, running: boolean): Conn[] {
+  return running ? s.closed.filter((c) => s.at - c.closedAt! < 900) : [];
+}
+
+// While the pointer rests on the table, speed sorts keep the order they last
+// showed, so rows don't jump under the cursor. A new sort choice always
+// re-ranks: the held order belongs to the sort it was taken for.
+export type HeldOrder = { key: string; rank: Map<string, number> };
+export function holdOrder(sorted: Conn[], key: string, hold: boolean, held: HeldOrder): HeldOrder {
+  if (hold && held.key === key) {
+    const at = (c: Conn) => held.rank.get(c.id) ?? Infinity;
+    sorted.sort((a, b) => (at(a) - at(b)) || 0);
+    return held;
+  }
+  return { key, rank: new Map(sorted.map((c, i) => [c.id, i])) };
 }

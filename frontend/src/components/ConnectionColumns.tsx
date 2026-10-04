@@ -1,22 +1,35 @@
 import { useRef, useState } from "react";
-import { connectionColumns, clampColumnWidth, type ConnectionColumn } from "../connectionColumns";
+import { connectionColumns, clampColumnWidth, isTextColumn, type ConnectionColumn } from "../connectionColumns";
+import type { ConnectionGroupBy } from "../connections";
 import { useT } from "../i18n";
 import { Popover } from "./Popover";
+import { Segmented } from "./Segmented";
 
-export function ConnectionColumnMenu({ selected, onChange, onReset }: {
+export function ConnectionViewMenu({ by, onBy, selected, onChange, onReset }: {
+  by: ConnectionGroupBy; onBy: (by: ConnectionGroupBy) => void;
   selected: ConnectionColumn[]; onChange: (columns: ConnectionColumn[]) => void; onReset: () => void;
 }) {
   const t = useT();
   const anchor = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   return <>
-    <button ref={anchor} className="btn small" aria-expanded={open} onClick={() => setOpen(!open)}>{t("Columns")}</button>
-    <Popover anchor={anchor.current} open={open} onClose={() => setOpen(false)} width={220} align="end">
-      <div className="conn-column-menu">
-        {connectionColumns.map((c) => <label key={c.id}><input type="checkbox" checked={selected.includes(c.id)} disabled={c.id === "host"}
-          onChange={() => onChange(connectionColumns.filter((candidate) => candidate.id === c.id ? !selected.includes(c.id) : selected.includes(candidate.id)).map((c) => c.id))} />{t(c.label)}</label>)}
-        <span className="sub">{t("Drag column edges to resize")}</span>
-        <button className="btn small" onClick={onReset}>{t("Reset columns")}</button>
+    <button ref={anchor} className="btn small" aria-expanded={open} onClick={() => setOpen(!open)}>{t("View")}</button>
+    <Popover anchor={anchor.current} open={open} onClose={() => setOpen(false)} width={320} align="end">
+      <div className="conn-pop">
+        <div className="conn-pop-sec">
+          <div className="conn-pop-title">{t("Group by")}</div>
+          <Segmented className="track small fill" value={by} onChange={onBy} options={[
+            { value: "process", label: t("Process") }, { value: "source", label: t("Device") }, { value: "host", label: t("Host") }, { value: "rule", label: t("Rule") }, { value: "none", label: t("List") },
+          ]} />
+        </div>
+        <div className="conn-pop-sec">
+          <div className="conn-pop-title">{t("Columns")}<button className="link" onClick={onReset}>{t("Reset columns")}</button></div>
+          <div className="conn-column-menu">
+            {connectionColumns.map((c) => <label key={c.id}><input type="checkbox" checked={selected.includes(c.id)} disabled={c.id === "host"}
+              onChange={() => onChange(connectionColumns.filter((candidate) => candidate.id === c.id ? !selected.includes(c.id) : selected.includes(candidate.id)).map((c) => c.id))} />{t(c.label)}</label>)}
+          </div>
+          <span className="sub">{t("Drag column edges to resize")}</span>
+        </div>
       </div>
     </Popover>
   </>;
@@ -33,8 +46,10 @@ export function ConnectionColumnHeader({ columns, widths, sort, ascending, onSor
     {columns.map((id) => {
       const c = connectionColumns.find((c) => c.id === id)!;
       const width = widths[id] ?? c.width;
-      return <div className="conn-column-title" key={id} role="columnheader" aria-sort={sort === id ? ascending ? "ascending" : "descending" : "none"}>
-        <button onClick={() => onSort(id)} title={t(c.label)}>{t(c.label)}{sort === id && <span>{ascending ? " ↑" : " ↓"}</span>}</button>
+      return <div className={"conn-column-title" + (isTextColumn(id) ? "" : " num")} key={id} role="columnheader" aria-sort={sort === id ? ascending ? "ascending" : "descending" : "none"}>
+        <button onClick={() => onSort(id)} title={t(c.label)}>
+          {sort === id && !isTextColumn(id) && <span>{ascending ? "↑ " : "↓ "}</span>}{t(c.label)}{sort === id && isTextColumn(id) && <span>{ascending ? " ↑" : " ↓"}</span>}
+        </button>
         <span className="conn-column-resize" role="separator" tabIndex={0} aria-orientation="vertical" aria-label={t("Resize {column}", { column: t(c.label) })}
           aria-valuemin={c.min} aria-valuemax={600} aria-valuenow={width}
           onKeyDown={(e) => {

@@ -7,6 +7,7 @@ export const connectionColumns = [
   { id: "network", label: "Network", width: 100, min: 80 },
   { id: "rule", label: "Rule", width: 180, min: 100 },
   { id: "chain", label: "Chain", width: 180, min: 100 },
+  { id: "speed", label: "Speed", width: 170, min: 100 },
   { id: "up", label: "Upload speed", width: 100, min: 80 },
   { id: "down", label: "Download speed", width: 100, min: 80 },
   { id: "upload", label: "Uploaded", width: 100, min: 80 },
@@ -16,7 +17,7 @@ export const connectionColumns = [
 ] as const satisfies readonly { id: ConnectionSort; label: string; width: number; min: number }[];
 
 export type ConnectionColumn = typeof connectionColumns[number]["id"];
-export const defaultColumns: ConnectionColumn[] = ["host", "chain", "up", "down", "total", "time"];
+export const defaultColumns: ConnectionColumn[] = ["host", "chain", "speed", "total", "time"];
 export const isTextColumn = (id: ConnectionColumn) => ["host", "process", "source", "network", "rule", "chain"].includes(id);
 export function clampColumnWidth(id: ConnectionColumn, width: number) {
   const column = connectionColumns.find((c) => c.id === id)!;

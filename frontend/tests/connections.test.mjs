@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ConnectionTracker, filterConnections, compareConnections, groupConnections } from "../src/connections.ts";
+import { ConnectionTracker, filterConnections, compareConnections, groupConnections, holdOrder, lingering } from "../src/connections.ts";
 import { duration } from "../src/format.ts";
 
 const conn = (id, overrides = {}) => ({ id, metadata: { network: "tcp", type: "HTTP", sourceIP: "192.168.1.5",
@@ -136,4 +136,35 @@ test("speed uses elapsed time, clamps counter resets and sorts with a stable tie
   tracker.collect([conn("b"), conn("a")], 4000);
   assert.equal(tracker.snapshot.active[0].up, 0);
   assert.deepEqual([...tracker.snapshot.active].sort(compareConnections("up", false)).map((c) => c.id), ["a", "b"]);
+});
+
+test("the speed column sorts by upload and download together", () => {
+  const a = { ...conn("a"), up: 30, down: 0 }, b = { ...conn("b"), up: 0, down: 20 }, c = { ...conn("c"), up: 5, down: 10 };
+  assert.deepEqual([b, c, a].sort(compareConnections("speed", false)).map((c) => c.id), ["a", "b", "c"]);
+});
+
+test("closed rows fade for one poll, and not at all once the core has stopped", () => {
+  const tracker = new ConnectionTracker();
+  tracker.collect([conn("a"), conn("b")], 1000);
+  tracker.collect([conn("b")], 2000);
+  assert.deepEqual(lingering(tracker.snapshot, true).map((c) => c.id), ["a"]);
+  tracker.collect([conn("b")], 3000);
+  assert.deepEqual(lingering(tracker.snapshot, true), []);
+  tracker.stop();
+  assert.deepEqual(lingering(tracker.snapshot, false), []);
+});
+
+test("a held speed order survives new samples but not a new sort choice", () => {
+  const a = { ...conn("a"), up: 30, down: 0 }, b = { ...conn("b"), up: 20, down: 0 };
+  let held = holdOrder([a, b].sort(compareConnections("speed", false)), "speed:false", false, { key: "", rank: new Map() });
+  const faster = { ...b, up: 50 }, list = [a, faster].sort(compareConnections("speed", false));
+  held = holdOrder(list, "speed:false", true, held);
+  assert.deepEqual(list.map((c) => c.id), ["a", "b"]);
+  const flipped = [a, b].sort(compareConnections("speed", true));
+  held = holdOrder(flipped, "speed:true", true, held);
+  assert.deepEqual(flipped.map((c) => c.id), ["b", "a"]);
+  assert.equal(held.key, "speed:true");
+  const byHost = [{ ...a, metadata: { ...a.metadata, host: "z.test" } }, b].sort(compareConnections("host", true));
+  holdOrder(byHost, "host:true", true, held);
+  assert.deepEqual(byHost.map((c) => c.id), ["b", "a"]);
 });
