@@ -5,7 +5,7 @@ mihomo is compiled in from source (`third_party/mihomo`, a submodule of
 [Demogorgon314/mihomo@openconnect-support](https://github.com/Demogorgon314/mihomo/tree/openconnect-support)),
 so the app is one binary: the GUI, and the same executable re-run as `clashcube core` for the proxy core.
 
-See [docs/design.md](docs/design.md) for the architecture and plan.
+See [docs/design.md](docs/design.md) for the architecture.
 
 ## Build
 
