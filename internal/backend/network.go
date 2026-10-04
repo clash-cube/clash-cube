@@ -164,13 +164,18 @@ func (b *Backend) checkNetwork(primary string) {
 	nw := &b.net
 	changed := fmt.Sprint(nw.seen) != fmt.Sprint(n)
 	nw.seen = n
-	apply := false
+	apply, rejoined := false, false
 	if !transient {
 		if identity != nw.candidate {
 			nw.candidate, nw.samples = identity, 0
 		}
 		nw.samples++
 		if nw.samples == 2 && identity != nw.identity {
+			// another Wi-Fi behind the same interface and router address:
+			// the watcher sees no change, so it is reset from here. An SSID
+			// that was unreadable before (no permission) isn't another network.
+			i := strings.LastIndex(nw.identity, "|") // SSIDs may hold a "|"
+			rejoined = ssid != "" && i > 0 && nw.identity[i+1:] == primary
 			nw.identity, nw.manual = identity, nil
 			nw.match = ""
 			if identity != "" {
@@ -185,6 +190,11 @@ func (b *Backend) checkNetwork(primary string) {
 	}
 	if apply {
 		b.applyNetwork()
+	}
+	if rejoined {
+		iface, router, _ := strings.Cut(primary, " ")
+		b.event("network", "info", "Network changed to {name}, router {router}", map[string]string{"name": ssid + " (" + iface + ")", "router": router}, false)
+		b.scheduleReset()
 	}
 }
 

@@ -119,6 +119,43 @@ func TestNetworkRulesReturnToBaseline(t *testing.T) {
 	}
 }
 
+// Another Wi-Fi on the same interface and router address is a network
+// change the watcher can't see; a name only now readable isn't one.
+func TestWiFiSwitchBehindSameRouter(t *testing.T) {
+	b, _, _, m := networkBackend(t)
+	changes := func() int {
+		n := 0
+		for _, e := range b.Events() {
+			if strings.HasPrefix(e.Text, "Network changed to") {
+				n++
+			}
+		}
+		return n
+	}
+	settle(b, "en0 192.168.1.1")
+	if changes() != 0 {
+		t.Fatal("the first network counted as a change")
+	}
+	m.wifi.SSID = "Office"
+	settle(b, "en0 192.168.1.1")
+	if changes() != 1 {
+		t.Fatalf("switch not seen: %+v", b.Events())
+	}
+	b.mu.Lock()
+	scheduled := b.resetTimer != nil
+	b.mu.Unlock()
+	if !scheduled {
+		t.Fatal("no reset scheduled")
+	}
+	m.wifi = wifi.Status{State: "permission", Interface: "en0"}
+	settle(b, "en0 192.168.1.1")
+	m.wifi = wifi.Status{State: "connected", SSID: "Office", Interface: "en0"}
+	settle(b, "en0 192.168.1.1")
+	if changes() != 1 {
+		t.Fatalf("a name becoming readable counted as a switch: %+v", b.Events())
+	}
+}
+
 func TestNetworkRulesManualChanges(t *testing.T) {
 	b, _, _, m := networkBackend(t)
 	if err := b.Start(); err != nil {

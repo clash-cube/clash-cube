@@ -29,6 +29,10 @@ const maxEvents = 200
 // shows the connectivity measures it again.
 const ResetText = "Closed connections and flushed DNS"
 
+// OfflineText is the event of the network going away. Nothing is reset,
+// but the connectivity is measured again, to show it failing.
+const OfflineText = "Network unavailable"
+
 func (b *Backend) event(kind, level, text string, args map[string]string, notify bool) {
 	b.mu.Lock()
 	b.eventSeq++
@@ -136,7 +140,7 @@ func parseNetwork(out string) string {
 
 func (b *Backend) networkChanged(key string) {
 	if key == "" {
-		b.event("network", "info", "Network unavailable", nil, false)
+		b.event("network", "info", OfflineText, nil, false)
 		return
 	}
 	iface, router, _ := strings.Cut(key, " ")

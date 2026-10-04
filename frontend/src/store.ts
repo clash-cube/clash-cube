@@ -53,8 +53,9 @@ export const useStore = create<Store>((set) => ({
 }));
 
 const MAX_EVENTS = 200;
-// what the backend says the network reset with (backend.ResetText)
-const RESET_TEXT = "Closed connections and flushed DNS";
+// what the backend says the network reset (backend.ResetText) or went
+// away (backend.OfflineText) with: either measures the connectivity again
+const REMEASURE_TEXTS = ["Closed connections and flushed DNS", "Network unavailable"];
 
 // boot reads the app once and follows its events.
 export async function boot() {
@@ -80,7 +81,7 @@ export async function boot() {
     const ev: Event = e.data;
     useStore.setState((s) => ({
       events: [...s.events.slice(-MAX_EVENTS + 1), ev],
-      networkReset: ev.text === RESET_TEXT ? s.networkReset + 1 : s.networkReset,
+      networkReset: REMEASURE_TEXTS.includes(ev.text) ? s.networkReset + 1 : s.networkReset,
     }));
   });
   Events.On("navigate", (e) => useStore.setState({ view: e.data as View }));
