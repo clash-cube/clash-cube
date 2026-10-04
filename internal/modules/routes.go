@@ -246,7 +246,7 @@ func (r Route) Body(profile string, taken func(string) bool) (string, error) {
 		m["append-proxy-groups"] = []any{g}
 	}
 	b, err := yaml.Marshal(m)
-	return string(b), err
+	return ReadableYAML(string(b)), err
 }
 
 // Matches says whether the region takes the node of that name.

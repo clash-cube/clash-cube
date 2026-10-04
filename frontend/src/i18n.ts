@@ -144,6 +144,7 @@ const zh: Record<string, string> = {
   "My rules": "我的规则", "Active rules": "生效规则", "Move up": "上移", "Move down": "下移", "Delete": "删除",
   "Rules you add here, or from a connection, go ahead of the profile's and stay across updates.": "在这里或从连接页添加的规则排在配置自带规则之前，更新订阅后仍然保留。",
   "Modules": "模块", "New module": "新建模块", "Module name": "模块名称", "Added {name}": "已添加 {name}", "Empty": "空", "Checking…": "正在校验…",
+  "Module YAML": "模块 YAML", "Checking YAML…": "正在校验 YAML…", "YAML syntax valid": "YAML 语法有效",
   "Modules change DNS, hosts, rules and more for every profile, and stay across updates. The app's ports, mode and TUN still win.": "模块会修改每个配置的 DNS、hosts、规则等，更新订阅后仍然保留。端口、出站模式和 TUN 仍以应用设置为准。",
   "Mappings merge; +key puts a list first, key+ last, key! replaces. ⌘S saves.": "映射逐项合并；+key 把列表插到前面，key+ 追加到后面，key! 整体替换。⌘S 保存。",
   "Blank module…": "空白模块…", "Added": "已添加", "Add…": "添加…",

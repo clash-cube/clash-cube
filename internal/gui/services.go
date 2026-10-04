@@ -665,7 +665,13 @@ func (s *AppService) Usage(from, to string, hour int) (usage.Report, error) {
 func (s *AppService) ClearUsage() error { return s.h.b.Usage().Clear() }
 
 // Modules is the user's modules, merged over every profile in order.
-func (s *ProfileService) Modules() []modules.Module { return modules.List() }
+func (s *ProfileService) Modules() []modules.Module {
+	ms := modules.List()
+	for i := range ms {
+		ms[i].Body = modules.ReadableYAML(ms[i].Body)
+	}
+	return ms
+}
 
 // SetModules replaces them; a configuration the core refuses keeps the
 // previous ones.
