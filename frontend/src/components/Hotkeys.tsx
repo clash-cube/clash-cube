@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n";
 import { Settings as S } from "../api";
-import type { Hotkey } from "../../bindings/github.com/localhost-copilot/mihomobar/internal/gui/models";
+import type { Hotkey } from "../../bindings/github.com/localhost-copilot/clashferry/internal/gui/models";
 import { Close } from "./Icons";
 import { errText, toast } from "./Toast";
 

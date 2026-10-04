@@ -8,10 +8,10 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/localhost-copilot/mihomobar/internal/modules"
-	"github.com/localhost-copilot/mihomobar/internal/profiles"
-	"github.com/localhost-copilot/mihomobar/internal/runtimecfg"
-	"github.com/localhost-copilot/mihomobar/internal/settings"
+	"github.com/localhost-copilot/clashferry/internal/modules"
+	"github.com/localhost-copilot/clashferry/internal/profiles"
+	"github.com/localhost-copilot/clashferry/internal/runtimecfg"
+	"github.com/localhost-copilot/clashferry/internal/settings"
 )
 
 // RouteBody makes an editable module using the current profile's declared

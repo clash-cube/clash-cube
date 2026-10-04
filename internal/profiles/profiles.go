@@ -24,7 +24,7 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/localhost-copilot/mihomobar/internal/appdir"
+	"github.com/localhost-copilot/clashferry/internal/appdir"
 )
 
 type Profile struct {
@@ -44,7 +44,7 @@ func (p Profile) Path() string { return filepath.Join(appdir.Profiles(), p.ID+".
 
 var (
 	mu        sync.Mutex
-	userAgent       = "clash.meta/mihomobar"
+	userAgent       = "clash.meta/clashferry"
 	maxSize   int64 = 32 << 20
 )
 

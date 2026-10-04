@@ -1,4 +1,4 @@
-// Package coremgr runs the core: `mihomobar core` as a child of the GUI, on a
+// Package coremgr runs the core: `clashferry core` as a child of the GUI, on a
 // controller address and secret made fresh at each start.
 package coremgr
 
@@ -18,8 +18,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
-	"github.com/localhost-copilot/mihomobar/internal/runtimecfg"
+	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
+	"github.com/localhost-copilot/clashferry/internal/runtimecfg"
 )
 
 type Status string
@@ -305,7 +305,7 @@ func lastMeaningful(out string, err error) string {
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
 		if l := strings.TrimSpace(lines[i]); l != "" {
-			l = strings.TrimPrefix(l, "mihomobar: ")
+			l = strings.TrimPrefix(l, "clashferry: ")
 			return l
 		}
 	}
@@ -323,7 +323,7 @@ func (l *LocalRunner) Start(home, config string, ctl runtimecfg.Controller, outp
 		return nil, err
 	}
 	cmd := exec.Command(exe, "core", "-d", home, "-f", config, "-ext-ctl", ctl.Addr)
-	cmd.Env = append(os.Environ(), "MIHOMOBAR_SECRET="+ctl.Secret, "MIHOMOBAR_WATCH_STDIN=1")
+	cmd.Env = append(os.Environ(), "CLASHFERRY_SECRET="+ctl.Secret, "CLASHFERRY_WATCH_STDIN=1")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

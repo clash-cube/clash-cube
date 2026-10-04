@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundlePackageType</key><string>APPL</string>
-	<key>CFBundleName</key><string>MihomoBar</string>
-	<key>CFBundleDisplayName</key><string>MihomoBar</string>
-	<key>CFBundleExecutable</key><string>mihomobar</string>
-	<key>CFBundleIdentifier</key><string>com.localhost-copilot.mihomobar</string>
+	<key>CFBundleName</key><string>ClashFerry</string>
+	<key>CFBundleDisplayName</key><string>ClashFerry</string>
+	<key>CFBundleExecutable</key><string>clashferry</string>
+	<key>CFBundleIdentifier</key><string>com.localhost-copilot.clashferry</string>
 	<key>CFBundleVersion</key><string>@VERSION@</string>
 	<key>CFBundleShortVersionString</key><string>@VERSION@</string>
 	<key>CFBundleIconFile</key><string>icons</string>
@@ -19,8 +19,8 @@
 		<key>CFBundleTypeRole</key><string>Viewer</string>
 	</dict></array>
 	<key>NSHighResolutionCapable</key><true/>
-	<key>NSLocationUsageDescription</key><string>MihomoBar uses location permission to read the Wi-Fi name and switch to your chosen configuration.</string>
-	<key>NSLocationWhenInUseUsageDescription</key><string>MihomoBar uses location permission to read the Wi-Fi name and switch to your chosen configuration.</string>
+	<key>NSLocationUsageDescription</key><string>ClashFerry uses location permission to read the Wi-Fi name and switch to your chosen configuration.</string>
+	<key>NSLocationWhenInUseUsageDescription</key><string>ClashFerry uses location permission to read the Wi-Fi name and switch to your chosen configuration.</string>
 	<key>NSHumanReadableCopyright</key><string>© localhost-copilot. mihomo is GPL-3.0.</string>
 </dict>
 </plist>

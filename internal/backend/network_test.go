@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/localhost-copilot/mihomobar/internal/appdir"
-	"github.com/localhost-copilot/mihomobar/internal/netpath"
-	"github.com/localhost-copilot/mihomobar/internal/profiles"
-	"github.com/localhost-copilot/mihomobar/internal/settings"
-	"github.com/localhost-copilot/mihomobar/internal/wifi"
+	"github.com/localhost-copilot/clashferry/internal/appdir"
+	"github.com/localhost-copilot/clashferry/internal/netpath"
+	"github.com/localhost-copilot/clashferry/internal/profiles"
+	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashferry/internal/wifi"
 )
 
 // netMachine stands in for the Wi-Fi, the path and the helper.
@@ -23,7 +23,7 @@ type netMachine struct {
 
 func networkBackend(t *testing.T) (*Backend, profiles.Profile, profiles.Profile, *netMachine) {
 	t.Helper()
-	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	t.Setenv("CLASHFERRY_HOME", t.TempDir())
 	fake.reset()
 	if err := appdir.Ensure(); err != nil {
 		t.Fatal(err)

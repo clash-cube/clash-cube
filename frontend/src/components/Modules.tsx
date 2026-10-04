@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n";
 import { Profiles as P } from "../api";
-import type { Module, Route, Service, Template } from "../../bindings/github.com/localhost-copilot/mihomobar/internal/modules/models";
-import type { Node, RegionNodes } from "../../bindings/github.com/localhost-copilot/mihomobar/internal/backend/models";
+import type { Module, Route, Service, Template } from "../../bindings/github.com/localhost-copilot/clashferry/internal/modules/models";
+import type { Node, RegionNodes } from "../../bindings/github.com/localhost-copilot/clashferry/internal/backend/models";
 import type { Group } from "../api";
 import { useGroups } from "../useGroups";
 import { useStore } from "../store";

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
+	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
 )
 
 func latencyCore(t *testing.T, proxies map[string]mihomoapi.Proxy, providers map[string]mihomoapi.ProxyProvider, probe http.HandlerFunc) *mihomoapi.Client {

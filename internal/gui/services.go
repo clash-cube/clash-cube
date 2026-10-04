@@ -15,16 +15,16 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/localhost-copilot/mihomobar/internal/appdir"
-	"github.com/localhost-copilot/mihomobar/internal/backend"
-	"github.com/localhost-copilot/mihomobar/internal/hotkeys"
-	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
-	"github.com/localhost-copilot/mihomobar/internal/modules"
-	"github.com/localhost-copilot/mihomobar/internal/profiles"
-	"github.com/localhost-copilot/mihomobar/internal/settings"
-	"github.com/localhost-copilot/mihomobar/internal/usage"
-	"github.com/localhost-copilot/mihomobar/internal/userrules"
-	"github.com/localhost-copilot/mihomobar/internal/wifi"
+	"github.com/localhost-copilot/clashferry/internal/appdir"
+	"github.com/localhost-copilot/clashferry/internal/backend"
+	"github.com/localhost-copilot/clashferry/internal/hotkeys"
+	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
+	"github.com/localhost-copilot/clashferry/internal/modules"
+	"github.com/localhost-copilot/clashferry/internal/profiles"
+	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashferry/internal/usage"
+	"github.com/localhost-copilot/clashferry/internal/userrules"
+	"github.com/localhost-copilot/clashferry/internal/wifi"
 )
 
 // AppService is the app and its windows.
@@ -71,11 +71,11 @@ func (s *AppService) EnableServiceMode() error { return s.h.b.EnableServiceMode(
 
 // DisableServiceMode runs the core as the user again; uninstall removes the helper.
 func (s *AppService) DisableServiceMode(uninstall bool) error {
-	return s.h.b.DisableServiceMode(uninstall, tr("MihomoBar wants to remove its privileged helper.", "MihomoBar 需要移除特权助手。"))
+	return s.h.b.DisableServiceMode(uninstall, tr("ClashFerry wants to remove its privileged helper.", "ClashFerry 需要移除特权助手。"))
 }
 
 func helperPrompt() string {
-	return tr("MihomoBar needs to install a privileged helper to run Enhanced Mode (TUN).", "MihomoBar 需要安装特权助手以启用增强模式 (TUN)。")
+	return tr("ClashFerry needs to install a privileged helper to run Enhanced Mode (TUN).", "ClashFerry 需要安装特权助手以启用增强模式 (TUN)。")
 }
 
 // ShowMain opens the main window, on view if one is given.

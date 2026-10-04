@@ -7,8 +7,8 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/localhost-copilot/mihomobar/internal/modules"
-	"github.com/localhost-copilot/mihomobar/internal/settings"
+	"github.com/localhost-copilot/clashferry/internal/modules"
+	"github.com/localhost-copilot/clashferry/internal/settings"
 )
 
 func TestFixedRouteNodes(t *testing.T) {

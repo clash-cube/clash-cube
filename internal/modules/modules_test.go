@@ -7,7 +7,7 @@ import (
 )
 
 func TestSaveAndCheck(t *testing.T) {
-	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	t.Setenv("CLASHFERRY_HOME", t.TempDir())
 	if len(List()) != 0 {
 		t.Fatal("modules before any were saved")
 	}
@@ -134,7 +134,7 @@ func TestRouteTakes(t *testing.T) {
 }
 
 func TestPicksFollowProfiles(t *testing.T) {
-	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	t.Setenv("CLASHFERRY_HOME", t.TempDir())
 	r := &Route{Service: "Google", Policy: "select", Pick: true, Nodes: map[string][]string{"a": {"n1"}, "b": {"n2"}}}
 	if err := Save([]Module{{Name: "Google", Route: r}, {Name: "plain", Body: "hosts: {}"}}); err != nil {
 		t.Fatal(err)

@@ -1,4 +1,4 @@
-// Package core runs mihomo in this process: the `mihomobar core` role. The
+// Package core runs mihomo in this process: the `clashferry core` role. The
 // GUI starts it as a child (or the helper does, as root, for TUN) and talks
 // to it over the external controller it is given.
 package core
@@ -26,14 +26,14 @@ import (
 // Version is the bundled mihomo's.
 func Version() string { return C.Version }
 
-// Main is `mihomobar core -d <home> -f <config> [-ext-ctl addr] [-secret s] [-t]`.
-// The secret may also come in $MIHOMOBAR_SECRET, which keeps it out of ps.
+// Main is `clashferry core -d <home> -f <config> [-ext-ctl addr] [-secret s] [-t]`.
+// The secret may also come in $CLASHFERRY_SECRET, which keeps it out of ps.
 func Main(args []string) error {
 	fs := flag.NewFlagSet("core", flag.ContinueOnError)
 	home := fs.String("d", "", "mihomo home directory")
 	file := fs.String("f", "", "configuration file")
 	ctl := fs.String("ext-ctl", "", "override external controller address")
-	secret := fs.String("secret", os.Getenv("MIHOMOBAR_SECRET"), "override controller secret")
+	secret := fs.String("secret", os.Getenv("CLASHFERRY_SECRET"), "override controller secret")
 	test := fs.Bool("t", false, "test configuration and exit")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -41,7 +41,7 @@ func Main(args []string) error {
 	if *home == "" || *file == "" {
 		return errors.New("core: -d and -f are required")
 	}
-	os.Unsetenv("MIHOMOBAR_SECRET")
+	os.Unsetenv("CLASHFERRY_SECRET")
 	// mihomo leaves the TUN without an IPv6 address when this Mac has no
 	// global IPv6 at start; joining an IPv6 network later would then route
 	// IPv6 around the TUN. darwin's utun always takes the address.
@@ -84,7 +84,7 @@ func Main(args []string) error {
 	// The GUI going away (its end of our stdin closing) ends us too, so a
 	// crashed GUI never leaves a core holding the ports.
 	parentGone := make(chan struct{})
-	if os.Getenv("MIHOMOBAR_WATCH_STDIN") == "1" {
+	if os.Getenv("CLASHFERRY_WATCH_STDIN") == "1" {
 		go func() {
 			buf := make([]byte, 64)
 			for {

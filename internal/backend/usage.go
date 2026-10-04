@@ -5,9 +5,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/localhost-copilot/mihomobar/internal/appdir"
-	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
-	"github.com/localhost-copilot/mihomobar/internal/usage"
+	"github.com/localhost-copilot/clashferry/internal/appdir"
+	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
+	"github.com/localhost-copilot/clashferry/internal/usage"
 )
 
 const (

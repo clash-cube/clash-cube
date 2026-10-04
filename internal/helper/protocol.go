@@ -1,4 +1,4 @@
-// Package helper is service mode's privileged side: `mihomobar helper serve`
+// Package helper is service mode's privileged side: `clashferry helper serve`
 // runs as a root LaunchDaemon and starts the core as root (TUN needs it) for
 // the one user it was installed for. See docs/design.md §2.3.
 //
@@ -9,8 +9,8 @@
 package helper
 
 const (
-	Label      = "com.localhost-copilot.mihomobar.helper"
-	SocketPath = "/var/run/mihomobar-helper.sock"
+	Label      = "com.localhost-copilot.clashferry.helper"
+	SocketPath = "/var/run/clashferry-helper.sock"
 	BinaryPath = "/Library/PrivilegedHelperTools/" + Label
 	PlistPath  = "/Library/LaunchDaemons/" + Label + ".plist"
 )

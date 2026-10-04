@@ -1,8 +1,8 @@
 version: '3'
 
 vars:
-  APP_NAME: MihomoBar
-  BIN: mihomobar
+  APP_NAME: ClashFerry
+  BIN: clashferry
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
   TAGS: with_gvisor
@@ -37,13 +37,13 @@ tasks:
       - pnpm run build
 
   build:
-    summary: Build bin/mihomobar
+    summary: Build bin/clashferry
     deps: [frontend]
     cmds:
       - go build -tags {{.TAGS}},production -trimpath -buildvcs=false -ldflags="-w -s {{.LDFLAGS}}" -o bin/{{.BIN}} .
 
   build:dev:
-    summary: Build bin/mihomobar with devtools and no frontend minify
+    summary: Build bin/clashferry with devtools and no frontend minify
     cmds:
       - task: bindings
       - cd frontend && pnpm run build:dev
@@ -53,7 +53,7 @@ tasks:
     summary: Build (dev) and run, opening the main window
     deps: [build:dev]
     cmds:
-      - MIHOMOBAR_SHOW=main ./bin/{{.BIN}}
+      - CLASHFERRY_SHOW=main ./bin/{{.BIN}}
 
   dev:
     summary: Vite with hot reload against a Go build
@@ -61,19 +61,19 @@ tasks:
       - wails3 dev -config ./build/config.yml -port 9245
 
   app:
-    summary: Bundle bin/MihomoBar.app (ad-hoc signed)
+    summary: Bundle bin/ClashFerry.app (ad-hoc signed)
     deps: [build]
     cmds:
       - scripts/bundle.sh "{{.VERSION}}"
 
   install:
-    summary: Bundle the app, then quit, replace and reopen ~/Applications/MihomoBar.app
+    summary: Bundle the app, then quit, replace and reopen ~/Applications/ClashFerry.app
     deps: [app]
     cmds:
       - scripts/install.sh
 
   dmg:
-    summary: Package bin/MihomoBar.dmg
+    summary: Package bin/ClashFerry.dmg
     deps: [app]
     cmds:
       - rm -f bin/{{.APP_NAME}}.dmg

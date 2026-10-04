@@ -34,7 +34,7 @@ func init() {
 	})
 	// behind the controller's secret, like every other route
 	route.Register(func(r chi.Router) {
-		r.Get("/mihomobar/closed", func(w http.ResponseWriter, r *http.Request) {
+		r.Get("/clashferry/closed", func(w http.ResponseWriter, r *http.Request) {
 			closed.Lock()
 			list := closed.list
 			closed.list = nil

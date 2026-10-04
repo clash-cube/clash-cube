@@ -4,10 +4,10 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/localhost-copilot/mihomobar/internal/appdir"
-	"github.com/localhost-copilot/mihomobar/internal/coremgr"
-	"github.com/localhost-copilot/mihomobar/internal/helper"
-	"github.com/localhost-copilot/mihomobar/internal/settings"
+	"github.com/localhost-copilot/clashferry/internal/appdir"
+	"github.com/localhost-copilot/clashferry/internal/coremgr"
+	"github.com/localhost-copilot/clashferry/internal/helper"
+	"github.com/localhost-copilot/clashferry/internal/settings"
 )
 
 // The runners the core can run under.

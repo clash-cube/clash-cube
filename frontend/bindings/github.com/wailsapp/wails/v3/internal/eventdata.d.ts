@@ -7,13 +7,13 @@ import type { Events } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import type * as backend$0 from "../../../../localhost-copilot/mihomobar/internal/backend/models.js";
+import type * as backend$0 from "../../../../localhost-copilot/clashferry/internal/backend/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import type * as mihomoapi$0 from "../../../../localhost-copilot/mihomobar/internal/mihomoapi/models.js";
+import type * as mihomoapi$0 from "../../../../localhost-copilot/clashferry/internal/mihomoapi/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import type * as profiles$0 from "../../../../localhost-copilot/mihomobar/internal/profiles/models.js";
+import type * as profiles$0 from "../../../../localhost-copilot/clashferry/internal/profiles/models.js";
 
 declare module "@wailsio/runtime" {
     namespace Events {

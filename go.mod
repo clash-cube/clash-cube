@@ -1,4 +1,4 @@
-module github.com/localhost-copilot/mihomobar
+module github.com/localhost-copilot/clashferry
 
 go 1.25.0
 

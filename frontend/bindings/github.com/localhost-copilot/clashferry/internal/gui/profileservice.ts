@@ -25,11 +25,11 @@ import * as profiles$0 from "../profiles/models.js";
  * the copy's.
  */
 export function Duplicate(id: string, name: string): $CancellablePromise<profiles$0.Profile> {
-    return $Call.ByID(1526146004, id, name);
+    return $Call.ByID(1219456537, id, name);
 }
 
 export function Edit(id: string, name: string, interval: number): $CancellablePromise<profiles$0.Profile> {
-    return $Call.ByID(548408207, id, name, interval);
+    return $Call.ByID(924485052, id, name, interval);
 }
 
 /**
@@ -37,15 +37,15 @@ export function Edit(id: string, name: string, interval: number): $CancellablePr
  * user cancelled.
  */
 export function ImportFile(): $CancellablePromise<profiles$0.Profile> {
-    return $Call.ByID(2189063916);
+    return $Call.ByID(2954319699);
 }
 
 export function ImportURL(url: string, name: string, interval: number): $CancellablePromise<profiles$0.Profile> {
-    return $Call.ByID(2903618323, url, name, interval);
+    return $Call.ByID(1706792142, url, name, interval);
 }
 
 export function List(): $CancellablePromise<profiles$0.Profile[] | null> {
-    return $Call.ByID(4210285211);
+    return $Call.ByID(3061534224);
 }
 
 /**
@@ -53,53 +53,53 @@ export function List(): $CancellablePromise<profiles$0.Profile[] | null> {
  * an error says why the body isn't a module.
  */
 export function ModuleKeys(body: string): $CancellablePromise<string[] | null> {
-    return $Call.ByID(125334863, body);
+    return $Call.ByID(1003236036, body);
 }
 
 /**
  * ModuleTemplates is the ready-made modules.
  */
 export function ModuleTemplates(): $CancellablePromise<modules$0.Template[] | null> {
-    return $Call.ByID(1166326602);
+    return $Call.ByID(2127614075);
 }
 
 /**
  * Modules is the user's modules, merged over every profile in order.
  */
 export function Modules(): $CancellablePromise<modules$0.Module[] | null> {
-    return $Call.ByID(3717581476);
+    return $Call.ByID(2114714281);
 }
 
 /**
  * Edit opens a profile's file in the default editor.
  */
 export function OpenInEditor(id: string): $CancellablePromise<void> {
-    return $Call.ByID(3771928797, id);
+    return $Call.ByID(2546107842, id);
 }
 
 export function Remove(id: string): $CancellablePromise<void> {
-    return $Call.ByID(4085670399, id);
+    return $Call.ByID(2446974256, id);
 }
 
 /**
  * Reveal shows a profile's file in Finder.
  */
 export function Reveal(id: string): $CancellablePromise<void> {
-    return $Call.ByID(1550090246, id);
+    return $Call.ByID(1043643949, id);
 }
 
 /**
  * RouteBody is the YAML a route makes, to open as a module of its own.
  */
 export function RouteBody(r: modules$0.Route): $CancellablePromise<string> {
-    return $Call.ByID(310144396, r);
+    return $Call.ByID(4280762725, r);
 }
 
 /**
  * RouteNodes is the running profile's nodes, for a route to pick from.
  */
 export function RouteNodes(): $CancellablePromise<backend$0.Node[] | null> {
-    return $Call.ByID(594942573);
+    return $Call.ByID(4222946026);
 }
 
 /**
@@ -107,14 +107,14 @@ export function RouteNodes(): $CancellablePromise<backend$0.Node[] | null> {
  * how many of the running profile's nodes it takes.
  */
 export function RouteRegions(): $CancellablePromise<backend$0.RegionNodes[] | null> {
-    return $Call.ByID(2458093525);
+    return $Call.ByID(493942842);
 }
 
 /**
  * RouteServices is the services a module can send through a policy.
  */
 export function RouteServices(): $CancellablePromise<modules$0.Service[] | null> {
-    return $Call.ByID(3699336864);
+    return $Call.ByID(3898201029);
 }
 
 /**
@@ -122,27 +122,27 @@ export function RouteServices(): $CancellablePromise<modules$0.Service[] | null>
  * previous ones.
  */
 export function SetModules(ms: modules$0.Module[] | null): $CancellablePromise<void> {
-    return $Call.ByID(1311253774, ms);
+    return $Call.ByID(3663678697, ms);
 }
 
 /**
  * TakeImportRequests transfers pending links to the main window's import queue.
  */
 export function TakeImportRequests(): $CancellablePromise<profiles$0.ImportRequest[] | null> {
-    return $Call.ByID(3937850699);
+    return $Call.ByID(1095558244);
 }
 
 export function Update(id: string): $CancellablePromise<profiles$0.Profile> {
-    return $Call.ByID(52250130, id);
+    return $Call.ByID(31860873, id);
 }
 
 /**
  * UpdateAll refreshes every subscription; the names of those that failed.
  */
 export function UpdateAll(): $CancellablePromise<string[] | null> {
-    return $Call.ByID(647465737);
+    return $Call.ByID(206065296);
 }
 
 export function Use(id: string): $CancellablePromise<void> {
-    return $Call.ByID(1651199074, id);
+    return $Call.ByID(3430697403, id);
 }

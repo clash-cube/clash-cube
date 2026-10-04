@@ -4,13 +4,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/localhost-copilot/mihomobar/internal/appdir"
+	"github.com/localhost-copilot/clashferry/internal/appdir"
 )
 
 // A copy is local, with its own file: updating or editing one leaves the
 // other be.
 func TestDuplicate(t *testing.T) {
-	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	t.Setenv("CLASHFERRY_HOME", t.TempDir())
 	if err := appdir.Ensure(); err != nil {
 		t.Fatal(err)
 	}

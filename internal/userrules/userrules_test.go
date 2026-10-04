@@ -20,7 +20,7 @@ func TestCheck(t *testing.T) {
 }
 
 func TestSaveAndAdded(t *testing.T) {
-	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	t.Setenv("CLASHFERRY_HOME", t.TempDir())
 	if len(List()) != 0 {
 		t.Fatal("rules before any were saved")
 	}

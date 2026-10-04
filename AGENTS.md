@@ -1,6 +1,6 @@
 # Notes for coding agents
 
-MihomoBar is a macOS menu bar app for mihomo: Go + Wails v3 (beta) + React/TS.
+ClashFerry is a macOS menu bar app for mihomo: Go + Wails v3 (beta) + React/TS.
 `docs/design.md` has the architecture, the UI spec and the plan; read it
 before larger changes.
 
@@ -46,9 +46,9 @@ events (`events.go`). Put behaviour in `backend`, not in `gui`.
 `task` isn't installed; the Taskfile runs through `wails3 task`.
 
 ```sh
-wails3 task build:dev     # bindings + frontend (dev) + go build → bin/mihomobar
-wails3 task app           # release bin/MihomoBar.app (ad-hoc signed)
-wails3 task install       # app, then quit/replace/reopen ~/Applications/MihomoBar.app
+wails3 task build:dev     # bindings + frontend (dev) + go build → bin/clashferry
+wails3 task app           # release bin/ClashFerry.app (ad-hoc signed)
+wails3 task install       # app, then quit/replace/reopen ~/Applications/ClashFerry.app
 go test ./internal/...    # backend/helper tests start real cores
 cd frontend && npx tsc    # type check
 ```
@@ -58,18 +58,18 @@ cd frontend && npx tsc    # type check
   `frontend/bindings` and are committed.
 - Run development instances on a separate home and port. Never use the
   user's real data directory (the default, under Application Support):
-  `MIHOMOBAR_HOME=/tmp/mbhome ./bin/mihomobar`. Set that home's `mixedPort`
+  `CLASHFERRY_HOME=/tmp/mbhome ./bin/clashferry`. Set that home's `mixedPort`
   to something other than 7890.
-- Debug switches: `MIHOMOBAR_SHOW=main|panel|menu` opens a window or the tray
-  menu at start. `MIHOMOBAR_VIEW=proxies` (or `settings#tun`) picks the page.
+- Debug switches: `CLASHFERRY_SHOW=main|panel|menu` opens a window or the tray
+  menu at start. `CLASHFERRY_VIEW=proxies` (or `settings#tun`) picks the page.
 - Tests that need a core re-exec the test binary as `core`; see `TestMain` in
   `internal/backend` and `internal/helper`.
 
 ## Don't disturb the user's machine
 
-An installed app at `~/Applications/MihomoBar.app` and root helper may be running.
+An installed app at `~/Applications/ClashFerry.app` and root helper may be running.
 When stopping development instances, match them exactly,
-e.g. `pkill -f "^./bin/mihomobar"`. A loose pattern also matches the user's
+e.g. `pkill -f "^./bin/clashferry"`. A loose pattern also matches the user's
 app and the helper's core.
 
 These all change the real machine. Ask before doing any of them:
@@ -81,7 +81,7 @@ These all change the real machine. Ask before doing any of them:
 ## Service mode / helper (security-sensitive)
 
 `internal/helper` is a root daemon. Keep its surface small:
-- one JSON-lines request per connection over `/var/run/mihomobar-helper.sock`;
+- one JSON-lines request per connection over `/var/run/clashferry-helper.sock`;
 - the peer uid is checked with `LOCAL_PEERCRED` and must be the installing
   user or root;
 - `core` runs only on `<data>/core/runtime.yaml`, refusing symlinks and

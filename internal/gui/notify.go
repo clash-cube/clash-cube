@@ -11,8 +11,8 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 
-	"github.com/localhost-copilot/mihomobar/internal/backend"
-	"github.com/localhost-copilot/mihomobar/internal/settings"
+	"github.com/localhost-copilot/clashferry/internal/backend"
+	"github.com/localhost-copilot/clashferry/internal/settings"
 )
 
 var (
@@ -22,7 +22,7 @@ var (
 )
 
 // startNotifications readies the notification centre. It needs a bundle
-// (bin/MihomoBar.app); a bare binary goes without, which isn't an error.
+// (bin/ClashFerry.app); a bare binary goes without, which isn't an error.
 func (h *host) startNotifications() {
 	n := notifications.New()
 	if err := n.ServiceStartup(context.Background(), application.ServiceOptions{}); err != nil {
@@ -109,7 +109,7 @@ func eventText(e backend.Event) (title, body string) {
 	case "network":
 		title = tr("Network Rules", "网络规则")
 	default:
-		title = "MihomoBar"
+		title = "ClashFerry"
 	}
 	return title, text
 }

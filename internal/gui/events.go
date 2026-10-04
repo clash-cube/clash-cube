@@ -3,9 +3,9 @@ package gui
 import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/localhost-copilot/mihomobar/internal/backend"
-	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
-	"github.com/localhost-copilot/mihomobar/internal/profiles"
+	"github.com/localhost-copilot/clashferry/internal/backend"
+	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
+	"github.com/localhost-copilot/clashferry/internal/profiles"
 )
 
 func init() {

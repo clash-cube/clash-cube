@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
-	"github.com/localhost-copilot/mihomobar/internal/usage"
+	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
+	"github.com/localhost-copilot/clashferry/internal/usage"
 )
 
 func TestClientMeter(t *testing.T) {

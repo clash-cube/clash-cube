@@ -107,7 +107,7 @@ export function Settings() {
         </Section>
 
         <Section title={t("About")}>
-          <Row label="MihomoBar"><span className="mono muted">{state?.appVersion}</span></Row>
+          <Row label={t("ClashFerry")}><span className="mono muted">{state?.appVersion}</span></Row>
           <Row label={t("mihomo")}><span className="mono muted">{state?.coreVersion}</span></Row>
         </Section>
       </>}

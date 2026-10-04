@@ -1,4 +1,4 @@
-// MihomoBar is a macOS menu bar app for mihomo. One binary runs in three
+// ClashFerry is a macOS menu bar app for mihomo. One binary runs in three
 // roles: the GUI (default), the proxy core (`core`), and the privileged
 // helper daemon (`helper`). See docs/design.md.
 package main
@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/localhost-copilot/mihomobar/internal/core"
-	"github.com/localhost-copilot/mihomobar/internal/gui"
-	"github.com/localhost-copilot/mihomobar/internal/helper"
+	"github.com/localhost-copilot/clashferry/internal/core"
+	"github.com/localhost-copilot/clashferry/internal/gui"
+	"github.com/localhost-copilot/clashferry/internal/helper"
 )
 
 // version is set by the build (-ldflags "-X main.version=...").
@@ -28,12 +28,12 @@ func main() {
 	case "helper":
 		err = helper.Main(args[1:], version)
 	case "version", "-v", "--version":
-		fmt.Println("mihomobar", version, "mihomo", core.Version())
+		fmt.Println("clashferry", version, "mihomo", core.Version())
 	default:
 		err = gui.Run(version)
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "mihomobar:", err)
+		fmt.Fprintln(os.Stderr, "clashferry:", err)
 		os.Exit(1)
 	}
 }

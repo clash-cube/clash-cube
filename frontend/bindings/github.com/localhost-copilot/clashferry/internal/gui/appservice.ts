@@ -26,7 +26,7 @@ import * as $models from "./models.js";
  * client) as a PNG data URL, for the page to show.
  */
 export function AppIcon(path: string): $CancellablePromise<string> {
-    return $Call.ByID(3141288265, path);
+    return $Call.ByID(3639351648, path);
 }
 
 /**
@@ -34,32 +34,32 @@ export function AppIcon(path: string): $CancellablePromise<string> {
  * zero App.
  */
 export function ChooseApp(): $CancellablePromise<$models.App> {
-    return $Call.ByID(2737570799);
+    return $Call.ByID(3065597634);
 }
 
 export function ClearEvents(): $CancellablePromise<void> {
-    return $Call.ByID(1703361915);
+    return $Call.ByID(4244298330);
 }
 
 /**
  * ClearUsage forgets the traffic statistics.
  */
 export function ClearUsage(): $CancellablePromise<void> {
-    return $Call.ByID(3945536857);
+    return $Call.ByID(949415422);
 }
 
 /**
  * Connectivity measures router, DNS, internet and proxy latency.
  */
 export function Connectivity(): $CancellablePromise<backend$0.Connectivity> {
-    return $Call.ByID(1676079710);
+    return $Call.ByID(1372399677);
 }
 
 /**
  * ConnectivityHistory is each item's recent measures, oldest first.
  */
 export function ConnectivityHistory(): $CancellablePromise<{ [_ in string]?: backend$0.LatencySample[] | null } | null> {
-    return $Call.ByID(1648781750);
+    return $Call.ByID(446081895);
 }
 
 /**
@@ -67,46 +67,46 @@ export function ConnectivityHistory(): $CancellablePromise<{ [_ in string]?: bac
  * only that item's fields are set.
  */
 export function ConnectivityItem(key: string): $CancellablePromise<backend$0.Connectivity> {
-    return $Call.ByID(1432809917, key);
+    return $Call.ByID(3982267582, key);
 }
 
 export function CopyText(text: string): $CancellablePromise<boolean> {
-    return $Call.ByID(1618543495, text);
+    return $Call.ByID(1033800820, text);
 }
 
 /**
  * DNSEgress is the resolver in use and the address its queries leave from.
  */
 export function DNSEgress(): $CancellablePromise<backend$0.DNSEgress> {
-    return $Call.ByID(3851272135);
+    return $Call.ByID(2787700938);
 }
 
 /**
  * DirectEgress is the direct route's interface and public address.
  */
 export function DirectEgress(): $CancellablePromise<backend$0.Egress> {
-    return $Call.ByID(3018527287);
+    return $Call.ByID(804986320);
 }
 
 /**
  * DisableServiceMode runs the core as the user again; uninstall removes the helper.
  */
 export function DisableServiceMode(uninstall: boolean): $CancellablePromise<void> {
-    return $Call.ByID(1662789921, uninstall);
+    return $Call.ByID(4159813370, uninstall);
 }
 
 /**
  * EnableServiceMode installs the privileged helper (asking for a password).
  */
 export function EnableServiceMode(): $CancellablePromise<void> {
-    return $Call.ByID(966595062);
+    return $Call.ByID(1417553343);
 }
 
 /**
  * Events is the recent events, oldest first.
  */
 export function Events(): $CancellablePromise<backend$0.Event[] | null> {
-    return $Call.ByID(1767932624);
+    return $Call.ByID(1539578075);
 }
 
 /**
@@ -114,18 +114,18 @@ export function Events(): $CancellablePromise<backend$0.Event[] | null> {
  * over ms when it is shown.
  */
 export function FitPanel(height: number, ms: number): $CancellablePromise<void> {
-    return $Call.ByID(3889214102, height, ms);
+    return $Call.ByID(3383759525, height, ms);
 }
 
 /**
  * HelperStatus is service mode's state, for Settings.
  */
 export function HelperStatus(): $CancellablePromise<backend$0.HelperStatus> {
-    return $Call.ByID(3732919099);
+    return $Call.ByID(2939740836);
 }
 
 export function HidePanel(): $CancellablePromise<void> {
-    return $Call.ByID(3127844849);
+    return $Call.ByID(4090031836);
 }
 
 /**
@@ -133,37 +133,37 @@ export function HidePanel(): $CancellablePromise<void> {
  * machine to use (Allow LAN must be on); "" when the Mac has none.
  */
 export function LANProxyCommand(): $CancellablePromise<string> {
-    return $Call.ByID(3811387141);
+    return $Call.ByID(3597282564);
 }
 
 export function OpenURL(url: string): $CancellablePromise<void> {
-    return $Call.ByID(1821707918, url);
+    return $Call.ByID(3683581295, url);
 }
 
 /**
  * ProxyCommand is the shell export line for the mixed port.
  */
 export function ProxyCommand(): $CancellablePromise<string> {
-    return $Call.ByID(4092743996);
+    return $Call.ByID(763102219);
 }
 
 /**
  * ProxyEgress is where proxied traffic leaves, and the chain it took.
  */
 export function ProxyEgress(): $CancellablePromise<backend$0.ProxyEgress> {
-    return $Call.ByID(117796648);
+    return $Call.ByID(2318133129);
 }
 
 export function Quit(): $CancellablePromise<void> {
-    return $Call.ByID(550236858);
+    return $Call.ByID(2337421909);
 }
 
 export function Restart(): $CancellablePromise<void> {
-    return $Call.ByID(3972975136);
+    return $Call.ByID(3635233825);
 }
 
 export function RevealData(): $CancellablePromise<void> {
-    return $Call.ByID(1194505660);
+    return $Call.ByID(3167104875);
 }
 
 /**
@@ -171,38 +171,38 @@ export function RevealData(): $CancellablePromise<void> {
  * RunningApps is the apps running now, for a process rule to name.
  */
 export function RunningApps(): $CancellablePromise<$models.App[] | null> {
-    return $Call.ByID(72655528);
+    return $Call.ByID(2996144997);
 }
 
 export function SetMode(mode: string): $CancellablePromise<void> {
-    return $Call.ByID(3544230680, mode);
+    return $Call.ByID(1996405101, mode);
 }
 
 export function SetSystemProxy(on: boolean): $CancellablePromise<void> {
-    return $Call.ByID(3320185786, on);
+    return $Call.ByID(1747217553, on);
 }
 
 export function SetTun(on: boolean): $CancellablePromise<void> {
-    return $Call.ByID(700666950, on);
+    return $Call.ByID(921094421, on);
 }
 
 /**
  * ShowMain opens the main window, on view if one is given.
  */
 export function ShowMain(view: string): $CancellablePromise<void> {
-    return $Call.ByID(821886749, view);
+    return $Call.ByID(4204075058, view);
 }
 
 export function Start(): $CancellablePromise<void> {
-    return $Call.ByID(1280175915);
+    return $Call.ByID(3800309646);
 }
 
 export function State(): $CancellablePromise<backend$0.State> {
-    return $Call.ByID(1061184298);
+    return $Call.ByID(3750270979);
 }
 
 export function Stop(): $CancellablePromise<void> {
-    return $Call.ByID(1976075929);
+    return $Call.ByID(3504516182);
 }
 
 /**
@@ -211,5 +211,5 @@ export function Stop(): $CancellablePromise<void> {
  * narrows it to one.
  */
 export function Usage($from: string, to: string, hour: number): $CancellablePromise<usage$0.Report> {
-    return $Call.ByID(2385816252, $from, to, hour);
+    return $Call.ByID(3133726265, $from, to, hour);
 }

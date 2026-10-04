@@ -11,12 +11,12 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/localhost-copilot/mihomobar/internal/helper"
-	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
-	"github.com/localhost-copilot/mihomobar/internal/netpath"
-	"github.com/localhost-copilot/mihomobar/internal/profiles"
-	"github.com/localhost-copilot/mihomobar/internal/settings"
-	"github.com/localhost-copilot/mihomobar/internal/wifi"
+	"github.com/localhost-copilot/clashferry/internal/helper"
+	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
+	"github.com/localhost-copilot/clashferry/internal/netpath"
+	"github.com/localhost-copilot/clashferry/internal/profiles"
+	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashferry/internal/wifi"
 )
 
 // The machine, as variables so tests can stand in for it.

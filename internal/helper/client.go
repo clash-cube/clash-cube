@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/localhost-copilot/mihomobar/internal/runtimecfg"
+	"github.com/localhost-copilot/clashferry/internal/runtimecfg"
 )
 
 func dial(sock string) (*net.UnixConn, error) {

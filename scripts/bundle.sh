@@ -1,12 +1,12 @@
 #!/bin/sh
-# Assemble bin/MihomoBar.app around bin/mihomobar and sign it ad hoc.
+# Assemble bin/ClashFerry.app around bin/clashferry and sign it ad hoc.
 set -eu
 cd "$(dirname "$0")/.."
 VERSION="${1:-dev}"
-APP=bin/MihomoBar.app
+APP=bin/ClashFerry.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp bin/mihomobar "$APP/Contents/MacOS/mihomobar"
+cp bin/clashferry "$APP/Contents/MacOS/clashferry"
 sed "s/@VERSION@/${VERSION#v}/g" build/darwin/Info.plist > "$APP/Contents/Info.plist"
 if [ ! -f build/darwin/icons.icns ]; then
   set=$(mktemp -d)/AppIcon.iconset

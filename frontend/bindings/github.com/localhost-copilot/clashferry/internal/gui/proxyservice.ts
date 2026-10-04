@@ -28,37 +28,37 @@ import * as $models from "./models.js";
  * AddUserRule puts a rule first.
  */
 export function AddUserRule(r: userrules$0.Rule): $CancellablePromise<void> {
-    return $Call.ByID(3145288484, r);
+    return $Call.ByID(379640977, r);
 }
 
 export function CloseAllConnections(): $CancellablePromise<void> {
-    return $Call.ByID(2368338258);
+    return $Call.ByID(2843252139);
 }
 
 export function CloseConnection(id: string): $CancellablePromise<void> {
-    return $Call.ByID(3260682086, id);
+    return $Call.ByID(841493547, id);
 }
 
 export function Connections(): $CancellablePromise<mihomoapi$0.Connections> {
-    return $Call.ByID(1837008931);
+    return $Call.ByID(3700475478);
 }
 
 export function FlushDNS(): $CancellablePromise<void> {
-    return $Call.ByID(305162487);
+    return $Call.ByID(2048144876);
 }
 
 /**
  * GeoInfo is when the GEO databases last changed, and whether an update runs.
  */
 export function GeoInfo(): $CancellablePromise<backend$0.GeoInfo> {
-    return $Call.ByID(1234467795);
+    return $Call.ByID(71545170);
 }
 
 /**
  * Groups is every proxy group, GLOBAL last.
  */
 export function Groups(): $CancellablePromise<$models.Group[] | null> {
-    return $Call.ByID(2943322750);
+    return $Call.ByID(341875237);
 }
 
 /**
@@ -66,7 +66,7 @@ export function Groups(): $CancellablePromise<$models.Group[] | null> {
  * address, host:port or a URL).
  */
 export function LookupHost(host: string): $CancellablePromise<backend$0.Lookup> {
-    return $Call.ByID(3168067658, host);
+    return $Call.ByID(3645543165, host);
 }
 
 /**
@@ -74,25 +74,25 @@ export function LookupHost(host: string): $CancellablePromise<backend$0.Lookup> 
  * makes for groups' own proxies are left out.
  */
 export function Providers(): $CancellablePromise<$models.Provider[] | null> {
-    return $Call.ByID(1937542960);
+    return $Call.ByID(3870946869);
 }
 
 /**
  * RuleProviders is the profile's rule providers, by name.
  */
 export function RuleProviders(): $CancellablePromise<mihomoapi$0.RuleProvider[] | null> {
-    return $Call.ByID(1988753002);
+    return $Call.ByID(2223820107);
 }
 
 /**
  * RuleTypes is the rule types a user rule can have.
  */
 export function RuleTypes(): $CancellablePromise<string[] | null> {
-    return $Call.ByID(1713390785);
+    return $Call.ByID(904787968);
 }
 
 export function Rules(): $CancellablePromise<mihomoapi$0.Rule[] | null> {
-    return $Call.ByID(647292905);
+    return $Call.ByID(1909907368);
 }
 
 /**
@@ -100,21 +100,21 @@ export function Rules(): $CancellablePromise<mihomoapi$0.Rule[] | null> {
  * the switch shows at once.
  */
 export function Select(group: string, name: string): $CancellablePromise<void> {
-    return $Call.ByID(141765054, group, name);
+    return $Call.ByID(3950691493, group, name);
 }
 
 /**
  * SetUserRules replaces them; the core takes them at once.
  */
 export function SetUserRules(rs: userrules$0.Rule[] | null): $CancellablePromise<void> {
-    return $Call.ByID(2740290300, rs);
+    return $Call.ByID(1676976719, rs);
 }
 
 /**
  * TestLatency shares scheduling, progress and results across all surfaces.
  */
 export function TestLatency(kind: string, name: string): $CancellablePromise<backend$0.LatencyResult> {
-    return $Call.ByID(2402573828, kind, name);
+    return $Call.ByID(3822694561, kind, name);
 }
 
 /**
@@ -123,7 +123,7 @@ export function TestLatency(kind: string, name: string): $CancellablePromise<bac
  * and the first call has no speeds yet.
  */
 export function TopClients(n: number): $CancellablePromise<backend$0.ClientRate[] | null> {
-    return $Call.ByID(2078237291, n);
+    return $Call.ByID(2635402048, n);
 }
 
 /**
@@ -131,14 +131,14 @@ export function TopClients(n: number): $CancellablePromise<backend$0.ClientRate[
  * the result means one was already under way.
  */
 export function UpdateGeo(): $CancellablePromise<backend$0.GeoInfo> {
-    return $Call.ByID(1571070136);
+    return $Call.ByID(4045670937);
 }
 
 /**
  * UpdateProvider fetches a proxy provider again.
  */
 export function UpdateProvider(name: string): $CancellablePromise<void> {
-    return $Call.ByID(2461202334, name);
+    return $Call.ByID(3963973001, name);
 }
 
 /**
@@ -146,12 +146,12 @@ export function UpdateProvider(name: string): $CancellablePromise<void> {
  * rules it had when the fetch fails.
  */
 export function UpdateRuleProvider(name: string): $CancellablePromise<void> {
-    return $Call.ByID(2457023384, name);
+    return $Call.ByID(3944878463, name);
 }
 
 /**
  * UserRules is the rules added in the app, ahead of the profile's.
  */
 export function UserRules(): $CancellablePromise<userrules$0.Rule[] | null> {
-    return $Call.ByID(436634596);
+    return $Call.ByID(3940402349);
 }

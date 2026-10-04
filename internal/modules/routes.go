@@ -185,7 +185,7 @@ func (r Route) Takes(profile, name string) bool {
 
 // Suffix sets the route's group apart from a profile's group of the same
 // name, which it can't share. The page looks for it the same way.
-const Suffix = " (MihomoBar)"
+const Suffix = " (ClashFerry)"
 
 // Group is the name of the group the route sends its service to, given
 // the names the configuration has already; "" when it goes direct.

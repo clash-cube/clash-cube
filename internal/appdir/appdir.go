@@ -1,4 +1,4 @@
-// Package appdir names where MihomoBar keeps its files.
+// Package appdir names where ClashFerry keeps its files.
 package appdir
 
 import (
@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 )
 
-// Root is ~/Library/Application Support/MihomoBar, or $MIHOMOBAR_HOME.
+// Root is ~/Library/Application Support/ClashFerry, or $CLASHFERRY_HOME.
 func Root() string {
-	if d := os.Getenv("MIHOMOBAR_HOME"); d != "" {
+	if d := os.Getenv("CLASHFERRY_HOME"); d != "" {
 		return d
 	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, "Library", "Application Support", "MihomoBar")
+	return filepath.Join(home, "Library", "Application Support", "ClashFerry")
 }
 
 func Settings() string      { return filepath.Join(Root(), "settings.json") }

@@ -1,7 +1,7 @@
 package gui
 
 import (
-	"github.com/localhost-copilot/mihomobar/internal/profiles"
+	"github.com/localhost-copilot/clashferry/internal/profiles"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 

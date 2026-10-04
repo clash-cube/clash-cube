@@ -14,16 +14,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/localhost-copilot/mihomobar/internal/appdir"
-	"github.com/localhost-copilot/mihomobar/internal/coremgr"
-	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
-	"github.com/localhost-copilot/mihomobar/internal/modules"
-	"github.com/localhost-copilot/mihomobar/internal/profiles"
-	"github.com/localhost-copilot/mihomobar/internal/runtimecfg"
-	"github.com/localhost-copilot/mihomobar/internal/settings"
-	"github.com/localhost-copilot/mihomobar/internal/sysproxy"
-	"github.com/localhost-copilot/mihomobar/internal/usage"
-	"github.com/localhost-copilot/mihomobar/internal/userrules"
+	"github.com/localhost-copilot/clashferry/internal/appdir"
+	"github.com/localhost-copilot/clashferry/internal/coremgr"
+	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
+	"github.com/localhost-copilot/clashferry/internal/modules"
+	"github.com/localhost-copilot/clashferry/internal/profiles"
+	"github.com/localhost-copilot/clashferry/internal/runtimecfg"
+	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashferry/internal/sysproxy"
+	"github.com/localhost-copilot/clashferry/internal/usage"
+	"github.com/localhost-copilot/clashferry/internal/userrules"
 )
 
 // State is what the GUI shows of the app at a glance.
@@ -135,7 +135,7 @@ func (b *Backend) Init() error {
 		s.Profile = profiles.List()[0].ID
 		_ = settings.Save(s)
 	}
-	profiles.SetUserAgent("clash.meta/" + b.CoreVersion + " mihomobar/" + b.Version)
+	profiles.SetUserAgent("clash.meta/" + b.CoreVersion + " clashferry/" + b.Version)
 	// a system proxy left pointing at us by a crash is cleared, even when
 	// it should be on: it points at a port nobody serves until the core
 	// starts (and it may never, with AutoStart off or a broken profile).

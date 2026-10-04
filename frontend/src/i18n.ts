@@ -3,6 +3,7 @@ import { useStore } from "./store";
 // Chinese, keyed by the English: a missing entry shows the
 // English rather than a key.
 const zh: Record<string, string> = {
+  "ClashFerry": "ClashFerry",
   "Network rules": "网络规则", "Network rule": "网络规则", "Changed by hand": "已手动更改", "Apply rules by network": "按网络自动设置",
   "Set the profile, mode, system proxy and groups for each network. Leaving a network returns to the other networks' rule; a change made by hand lasts until the network changes.": "为每个网络设定配置、出站模式、系统代理和策略组。离开某个网络时回到“其他网络”的设置；手动更改在换网前一直有效。",
   "Current network: {name}": "当前网络：{name}", "Not connected": "未连接", "Wi-Fi": "Wi-Fi", "Wired network": "有线网络", "Other networks": "其他网络",
@@ -121,7 +122,7 @@ const zh: Record<string, string> = {
   "Groups": "策略组", "Providers": "提供商", "{n} nodes": "{n} 个节点", "Reachable nodes": "可用节点", "Click to test this node": "点击测试该节点", "Click to test again": "点击重新测速", "Looked up through {p}, not {q} that the test URL takes": "此次查询经过 {p}，而非测速链接所走的 {q}",
   "Events": "事件", "Problems": "问题", "No events": "暂无事件", "Network changes, automatic group switches and errors appear here.": "网络变化、自动策略组切换和错误会显示在这里。",
   "Proxy groups": "策略组", "Notifications": "通知", "Core errors, failed updates, the system proxy taken by another app, and network rules applied": "内核出错、订阅更新失败、系统代理被其他应用改写、应用网络规则时通知",
-  "Another app changed the system proxy": "其他应用修改了系统代理", "Apps that follow the system proxy no longer go through MihomoBar.": "遵循系统代理的应用已不再经过 MihomoBar。",
+  "Another app changed the system proxy": "其他应用修改了系统代理", "Apps that follow the system proxy no longer go through ClashFerry.": "遵循系统代理的应用已不再经过 ClashFerry。",
   "Take it back": "重新接管", "Taken by another app": "已被其他应用改写",
   "The core stopped: {error}": "内核已停止：{error}", "Couldn't update {name}: {error}": "无法更新 {name}：{error}",
   "The updated profile was refused, the previous one stays: {error}": "更新后的配置未通过校验，继续使用之前的配置：{error}",
