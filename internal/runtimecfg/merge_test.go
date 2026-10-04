@@ -66,7 +66,7 @@ func TestBuildModules(t *testing.T) {
 		{Name: "sneaky", Enabled: true, Body: "external-controller: 0.0.0.0:9090\nexternal-controller-unix: /tmp/x\nsecret: ''\nmixed-port: 1\ntun: {enable: true, device: utun7}"},
 		{Name: "off", Enabled: false, Body: "hosts: {a: 1.1.1.1}"},
 	}
-	out, err := Build([]byte("rules: [\"MATCH,DIRECT\"]"), s, Controller{Addr: "127.0.0.1:5555", Secret: "s3"}, nil, mods)
+	out, err := Build("p", []byte("rules: [\"MATCH,DIRECT\"]"), s, Controller{Addr: "127.0.0.1:5555", Secret: "s3"}, nil, mods)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,30 @@ func TestBuildModules(t *testing.T) {
 	if r := m["rules"].([]any); len(r) != 2 || r[0] != "DOMAIN,a.com,DIRECT" {
 		t.Errorf("rules = %v", r)
 	}
-	if _, err := Build(nil, s, Controller{}, nil, []modules.Module{{Name: "bad", Enabled: true, Body: "prepend-rules: x"}}); err == nil {
+	if _, err := Build("p", nil, s, Controller{}, nil, []modules.Module{{Name: "bad", Enabled: true, Body: "prepend-rules: x"}}); err == nil {
 		t.Error("a bad module built")
+	}
+}
+
+// A route's group never takes a name the profile has, nor one an earlier
+// route took.
+func TestRouteNames(t *testing.T) {
+	r := &modules.Route{Service: "Google", Policy: "select"}
+	mods := []modules.Module{{Name: "a", Enabled: true, Route: r}, {Name: "b", Enabled: true, Route: r}}
+	out, err := Build("p", []byte("proxy-groups: [{name: Google, type: select, proxies: [DIRECT]}]\nrules: [\"MATCH,DIRECT\"]"), settings.Defaults(), Controller{}, nil, mods[:1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	_ = yaml.Unmarshal(out, &m)
+	gs := m["proxy-groups"].([]any)
+	if len(gs) != 2 || gs[1].(map[string]any)["name"] != "Google"+modules.Suffix {
+		t.Errorf("groups = %v", gs)
+	}
+	if rules := m["rules"].([]any); rules[0] != "GEOSITE,google,Google"+modules.Suffix {
+		t.Errorf("rules = %v", rules)
+	}
+	if _, err := Build("p", nil, settings.Defaults(), Controller{}, nil, mods); err != nil {
+		t.Fatal(err)
 	}
 }

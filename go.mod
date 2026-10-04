@@ -3,6 +3,7 @@ module github.com/localhost-copilot/mihomobar
 go 1.25.0
 
 require (
+	github.com/dlclark/regexp2 v1.12.0
 	github.com/metacubex/mihomo v0.0.0
 	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.27
@@ -25,7 +26,6 @@ require (
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/coreos/go-iptables v0.8.0 // indirect
-	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/dunglas/httpsfv v1.0.2 // indirect
 	github.com/easytier/easytier/easytier-go v0.0.0-20260910071355-3d0c9c3ca5e2 // indirect
 	github.com/enfein/mieru/v3 v3.38.0 // indirect

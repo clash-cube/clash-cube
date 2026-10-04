@@ -1,14 +1,12 @@
 package modules
 
 // Template is a module offered ready-made, for the cases most people add
-// one for. Hint says in a line what it does and when to want it; a Draft
-// holds an example to replace, so it opens in the editor rather than being
-// added as it is.
+// one for. Hint says in a line what it does and when to want it. A template
+// opens in the editor, to be read and changed before it's added.
 type Template struct {
-	Name  string `json:"name"`
-	Hint  string `json:"hint"`
-	Body  string `json:"body"`
-	Draft bool   `json:"draft,omitempty"`
+	Name string `json:"name"`
+	Hint string `json:"hint"`
+	Body string `json:"body"`
 }
 
 // Templates is the ready-made modules, in the order they're offered.
@@ -82,6 +80,5 @@ prepend-rules:
 		Body: `hosts:
   router.lan: 192.168.1.1
 `,
-		Draft: true,
 	},
 }

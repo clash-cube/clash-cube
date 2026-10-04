@@ -3,5 +3,7 @@
 
 export type {
     Module,
+    Route,
+    Service,
     Template
 } from "./models.js";

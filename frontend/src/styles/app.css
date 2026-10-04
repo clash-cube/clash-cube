@@ -604,6 +604,47 @@ select.input { padding-right: 6px; }
 .modules-empty .lead b { display: block; color: var(--fg); font-size: 13px; font-weight: 500; margin-bottom: 2px; }
 .modules-empty .row { width: 100%; text-align: left; border-top: 1px solid var(--line-2); animation: view-in .3s var(--ease) both; animation-delay: calc(var(--i, 0) * 30ms); }
 .modules-empty .row .sub { white-space: normal; }
+.modules-empty .sect { padding: 14px 14px 6px; font-size: 11px; font-weight: 600; color: var(--muted); border-top: 1px solid var(--line-2); animation: view-in .3s var(--ease) both; animation-delay: calc(var(--i, 0) * 30ms); }
+.modules-empty .sect + .row { border-top: 0; }
+.menu.templates .mhead { padding: 6px 9px 2px; font-size: 11px; font-weight: 600; color: var(--muted); }
+/* a route: its choices in a form, its node on its row */
+.route-editor .field { display: flex; align-items: flex-start; gap: 10px; }
+.route-editor .field .label { flex: none; width: 44px; line-height: 26px; font-size: 12px; color: var(--muted); }
+.route-editor .chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; padding-bottom: 2px; }
+.route-editor .chip .count { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.route-editor .chip.none { color: var(--muted); }
+.route-editor .foot .hint { white-space: normal; line-height: 1.4; }
+.route-editor .scope { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1; }
+.route-editor .scope .seg { align-self: flex-start; }
+.route-editor .pick { display: flex; flex-direction: column; gap: 8px; padding-bottom: 2px; }
+.route-editor .pick .search { min-width: 0; max-width: 320px; height: 28px; }
+.route-editor .pick-note { font-size: 12px; color: var(--muted); }
+.pick-list { max-height: 216px; overflow-y: auto; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--line-2); padding: 3px; }
+.pick-row { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: 6px; font-size: 12.5px; transition: background .1s; }
+.pick-row:hover { background: var(--card-2); }
+.pick-row input { accent-color: var(--accent); margin: 0; flex: none; }
+.pick-row .nname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-row:not(.on) .nname { color: var(--fg-2); }
+.pick-row.gone .nname { color: var(--muted); }
+.pick-row .badge { font-weight: 400; flex: none; }
+.keywords { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 28px; }
+.keywords .klabel { font-size: 12px; color: var(--muted); }
+.keywords .kw { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 4px 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; animation: pop-fade .15s ease-out; }
+.keywords .kw button { display: inline-flex; width: 16px; height: 16px; align-items: center; justify-content: center; border-radius: 50%; color: inherit; opacity: .7; }
+.keywords .kw button:hover { opacity: 1; background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.keywords .kw-input { flex: 1; min-width: 100px; height: 24px; border: 0; outline: none; background: none; font-size: 12px; }
+.node-pick.warn { color: var(--red); background: var(--red-soft); }
+.node-pick { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; height: 24px; padding: 0 6px 0 9px; border-radius: 7px; background: var(--pill); color: var(--fg); font-size: 12px; transition: background .12s; }
+.node-pick:hover:not(.fixed), .node-pick.on { background: var(--pill-hover); }
+.node-pick.fixed { cursor: default; padding-right: 9px; }
+.node-pick .nname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.node-pick .delay { min-width: 0; padding: 0 5px; }
+.node-pick .chev { color: var(--muted); transform: rotate(90deg); }
+.menu.node-menu { max-height: 320px; overflow-y: auto; }
+.menu.node-menu button .nname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu.node-menu button.on { font-weight: 600; }
+.menu.node-menu button.on::before { content: "✓"; width: 10px; margin-left: -2px; }
+.menu.node-menu button:not(.on)::before { content: ""; width: 10px; margin-left: -2px; }
 .modules-empty .row.blank { justify-content: center; min-height: 40px; color: var(--accent); font-size: 12.5px; }
 
 /* a shortcut field, as macOS draws one: the keys in a pill, or a prompt */

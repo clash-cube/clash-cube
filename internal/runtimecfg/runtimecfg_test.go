@@ -24,7 +24,7 @@ custom-key: kept
 `)
 	s := settings.Defaults()
 	s.Mode = "global"
-	out, err := Build(profile, s, Controller{Addr: "127.0.0.1:5555", Secret: "s3"}, nil, nil)
+	out, err := Build("p", profile, s, Controller{Addr: "127.0.0.1:5555", Secret: "s3"}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ custom-key: kept
 	}
 
 	s.ICMPForwarding = false
-	out, err = Build([]byte("tun: {disable-icmp-forwarding: false}"), s, Controller{}, nil, nil)
+	out, err = Build("p", []byte("tun: {disable-icmp-forwarding: false}"), s, Controller{}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ rules:
 		{Type: "DOMAIN", Payload: "b.com", Policy: "Gone"},
 		{Type: "DOMAIN-SUFFIX", Payload: "lan", Policy: "DIRECT"},
 	}
-	out, err := Build(profile, settings.Defaults(), Controller{}, user, nil)
+	out, err := Build("p", profile, settings.Defaults(), Controller{}, user, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ rules:
 
 func build(t *testing.T, profile string, s settings.Settings) map[string]any {
 	t.Helper()
-	out, err := Build([]byte(profile), s, Controller{}, nil, nil)
+	out, err := Build("p", []byte(profile), s, Controller{}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

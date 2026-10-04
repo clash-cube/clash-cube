@@ -29,6 +29,11 @@ export interface Group {
     "icon": string;
     "testUrl": string;
     "members": Member[] | null;
+
+    /**
+     * the ID of the module that made it
+     */
+    "module"?: string;
 }
 
 /**

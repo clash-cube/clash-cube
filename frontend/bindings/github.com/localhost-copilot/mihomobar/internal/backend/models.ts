@@ -278,6 +278,24 @@ export interface Network {
 }
 
 /**
+ * Node is one of the running profile's nodes, for a route to pick from.
+ */
+export interface Node {
+    "name": string;
+    "type": string;
+
+    /**
+     * last test, ms; 0 untested, -1 failed
+     */
+    "delay": number;
+
+    /**
+     * the first modules.Regions key that takes it
+     */
+    "region"?: string;
+}
+
+/**
  * ProxyEgress is where proxied traffic leaves: the address Cloudflare sees
  * a request through the core come from, and the chain it took.
  */
@@ -299,6 +317,20 @@ export interface ProxyEgress {
 export interface Record {
     "data": string;
     "ttl": number;
+}
+
+/**
+ * RegionNodes is a region and how many of the running profile's nodes it
+ * takes; Count is -1 with the core stopped.
+ */
+export interface RegionNodes {
+    "key": string;
+
+    /**
+     * English, translated on the page
+     */
+    "name": string;
+    "count": number;
 }
 
 /**

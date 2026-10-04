@@ -10,17 +10,83 @@ export interface Module {
      * YAML, a mapping
      */
     "body": string;
+
+    /**
+     * a service sent through a policy: the body is made from it, again
+     * for each profile (runtimecfg), so its group's name never clashes
+     */
+    "route"?: Route | null;
+}
+
+/**
+ * Route is a module that sends one service through a policy of its own,
+ * as Surge's service groups do. Like every module it is laid over every
+ * profile, and its group takes the nodes of the one in use: all of them, a
+ * region's, or picked ones. Picked nodes are named per profile, since a
+ * name belongs to one subscription, and keywords hold for all. A group
+ * with no node refuses its connections rather than letting them out
+ * direct: picking says these nodes and no others.
+ */
+export interface Route {
+    /**
+     * a Services name
+     */
+    "service": string;
+
+    /**
+     * select, url-test or DIRECT
+     */
+    "policy": string;
+
+    /**
+     * a Regions key
+     */
+    "region"?: string;
+
+    /**
+     * only Nodes and Keywords
+     */
+    "pick"?: boolean;
+
+    /**
+     * by profile ID: names, matched whole
+     */
+    "nodes"?: { [_ in string]?: string[] | null } | null;
+
+    /**
+     * matched anywhere in a name, any case
+     */
+    "keywords"?: string[] | null;
+}
+
+/**
+ * Service is what a route matches: the rules that pick out its traffic.
+ */
+export interface Service {
+    /**
+     * also its group's
+     */
+    "name": string;
+    "hint": string;
+
+    /**
+     * TYPE,payload, with options after the policy
+     */
+    "rules": string[] | null;
+
+    /**
+     * the one it starts with
+     */
+    "region"?: string;
 }
 
 /**
  * Template is a module offered ready-made, for the cases most people add
- * one for. Hint says in a line what it does and when to want it; a Draft
- * holds an example to replace, so it opens in the editor rather than being
- * added as it is.
+ * one for. Hint says in a line what it does and when to want it. A template
+ * opens in the editor, to be read and changed before it's added.
  */
 export interface Template {
     "name": string;
     "hint": string;
     "body": string;
-    "draft"?: boolean;
 }

@@ -16,6 +16,8 @@ export function delayClass(d: number | undefined): string {
   return "bad";
 }
 
+export const fmtDelay = (d: number) => (d > 0 ? d + " ms" : d < 0 ? "timeout" : "—");
+
 // a country code as its flag emoji; "" for anything that isn't one
 export function flag(cc: string | undefined): string {
   if (!cc || !/^[a-z]{2}$/i.test(cc)) return "";

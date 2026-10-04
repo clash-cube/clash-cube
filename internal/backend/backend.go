@@ -231,7 +231,7 @@ func (b *Backend) writeRuntime(fresh bool) error {
 			return err
 		}
 	}
-	return runtimecfg.Write(appdir.RuntimeConfig(), body, s, ctl, userrules.List(), modules.List())
+	return runtimecfg.Write(appdir.RuntimeConfig(), p.ID, body, s, ctl, userrules.List(), modules.List())
 }
 
 // Start runs the core.
@@ -564,8 +564,25 @@ func (b *Backend) RemoveProfile(id string) error {
 	if err := profiles.Remove(id); err != nil {
 		return err
 	}
+	if err := modules.ForgetPicks(id); err != nil {
+		log.Println("modules:", err)
+	}
 	b.emitProfiles()
 	return nil
+}
+
+// DuplicateProfile copies a profile as a local one the user can edit, and
+// the nodes modules picked for it; name is the copy's.
+func (b *Backend) DuplicateProfile(id, name string) (profiles.Profile, error) {
+	p, err := profiles.Duplicate(id, name)
+	if err != nil {
+		return p, err
+	}
+	if err := modules.CopyPicks(id, p.ID); err != nil {
+		log.Println("modules:", err)
+	}
+	b.ProfileChanged("")
+	return p, nil
 }
 
 // autoUpdate refreshes subscriptions whose interval has passed.

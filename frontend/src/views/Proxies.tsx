@@ -6,7 +6,7 @@ import { Fold } from "../components/Fold";
 import { Segmented } from "../components/Segmented";
 import { toast } from "../components/Toast";
 import { Bolt, Chevron, Columns, Refresh, Rows, Search, Sort } from "../components/Icons";
-import { ago, bytes, delayClass } from "../format";
+import { ago, bytes, delayClass, fmtDelay } from "../format";
 import type { Group, Member, Provider } from "../api";
 import { startCore } from "../actions";
 
@@ -187,7 +187,7 @@ export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne
       <div className="group-head" onClick={toggle}>
         <Chevron className={"chev" + (open ? " open" : "")} />
         <div className="who">
-          <div className="name">{g.name}<span className="gtype">{g.type}</span></div>
+          <div className="name">{g.name}<span className="gtype">{g.type}</span>{g.module && <span className="gtype">{t("Module")}</span>}</div>
           <div className="sub">{g.now || "—"}</div>
         </div>
         {now && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay)}</span>}
@@ -289,7 +289,6 @@ function NodeGrid({ members: ms, sorted, now, selectable, flashKey, onSelect, on
   );
 }
 
-export const fmtDelay = (d: number) => (d > 0 ? d + " ms" : d < 0 ? "timeout" : "—");
 
 function GroupsSkeleton() {
   return (

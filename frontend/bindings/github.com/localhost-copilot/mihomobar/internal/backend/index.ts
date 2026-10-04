@@ -13,7 +13,9 @@ export type {
     LatencyResult,
     Lookup,
     Network,
+    Node,
     ProxyEgress,
     Record,
+    RegionNodes,
     State
 } from "./models.js";

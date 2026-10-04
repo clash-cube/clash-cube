@@ -161,6 +161,7 @@ type Group struct {
 	Icon    string   `json:"icon"`
 	TestURL string   `json:"testUrl"`
 	Members []Member `json:"members"`
+	Module  string   `json:"module,omitempty"` // the ID of the module that made it
 }
 
 type Member struct {
@@ -235,13 +236,21 @@ func (s *ProxyService) Groups() ([]Group, error) {
 		order = append(order, g.All...)
 	}
 	order = append(order, "GLOBAL")
+	made := map[string]string{}
+	for _, m := range modules.List() {
+		if m.Enabled && m.Route != nil {
+			if g := m.Route.GroupIn(func(n string) bool { _, ok := all[n]; return ok }); g != "" {
+				made[g] = m.ID
+			}
+		}
+	}
 	var out []Group
 	for _, name := range order {
 		p, ok := all[name]
 		if !ok || len(p.All) == 0 {
 			continue
 		}
-		g := Group{Name: p.Name, Type: p.Type, Now: p.Now, Hidden: p.Hidden, Icon: p.Icon, TestURL: p.TestURL}
+		g := Group{Name: p.Name, Type: p.Type, Now: p.Now, Hidden: p.Hidden, Icon: p.Icon, TestURL: p.TestURL, Module: made[p.Name]}
 		for _, m := range p.All {
 			mp := all[m]
 			selected := all[backend.SelectedProxy(all, m)]
@@ -497,15 +506,26 @@ func (s *ProfileService) Use(id string) error    { return s.h.b.UseProfile(id) }
 // Duplicate copies a profile as a local one the user can edit; name is
 // the copy's.
 func (s *ProfileService) Duplicate(id, name string) (profiles.Profile, error) {
-	p, err := profiles.Duplicate(id, name)
-	if err == nil {
-		s.h.b.ProfileChanged("")
-	}
-	return p, err
+	return s.h.b.DuplicateProfile(id, name)
 }
 
 // ModuleTemplates is the ready-made modules.
 func (s *ProfileService) ModuleTemplates() []modules.Template { return modules.Templates }
+
+// RouteServices is the services a module can send through a policy.
+func (s *ProfileService) RouteServices() []modules.Service { return modules.Services }
+
+// RouteRegions is the regions a route's group can take nodes by, each with
+// how many of the running profile's nodes it takes.
+func (s *ProfileService) RouteRegions() []backend.RegionNodes { return s.h.b.RouteRegions() }
+
+// RouteNodes is the running profile's nodes, for a route to pick from.
+func (s *ProfileService) RouteNodes() []backend.Node { return s.h.b.Nodes() }
+
+// RouteBody is the YAML a route makes, to open as a module of its own.
+func (s *ProfileService) RouteBody(r modules.Route) (string, error) {
+	return r.Body(settings.Load().Profile, nil)
+}
 
 // Reveal shows a profile's file in Finder.
 func (s *ProfileService) Reveal(id string) error {

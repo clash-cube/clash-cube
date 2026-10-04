@@ -25,7 +25,7 @@ tasks:
 
   bindings:
     summary: Generate the TypeScript bindings for the Go services
-    sources: ["internal/gui/*.go", "internal/backend/*.go", "internal/mihomoapi/*.go", "internal/profiles/*.go", "internal/settings/*.go"]
+    sources: ["internal/gui/*.go", "internal/backend/*.go", "internal/mihomoapi/*.go", "internal/modules/*.go", "internal/profiles/*.go", "internal/settings/*.go"]
     cmds:
       - wails3 generate bindings -f '-tags {{.TAGS}}' -clean=true -ts -i -d frontend/bindings
 

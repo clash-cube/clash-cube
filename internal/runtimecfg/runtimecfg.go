@@ -21,9 +21,10 @@ type Controller struct {
 	Secret string
 }
 
-// Build is profile with the enabled modules merged over it in order, then
-// s and ctl, which win over both, and the user's rules ahead of all others.
-func Build(profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module) ([]byte, error) {
+// Build is profile (of that ID) with the enabled modules merged over it in
+// order, then s and ctl, which win over both, and the user's rules ahead
+// of all others.
+func Build(id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module) ([]byte, error) {
 	var m map[string]any
 	if err := yaml.Unmarshal(profile, &m); err != nil {
 		return nil, fmt.Errorf("profile: %w", err)
@@ -35,7 +36,16 @@ func Build(profile []byte, s settings.Settings, ctl Controller, user []userrules
 		if !mod.Enabled {
 			continue
 		}
-		v, err := modules.Parse(mod.Body)
+		body := mod.Body
+		if mod.Route != nil {
+			have := policies(m)
+			b, err := mod.Route.Body(id, func(n string) bool { return have[n] || builtin[n] })
+			if err != nil {
+				return nil, fmt.Errorf("module %s: %w", mod.Name, err)
+			}
+			body = b
+		}
+		v, err := modules.Parse(body)
 		if err == nil {
 			err = Merge(m, v)
 		}
@@ -154,6 +164,18 @@ func userRules(m map[string]any, user []userrules.Rule) []any {
 	if len(user) == 0 {
 		return nil
 	}
+	have := policies(m)
+	var out []any
+	for _, r := range user {
+		if r.Check() == nil && (builtin[r.Policy] || have[r.Policy]) {
+			out = append(out, r.String())
+		}
+	}
+	return out
+}
+
+// policies is the names of m's proxies and groups.
+func policies(m map[string]any) map[string]bool {
 	have := map[string]bool{}
 	for _, k := range []string{"proxies", "proxy-groups"} {
 		list, _ := m[k].([]any)
@@ -165,13 +187,7 @@ func userRules(m map[string]any, user []userrules.Rule) []any {
 			}
 		}
 	}
-	var out []any
-	for _, r := range user {
-		if r.Check() == nil && (builtin[r.Policy] || have[r.Policy]) {
-			out = append(out, r.String())
-		}
-	}
-	return out
+	return have
 }
 
 func setDefault(m map[string]any, k string, v any) {
@@ -182,8 +198,8 @@ func setDefault(m map[string]any, k string, v any) {
 
 // Write builds the configuration and writes it to path, readable by the
 // user only (it holds the secret).
-func Write(path string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module) error {
-	b, err := Build(profile, s, ctl, user, mods)
+func Write(path, id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module) error {
+	b, err := Build(id, profile, s, ctl, user, mods)
 	if err != nil {
 		return err
 	}

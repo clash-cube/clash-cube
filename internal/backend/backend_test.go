@@ -597,6 +597,82 @@ func TestModuleTemplates(t *testing.T) {
 			t.Errorf("%s: %v", tpl.Name, err)
 		}
 	}
+	// every service, each way, over a profile with no nodes at all
+	for _, s := range modules.Services {
+		for _, r := range []modules.Route{{Service: s.Name, Policy: "select"}, {Service: s.Name, Policy: "url-test", Region: "hk"}, {Service: s.Name, Policy: "select", Pick: true}, {Service: s.Name, Policy: "DIRECT"}} {
+			if err := b.SetModules([]modules.Module{{Name: s.Name, Enabled: true, Route: &r}}); err != nil {
+				t.Errorf("%+v: %v", r, err)
+			}
+		}
+	}
+}
+
+// A route's group takes the profile's nodes by region, and is one to
+// choose from like the profile's own.
+func TestRouteModule(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a core")
+	}
+	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
+		t.Fatal(err)
+	}
+	profile := `
+geodata-mode: false
+geo-auto-update: false
+proxies:
+  - { name: "🇭🇰 HK 01", type: ss, server: 192.0.2.1, port: 8388, cipher: aes-128-gcm, password: x }
+  - { name: "US 01", type: ss, server: 192.0.2.2, port: 8388, cipher: aes-128-gcm, password: x }
+proxy-groups:
+  - { name: OpenAI, type: select, proxies: [DIRECT] }
+rules:
+  - MATCH,DIRECT
+`
+	b := New("test", "test", []byte(profile), nopSink{make(chan State, 64)})
+	if err := b.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(b.Shutdown)
+	for _, r := range b.RouteRegions() {
+		if want := map[string]int{"hk": 1, "us": 1}[r.Key]; r.Count != want {
+			t.Errorf("%s: %d nodes, want %d", r.Key, r.Count, want)
+		}
+	}
+	r := modules.Route{Service: "OpenAI", Policy: "select", Region: "us"}
+	if err := b.SetModules([]modules.Module{{Name: "OpenAI", Enabled: true, Route: &r}}); err != nil {
+		t.Fatal(err)
+	}
+	c, _ := b.Client()
+	all, err := c.Proxies(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	g, ok := all["OpenAI"+modules.Suffix]
+	if !ok || len(g.All) != 1 || g.All[0] != "US 01" {
+		t.Errorf("group = %+v", g)
+	}
+	if n := b.Nodes(); len(n) != 2 || n[0].Name != "US 01" {
+		t.Errorf("nodes = %+v", n)
+	}
+
+	// picked nodes, and ones another profile has: the group refuses
+	// rather than going direct
+	id := settings.Load().Profile
+	r = modules.Route{Service: "Google", Policy: "select", Pick: true, Nodes: map[string][]string{id: {"🇭🇰 HK 01"}, "other": {"US 01"}}}
+	gone := modules.Route{Service: "Telegram", Policy: "url-test", Pick: true, Nodes: map[string][]string{"other": {"US 01"}}}
+	if err := b.SetModules([]modules.Module{{Name: "Google", Enabled: true, Route: &r}, {Name: "Telegram", Enabled: true, Route: &gone}}); err != nil {
+		t.Fatal(err)
+	}
+	all, _ = c.Proxies(context.Background())
+	if g := all["Google"]; len(g.All) != 1 || g.All[0] != "🇭🇰 HK 01" {
+		t.Errorf("Google = %+v", g)
+	}
+	if g := all["Telegram"]; len(g.All) != 1 || g.All[0] != "REJECT" {
+		t.Errorf("Telegram = %+v", g)
+	}
 }
 
 // The core lists a profile's rule providers and takes an update of one.

@@ -12,6 +12,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as backend$0 from "../backend/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as modules$0 from "../modules/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -83,6 +86,35 @@ export function Remove(id: string): $CancellablePromise<void> {
  */
 export function Reveal(id: string): $CancellablePromise<void> {
     return $Call.ByID(1550090246, id);
+}
+
+/**
+ * RouteBody is the YAML a route makes, to open as a module of its own.
+ */
+export function RouteBody(r: modules$0.Route): $CancellablePromise<string> {
+    return $Call.ByID(310144396, r);
+}
+
+/**
+ * RouteNodes is the running profile's nodes, for a route to pick from.
+ */
+export function RouteNodes(): $CancellablePromise<backend$0.Node[] | null> {
+    return $Call.ByID(594942573);
+}
+
+/**
+ * RouteRegions is the regions a route's group can take nodes by, each with
+ * how many of the running profile's nodes it takes.
+ */
+export function RouteRegions(): $CancellablePromise<backend$0.RegionNodes[] | null> {
+    return $Call.ByID(2458093525);
+}
+
+/**
+ * RouteServices is the services a module can send through a policy.
+ */
+export function RouteServices(): $CancellablePromise<modules$0.Service[] | null> {
+    return $Call.ByID(3699336864);
 }
 
 /**

@@ -10,11 +10,10 @@ import { Arrow, Bolt, Chevron, Gear, Globe, Logo, Power, Refresh, Shield, Wifi, 
 import { Fold } from "./components/Fold";
 import { AppIcon } from "./components/AppIcon";
 import { coreLabel, coreTone, restartCore, setMode, setSystemProxy, setTun, startCore } from "./actions";
-import { speed, delayClass } from "./format";
+import { speed, delayClass, fmtDelay } from "./format";
 import { useGroups } from "./useGroups";
 import { matchName } from "./components/NetworkRules";
 import { toastError } from "./components/Toast";
-import { fmtDelay } from "./views/Proxies";
 
 // The tray panel: the switches one reaches for most, the groups to pick a
 // proxy in, and the way to the window. It grows and shrinks with what it
