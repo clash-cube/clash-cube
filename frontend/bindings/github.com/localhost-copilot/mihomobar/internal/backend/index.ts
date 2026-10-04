@@ -11,6 +11,7 @@ export type {
     HelperStatus,
     LatencyEvent,
     LatencyResult,
+    LatencySample,
     Lookup,
     Network,
     Node,

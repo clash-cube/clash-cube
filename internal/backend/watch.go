@@ -143,6 +143,7 @@ func parseNetwork(out string) string {
 }
 
 func (b *Backend) networkChanged(key string) {
+	b.markBreak()
 	if key == "" {
 		b.event("network", "info", OfflineText, nil, false)
 		return

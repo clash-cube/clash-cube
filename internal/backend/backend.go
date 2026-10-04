@@ -54,6 +54,7 @@ type Sink interface {
 	Log(mihomoapi.Log)
 	Profiles([]profiles.Profile)
 	Event(Event)
+	Latency(LatencySample)
 }
 
 type Backend struct {
@@ -78,6 +79,10 @@ type Backend struct {
 	latency   latencyTester
 	// coreops.go
 	geoUpdating bool
+	// connectivity.go: each item's recent measures, and which items'
+	// next one follows a network change
+	connHist  map[string][]LatencySample
+	connBreak map[string]bool
 
 	// watch.go
 	events       []Event

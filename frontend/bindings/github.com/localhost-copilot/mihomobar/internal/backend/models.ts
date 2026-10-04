@@ -205,6 +205,29 @@ export interface LatencyResult {
 }
 
 /**
+ * LatencySample is one measure of a connectivity item, for the bars under
+ * its card.
+ */
+export interface LatencySample {
+    "key": string;
+
+    /**
+     * unix ms
+     */
+    "at": number;
+
+    /**
+     * -1 failed
+     */
+    "ms": number;
+
+    /**
+     * the first after the network changed
+     */
+    "break"?: boolean;
+}
+
+/**
  * Lookup is what the core makes of a name: how its resolver answers, and
  * the rule and route a connection to it takes.
  */

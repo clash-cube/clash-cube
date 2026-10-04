@@ -450,6 +450,27 @@ select.input { padding-right: 6px; }
 .conn-card .val.ok { color: var(--amber); }
 .conn-card .val.bad, .conn-card .val.fail { color: var(--red); }
 .conn-card .val.none { color: var(--faint); }
+.conn-row { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
+.conn-row .val { flex: none; }
+/* the recent measures, beside the figure (LatencyBars) */
+.lbars { position: relative; flex: 1; min-width: 0; height: 20px; margin-bottom: 4px; }
+.lbars-track { display: flex; justify-content: flex-end; align-items: flex-end; height: 100%; overflow: hidden; }
+.lbar { flex: none; display: flex; align-items: flex-end; width: 3px; height: 100%; padding-left: 2px; box-sizing: content-box; }
+.lbar i { display: block; width: 100%; border-radius: 1px 1px 0 0; background: var(--faint); opacity: .4; transform-origin: bottom; animation: bar-in .5s var(--spring) both; animation-delay: calc(var(--i) * 14ms); transition: height .4s var(--ease-out), opacity .15s; }
+.lbar.good i { background: var(--green); } .lbar.ok i { background: var(--amber); } .lbar.bad i { background: var(--red); }
+.lbar.fail i { background: var(--red); opacity: .18; }
+.lbar.last i, .lbar.on i { opacity: 1; }
+.lbar.fail.last i, .lbar.fail.on i { opacity: .45; }
+/* the first after a network change: a rule before it */
+.lbar.brk { position: relative; padding-left: 7px; }
+.lbar.brk::before { content: ""; position: absolute; left: 3px; top: 2px; bottom: 0; width: 1px; background: var(--line); }
+.lbar.fresh { animation: lbar-slide .45s var(--spring) both; }
+@keyframes lbar-slide { from { width: 0; padding-left: 0; } }
+.lbar-tip { top: auto; left: auto; bottom: calc(100% + 6px); z-index: 2; pointer-events: none; }
+.lbar-tip i { background: var(--faint); }
+.lbar-tip i.good { background: var(--green); } .lbar-tip i.ok { background: var(--amber); } .lbar-tip i.bad, .lbar-tip i.fail { background: var(--red); }
+.lbar-tip b { margin-left: 0; padding-left: 0; }
+.lbar-tip .brk-note { font-size: 10.5px; color: var(--muted); }
 .conn-card .sub { font-size: 11px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 .conn-card.toggles { cursor: pointer; user-select: none; transition: border-color .2s var(--ease); }
 .conn-card.toggles:hover { border-color: var(--faint); }

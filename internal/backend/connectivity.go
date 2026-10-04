@@ -53,6 +53,80 @@ func roundMS(f float64) float64 {
 // ConnectivityItems are the keys ConnectivityItem takes.
 var ConnectivityItems = []string{"router", "dns", "internet", "proxy"}
 
+// LatencySample is one measure of a connectivity item, for the bars under
+// its card.
+type LatencySample struct {
+	Key string  `json:"key"`
+	At  int64   `json:"at"` // unix ms
+	MS  float64 `json:"ms"` // -1 failed
+	// the first after the network changed
+	Break bool `json:"break,omitempty"`
+}
+
+const latencyHistory = 30
+
+// value is the item's figure in out, 0 when it wasn't measured.
+func (c Connectivity) value(key string) float64 {
+	switch key {
+	case "router":
+		return c.Router
+	case "dns":
+		return c.DNS
+	case "internet":
+		return float64(c.Internet)
+	case "proxy":
+		return float64(c.Proxy)
+	}
+	return 0
+}
+
+// record keeps a measure in its item's history, whoever asked for it,
+// and tells the sink.
+func (b *Backend) record(key string, v float64) {
+	if v == 0 {
+		return
+	}
+	s := LatencySample{Key: key, At: time.Now().UnixMilli(), MS: v}
+	b.mu.Lock()
+	if b.connHist == nil {
+		b.connHist = map[string][]LatencySample{}
+	}
+	if b.connBreak[key] {
+		s.Break = len(b.connHist[key]) > 0
+		delete(b.connBreak, key)
+	}
+	h := append(b.connHist[key], s)
+	if len(h) > latencyHistory {
+		h = h[len(h)-latencyHistory:]
+	}
+	b.connHist[key] = h
+	b.mu.Unlock()
+	if b.sink != nil {
+		b.sink.Latency(s)
+	}
+}
+
+// markBreak has each item's next measure start a new stretch.
+func (b *Backend) markBreak() {
+	b.mu.Lock()
+	b.connBreak = map[string]bool{}
+	for _, k := range ConnectivityItems {
+		b.connBreak[k] = true
+	}
+	b.mu.Unlock()
+}
+
+// ConnectivityHistory is each item's recent measures, oldest first.
+func (b *Backend) ConnectivityHistory() map[string][]LatencySample {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	out := map[string][]LatencySample{}
+	for _, k := range ConnectivityItems {
+		out[k] = append([]LatencySample{}, b.connHist[k]...)
+	}
+	return out
+}
+
 // Connectivity measures all four at once.
 func (b *Backend) Connectivity() (Connectivity, error) {
 	var out Connectivity
@@ -70,7 +144,9 @@ func (b *Backend) Connectivity() (Connectivity, error) {
 				mu.Lock()
 				firstErr = cmp.Or(firstErr, err)
 				mu.Unlock()
+				return
 			}
+			b.record(key, out.value(key))
 		}()
 	}
 	wg.Wait()
@@ -84,6 +160,9 @@ func (b *Backend) ConnectivityItem(key string) (Connectivity, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 11*time.Second)
 	defer cancel()
 	err := b.probe(ctx, key, &out)
+	if err == nil {
+		b.record(key, out.value(key))
+	}
 	return out, err
 }
 

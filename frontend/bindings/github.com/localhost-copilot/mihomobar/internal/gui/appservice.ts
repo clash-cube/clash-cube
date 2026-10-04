@@ -56,6 +56,13 @@ export function Connectivity(): $CancellablePromise<backend$0.Connectivity> {
 }
 
 /**
+ * ConnectivityHistory is each item's recent measures, oldest first.
+ */
+export function ConnectivityHistory(): $CancellablePromise<{ [_ in string]?: backend$0.LatencySample[] | null } | null> {
+    return $Call.ByID(1648781750);
+}
+
+/**
  * ConnectivityItem measures one of "router", "dns", "internet", "proxy";
  * only that item's fields are set.
  */

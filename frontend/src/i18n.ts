@@ -125,7 +125,7 @@ const zh: Record<string, string> = {
   "Take it back": "重新接管", "Taken by another app": "已被其他应用改写",
   "The core stopped: {error}": "内核已停止：{error}", "Couldn't update {name}: {error}": "无法更新 {name}：{error}",
   "The updated profile was refused, the previous one stays: {error}": "更新后的配置未通过校验，继续使用之前的配置：{error}",
-  "Network unavailable": "网络不可用", "Network changed to {name}, router {router}": "网络已切换到 {name}，路由器 {router}",
+  "Network unavailable": "网络不可用", "Network changed": "网络已切换", "Network changed to {name}, router {router}": "网络已切换到 {name}，路由器 {router}",
   "Woke from sleep": "从睡眠中唤醒", "Closed connections and flushed DNS": "已关闭连接并清除 DNS 缓存",
   "{group} switched from {from} to {to}": "{group} 从 {from} 切换到 {to}",
   "Add rule": "添加规则", "Add rule…": "添加规则…", "Add": "添加", "Type": "类型", "Value": "值", "Policy": "策略",

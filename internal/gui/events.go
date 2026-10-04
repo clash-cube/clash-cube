@@ -18,6 +18,7 @@ func init() {
 	application.RegisterEvent[bool]("import-request")
 	application.RegisterEvent[backend.LatencyEvent]("proxy-latency")
 	application.RegisterEvent[backend.Event]("event")
+	application.RegisterEvent[backend.LatencySample]("connectivity")
 }
 
 // sink turns the backend's changes into events for both pages, and keeps
@@ -38,9 +39,10 @@ func (s sink) Traffic(t mihomoapi.Traffic) {
 	s.emit("traffic", t)
 	s.h.trafficChanged(t)
 }
-func (s sink) Memory(m mihomoapi.Memory)      { s.emit("memory", m) }
-func (s sink) Log(l mihomoapi.Log)            { s.emit("log", l) }
-func (s sink) Profiles(ps []profiles.Profile) { s.emit("profiles", ps) }
+func (s sink) Memory(m mihomoapi.Memory)       { s.emit("memory", m) }
+func (s sink) Log(l mihomoapi.Log)             { s.emit("log", l) }
+func (s sink) Profiles(ps []profiles.Profile)  { s.emit("profiles", ps) }
+func (s sink) Latency(l backend.LatencySample) { s.emit("connectivity", l) }
 func (s sink) Event(e backend.Event) {
 	s.emit("event", e)
 	if (e.Text == backend.ResetText || e.Text == backend.OfflineText) && s.h.menu != nil {

@@ -4,6 +4,7 @@ import { useStore } from "../store";
 import { useT } from "../i18n";
 import { delayClass, flagged } from "../format";
 import { Refresh } from "./Icons";
+import { LatencyBars } from "./LatencyBars";
 
 type Item = "router" | "dns" | "internet" | "proxy";
 const items: Item[] = ["router", "dns", "internet", "proxy"];
@@ -18,6 +19,10 @@ const fields: Record<Item, (keyof Connectivity)[]> = {
 // named the node itself
 const route = (chain: string[]) =>
   chain.length > 1 ? `${chain[chain.length - 1]} → ${chain[0]}` : chain[0] ?? "—";
+
+// the least each card's bars scale to: a router answers in a few ms, a
+// cached DNS answer in under one, a site in a couple of hundred
+const floors: Record<Item, number> = { router: 5, dns: 50, internet: 200, proxy: 200 };
 
 // whole ms, or hundredths under 1 ms (a wired router answers in 0.3)
 const fmtMS = (v: number) => (v < 1 ? v.toFixed(2) : String(Math.round(v)));
@@ -60,6 +65,7 @@ export function ConnectivityCards() {
   const mode = useStore((s) => s.state?.mode);
   const profile = useStore((s) => s.state?.profile);
   const reset = useStore((s) => s.networkReset);
+  const latency = useStore((s) => s.latency);
   const [c, setC] = useState<Partial<Connectivity>>({});
   const [pending, setPending] = useState<Set<Item>>(new Set());
   const busy = pending.size > 0;
@@ -181,7 +187,9 @@ export function ConnectivityCards() {
       </div>
       <div className="conn-cards">
         {cards.map(({ key, label, sub, title, onClick, shown }) => {
-          const v = c[key] ?? 0;
+          // until this page's first measure lands, the last one made
+          const h = latency[key];
+          const v = c[key] ?? (running && h?.length ? h[h.length - 1].ms : 0);
           const testing = pending.has(key);
           return (
             <div className={"card conn-card" + (onClick ? " toggles" : "")} key={key} title={title} onClick={onClick}>
@@ -189,14 +197,17 @@ export function ConnectivityCards() {
                 <span className={"cdot " + (testing && !v ? "testing" : delayClass(v))} />
                 {label}
               </div>
-              <button
-                className={"val " + delayClass(v) + (testing ? " testing" : "")}
-                title={t("Click to test again")}
-                disabled={!running || testing}
-                onClick={(e) => { e.stopPropagation(); measureOne(key); }}
-              >
-                {v > 0 ? <>{fmtMS(v)}<small> ms</small></> : v < 0 ? t("Failed") : "—"}
-              </button>
+              <div className="conn-row">
+                <button
+                  className={"val " + delayClass(v) + (testing ? " testing" : "")}
+                  title={t("Click to test again")}
+                  disabled={!running || testing}
+                  onClick={(e) => { e.stopPropagation(); measureOne(key); }}
+                >
+                  {v > 0 ? <>{fmtMS(v)}<small> ms</small></> : v < 0 ? t("Failed") : "—"}
+                </button>
+                <LatencyBars data={latency[key] ?? []} floor={floors[key]} fmt={fmtMS} />
+              </div>
               {sub && <div className="sub" key={onClick ? String(shown) : undefined}>{sub}</div>}
             </div>
           );

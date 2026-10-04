@@ -295,6 +295,7 @@ func (nopSink) Memory(mihomoapi.Memory)     {}
 func (nopSink) Log(mihomoapi.Log)           {}
 func (nopSink) Profiles([]profiles.Profile) {}
 func (nopSink) Event(Event)                 {}
+func (nopSink) Latency(LatencySample)       {}
 
 func TestCoreLifecycle(t *testing.T) {
 	if testing.Short() {

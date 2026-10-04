@@ -18,6 +18,7 @@ import type * as profiles$0 from "../../../../localhost-copilot/mihomobar/intern
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
+            "connectivity": backend$0.LatencySample;
             "event": backend$0.Event;
             "import-request": boolean;
             "log": mihomoapi$0.Log;

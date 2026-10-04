@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { Events } from "@wailsio/runtime";
-import { App, Profiles, Settings, type State, type Profile, type ImportRequest, type SettingsT, type Log, type Event } from "./api";
+import { App, Profiles, Settings, type State, type Profile, type ImportRequest, type SettingsT, type Log, type Event, type LatencySample } from "./api";
 import { translate as t } from "./i18n";
 import { toast, toastError } from "./components/Toast";
 
@@ -25,6 +25,8 @@ type Store = {
   events: Event[];
   // bumped when the network was reset, for what measures it to again
   networkReset: number;
+  // each connectivity item's recent measures, oldest first
+  latency: Record<string, LatencySample[]>;
   view: View;
   setView: (v: View) => void;
   refreshSettings: () => Promise<void>;
@@ -45,6 +47,7 @@ export const useStore = create<Store>((set) => ({
   logs: [],
   events: [],
   networkReset: 0,
+  latency: {},
   view: (new URLSearchParams(location.search).get("view") as View) || "overview",
   setView: (view) => set({ view }),
   refreshSettings: async () => set({ settings: await Settings.Get() }),
@@ -53,6 +56,8 @@ export const useStore = create<Store>((set) => ({
 }));
 
 const MAX_EVENTS = 200;
+// as many as the backend keeps (backend.latencyHistory)
+const MAX_LATENCY = 30;
 // what the backend says the network reset (backend.ResetText) or went
 // away (backend.OfflineText) with: either measures the connectivity again
 const REMEASURE_TEXTS = ["Closed connections and flushed DNS", "Network unavailable"];
@@ -84,6 +89,20 @@ export async function boot() {
       networkReset: REMEASURE_TEXTS.includes(ev.text) ? s.networkReset + 1 : s.networkReset,
     }));
   });
+  Events.On("connectivity", (e) => {
+    const l: LatencySample = e.data;
+    useStore.setState((s) => ({ latency: { ...s.latency, [l.key]: [...(s.latency[l.key] ?? []).slice(-MAX_LATENCY + 1), l] } }));
+  });
+  // after subscribing, so a measure can't fall between; one that lands in
+  // both is kept once
+  App.ConnectivityHistory().then((h) => useStore.setState((s) => {
+    const latency: Record<string, LatencySample[]> = {};
+    for (const [k, old] of Object.entries(h ?? {})) {
+      const seen = new Set((old ?? []).map((l) => l.at));
+      latency[k] = [...(old ?? []), ...(s.latency[k] ?? []).filter((l) => !seen.has(l.at))].slice(-MAX_LATENCY);
+    }
+    return { latency };
+  })).catch(() => {});
   Events.On("navigate", (e) => useStore.setState({ view: e.data as View }));
   if (new URLSearchParams(location.search).get("mode") !== "panel") {
     // Subscribe before draining so a cold-start link cannot fall between the

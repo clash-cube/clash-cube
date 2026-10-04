@@ -49,6 +49,11 @@ func (s *AppService) ConnectivityItem(key string) (backend.Connectivity, error) 
 	return s.h.b.ConnectivityItem(key)
 }
 
+// ConnectivityHistory is each item's recent measures, oldest first.
+func (s *AppService) ConnectivityHistory() map[string][]backend.LatencySample {
+	return s.h.b.ConnectivityHistory()
+}
+
 // DirectEgress is the direct route's interface and public address.
 func (s *AppService) DirectEgress() (backend.Egress, error) { return s.h.b.DirectEgress() }
 
