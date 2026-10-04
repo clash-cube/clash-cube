@@ -17,6 +17,7 @@ import (
 	"github.com/localhost-copilot/mihomobar/internal/appdir"
 	"github.com/localhost-copilot/mihomobar/internal/backend"
 	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
+	"github.com/localhost-copilot/mihomobar/internal/modules"
 	"github.com/localhost-copilot/mihomobar/internal/profiles"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
 	"github.com/localhost-copilot/mihomobar/internal/usage"
@@ -627,3 +628,10 @@ func (s *AppService) Usage(from, to string, hour int) (usage.Report, error) {
 
 // ClearUsage forgets the traffic statistics.
 func (s *AppService) ClearUsage() error { return s.h.b.Usage().Clear() }
+
+// Modules is the user's modules, merged over every profile in order.
+func (s *ProfileService) Modules() []modules.Module { return modules.List() }
+
+// SetModules replaces them; a configuration the core refuses keeps the
+// previous ones.
+func (s *ProfileService) SetModules(ms []modules.Module) error { return s.h.b.SetModules(ms) }

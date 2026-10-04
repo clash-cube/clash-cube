@@ -12,6 +12,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as modules$0 from "../modules/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as profiles$0 from "../profiles/models.js";
 
 export function Edit(id: string, name: string, interval: number): $CancellablePromise<profiles$0.Profile> {
@@ -35,6 +38,13 @@ export function List(): $CancellablePromise<profiles$0.Profile[] | null> {
 }
 
 /**
+ * Modules is the user's modules, merged over every profile in order.
+ */
+export function Modules(): $CancellablePromise<modules$0.Module[] | null> {
+    return $Call.ByID(3717581476);
+}
+
+/**
  * Edit opens a profile's file in the default editor.
  */
 export function OpenInEditor(id: string): $CancellablePromise<void> {
@@ -50,6 +60,14 @@ export function Remove(id: string): $CancellablePromise<void> {
  */
 export function Reveal(id: string): $CancellablePromise<void> {
     return $Call.ByID(1550090246, id);
+}
+
+/**
+ * SetModules replaces them; a configuration the core refuses keeps the
+ * previous ones.
+ */
+export function SetModules(ms: modules$0.Module[] | null): $CancellablePromise<void> {
+    return $Call.ByID(1311253774, ms);
 }
 
 /**

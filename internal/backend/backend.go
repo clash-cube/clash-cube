@@ -17,6 +17,7 @@ import (
 	"github.com/localhost-copilot/mihomobar/internal/appdir"
 	"github.com/localhost-copilot/mihomobar/internal/coremgr"
 	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
+	"github.com/localhost-copilot/mihomobar/internal/modules"
 	"github.com/localhost-copilot/mihomobar/internal/profiles"
 	"github.com/localhost-copilot/mihomobar/internal/runtimecfg"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
@@ -221,7 +222,7 @@ func (b *Backend) writeRuntime(fresh bool) error {
 			return err
 		}
 	}
-	return runtimecfg.Write(appdir.RuntimeConfig(), body, s, ctl, userrules.List())
+	return runtimecfg.Write(appdir.RuntimeConfig(), body, s, ctl, userrules.List(), modules.List())
 }
 
 // Start runs the core.
@@ -589,6 +590,35 @@ func (b *Backend) SetRules(rs []userrules.Rule) error {
 		return err
 	}
 	return nil
+}
+
+// SetModules replaces the user's modules. The configuration they make is
+// tested even with the core stopped, and taken at once when it runs; a
+// configuration the core refuses restores the previous modules.
+func (b *Backend) SetModules(ms []modules.Module) error {
+	before := modules.List()
+	if err := modules.Save(ms); err != nil {
+		return err
+	}
+	if err := b.check(); err != nil {
+		_ = modules.Save(before)
+		return err
+	}
+	return nil
+}
+
+// check has the running core take the configuration again, or with it
+// stopped, tests the configuration it would start with.
+func (b *Backend) check() error {
+	b.opMu.Lock()
+	defer b.opMu.Unlock()
+	if b.core.Client() != nil {
+		return b.reload()
+	}
+	if err := b.writeRuntime(false); err != nil {
+		return err
+	}
+	return b.core.Test()
 }
 
 // AddRule puts r first among the user's rules.

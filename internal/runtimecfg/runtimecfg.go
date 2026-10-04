@@ -10,6 +10,7 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
+	"github.com/localhost-copilot/mihomobar/internal/modules"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
 	"github.com/localhost-copilot/mihomobar/internal/userrules"
 )
@@ -20,15 +21,27 @@ type Controller struct {
 	Secret string
 }
 
-// Build is profile with s and ctl laid over it, and the user's rules
-// ahead of its own.
-func Build(profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule) ([]byte, error) {
+// Build is profile with the enabled modules merged over it in order, then
+// s and ctl, which win over both, and the user's rules ahead of all others.
+func Build(profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module) ([]byte, error) {
 	var m map[string]any
 	if err := yaml.Unmarshal(profile, &m); err != nil {
 		return nil, fmt.Errorf("profile: %w", err)
 	}
 	if m == nil {
 		m = map[string]any{}
+	}
+	for _, mod := range mods {
+		if !mod.Enabled {
+			continue
+		}
+		v, err := modules.Parse(mod.Body)
+		if err == nil {
+			err = Merge(m, v)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("module %s: %w", mod.Name, err)
+		}
 	}
 	if s.MixedPort > 0 {
 		m["mixed-port"] = s.MixedPort
@@ -169,8 +182,8 @@ func setDefault(m map[string]any, k string, v any) {
 
 // Write builds the configuration and writes it to path, readable by the
 // user only (it holds the secret).
-func Write(path string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule) error {
-	b, err := Build(profile, s, ctl, user)
+func Write(path string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module) error {
+	b, err := Build(profile, s, ctl, user, mods)
 	if err != nil {
 		return err
 	}

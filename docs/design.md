@@ -79,6 +79,7 @@ MihomoBar.app/Contents/MacOS/mihomobar
 ```
 settings.json          应用设置（主题、语言、当前配置、端口覆盖、开关状态等）
 usage/<日期>.json      流量统计，一天一个文件，保留 90 天
+modules.json           模块（叠在每个配置上的 YAML 片段），按顺序合并
 profiles/
   index.json           订阅元数据（名称、URL、更新间隔、上次更新时间、流量/到期信息）
   <id>.yaml            每个配置一个文件
@@ -90,14 +91,15 @@ logs/app.log
 ### 3.1 runtime 配置生成（相对 ClashBar 的改进）
 ClashBar 是先启动 core、再用 `PATCH /configs` 补用户设置，中间有一段状态不一致的窗口期。我们改成启动前就把覆盖项合并好：
 1. 读取当前配置的 YAML，解析成 `map[string]any`，未知字段原样保留。
-2. 用应用设置覆盖这些键：`mixed-port`、`allow-lan`、`ipv6`、`log-level`、`mode`、`external-controller`、`secret`、`tun.enable/stack`，同时删除 `external-controller-unix`。
+2. 按顺序合并已启用的模块（`internal/modules`，参考 Surge 的模块）。模块是一段顶层为映射的 YAML，写法和 Clash Verge 的扩展配置一致：映射逐键深度合并，其他值直接替换；`+key` 把列表插到前面，`key+` 追加到后面，`key!` 连映射也整体替换；顶层的 `prepend-rules` / `append-rules`、`prepend-proxies` / `append-proxies`、`prepend-proxy-groups` / `append-proxy-groups` 作用于配置的规则、节点和策略组。模块在应用设置之前合并，所以端口、模式、TUN 开关和控制接口仍以应用为准，模块写了也会被覆盖。启用、修改或排序模块后照常 `core -t`：内核运行时热重载，停止时只校验；内核拒绝就恢复原来的模块（`TestModules`）。
+3. 用应用设置覆盖这些键：`mixed-port`、`allow-lan`、`ipv6`、`log-level`、`mode`、`external-controller`、`secret`、`tun.enable/stack`，同时删除 `external-controller-unix`。
    设置页“防泄露”里的四个开关（默认都关）也在这一步生效：
    - **IPv6 流量进入 TUN**：TUN 开着而 IPv6 关闭时，顶层写 `ipv6: true`、`dns.ipv6: false`。原因是 mihomo 在 `ipv6: false` 时会去掉 TUN 的 IPv6 地址，而 auto-route 只给有 IPv6 地址的 TUN 加 IPv6 路由，IPv6 流量（WebRTC、路由器下发的 IPv6 DNS）就会绕过 TUN。core 启动时还会设 `SKIP_SYSTEM_IPV6_CHECK=1`，免得开机时没有 IPv6 的网络之后拿到 IPv6 时绕过 TUN。
    - **接管 DNS**：强制 `dns.enable`（配置里没有 DNS 段时补一个 fake-ip 的默认段），TUN 下覆盖 `dns-hijack` 为 `any:53`、`tcp://any:53`。
    - **拦截 UDP STUN**：规则最前面加 `AND,((NETWORK,UDP),(DST-PORT,3478/5349/19302-19309)),REJECT`。节点不支持 UDP 时 mihomo 会跳过该规则继续匹配，可能落到 DIRECT。
    - **DNS 查询遵循规则**：`dns.respect-rules: true`；没有 `proxy-server-nameserver` 时用 `nameserver` 补上（mihomo 要求）。
    只开系统代理、没开 TUN 时，这一节顶部提示 WebRTC 会暴露真实 IP，并提供“开启 TUN 和防泄露”（打开前两项再开 TUN）。
-3. 写入 `core/runtime.yaml`（权限 0600），然后执行 `core -t` 校验，再启动或热重载（`PUT /configs?force=true {path}`）。
+4. 写入 `core/runtime.yaml`（权限 0600），然后执行 `core -t` 校验，再启动或热重载（`PUT /configs?force=true {path}`）。
 
 运行中切换模式、端口、开关时，先 `PATCH /configs` 立即生效，同时写回 settings.json，下次生成 runtime 配置时也会带上。
 

@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/localhost-copilot/mihomobar/internal/core"
+	"github.com/localhost-copilot/mihomobar/internal/coremgr"
 	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
+	"github.com/localhost-copilot/mihomobar/internal/modules"
 	"github.com/localhost-copilot/mihomobar/internal/profiles"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
 	"github.com/localhost-copilot/mihomobar/internal/userrules"
@@ -456,6 +458,63 @@ func TestUserRules(t *testing.T) {
 		t.Errorf("saved rules = %v", got)
 	}
 	if rules, _ = c.Rules(context.Background()); len(rules) != 2 {
+		t.Errorf("core rules = %+v", rules)
+	}
+}
+
+// A module is taken at once; one the core refuses is not kept, whether the
+// core runs or not.
+func TestModules(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a core")
+	}
+	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
+		t.Fatal(err)
+	}
+	b := New("test", "test", []byte(base), nopSink{make(chan State, 64)})
+	if err := b.Init(); err != nil {
+		t.Fatal(err)
+	}
+	good := modules.Module{Name: "lan", Enabled: true, Body: "prepend-rules: [\"DOMAIN-SUFFIX,lan,DIRECT\"]"}
+	bad := modules.Module{Name: "bad", Enabled: true, Body: "prepend-rules: [\"DOMAIN,a.com,Nowhere\"]"}
+	// stopped: tested, not started
+	if err := b.SetModules([]modules.Module{bad}); err == nil {
+		t.Fatal("a broken module accepted with the core stopped")
+	}
+	if len(modules.List()) != 0 {
+		t.Fatalf("modules = %+v", modules.List())
+	}
+	if err := b.SetModules([]modules.Module{good}); err != nil {
+		t.Fatal(err)
+	}
+	if st, _ := b.core.Status(); st == coremgr.Running {
+		t.Fatal("checking a module started the core")
+	}
+
+	if err := b.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	t.Cleanup(b.Shutdown)
+	c, _ := b.Client()
+	rules, err := c.Rules(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rules) != 2 || rules[0].Payload != "lan" {
+		t.Fatalf("rules = %+v", rules)
+	}
+	if err := b.SetModules([]modules.Module{good, bad}); err == nil {
+		t.Fatal("a broken module accepted")
+	}
+	if got := modules.List(); len(got) != 1 || got[0].Name != "lan" {
+		t.Errorf("saved modules = %+v", got)
+	}
+	good.Enabled = false
+	if err := b.SetModules([]modules.Module{good}); err != nil {
+		t.Fatal(err)
+	}
+	if rules, _ = c.Rules(context.Background()); len(rules) != 1 {
 		t.Errorf("core rules = %+v", rules)
 	}
 }
