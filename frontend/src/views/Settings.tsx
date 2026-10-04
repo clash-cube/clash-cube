@@ -1,15 +1,22 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { useT } from "../i18n";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { translate, useT } from "../i18n";
 import { applyTheme, useStore } from "../store";
-import { App, Proxy, Settings as S, type Patch, type HelperStatus } from "../api";
+import { App, Proxy, Settings as S, type Patch, type HelperStatus, type GeoInfo } from "../api";
 import { Switch } from "../components/Switch";
 import { Segmented } from "../components/Segmented";
-import { toast, toastError } from "../components/Toast";
-import { run, setTun } from "../actions";
+import { Refresh } from "../components/Icons";
+import { errText, toast, toastError } from "../components/Toast";
+import { coreLabel, coreTone, restartCore, run, setTun, startCore, stopCore } from "../actions";
+import { ago } from "../format";
 import { NetworkRules } from "../components/NetworkRules";
 
 const TABS = ["general", "network", "rules", "tun", "core"] as const;
 type Tab = (typeof TABS)[number];
+
+// the settings the core runs with: changing one reloads it (PatchSettings)
+const CORE_KEYS = new Set<string>(["mixedPort", "allowLan", "ipv6", "logLevel", "tunStack", "icmpForwarding", "findProcess", "guardIPv6", "guardDNS", "blockSTUN", "dnsRespectRules"]);
+// the core settings being applied now, for their rows to say so
+const Applying = createContext<ReadonlySet<string>>(new Set());
 
 // the tab ?view=settings#<tab> names, else the one last open
 function firstTab(): Tab {
@@ -24,6 +31,7 @@ export function Settings() {
   const s = useStore((st) => st.settings);
   const state = useStore((st) => st.state);
   const [tab, setTab] = useState<Tab>(firstTab);
+  const [applying, setApplying] = useState<ReadonlySet<string>>(new Set());
   const pick = (v: Tab) => {
     setTab(v);
     try { localStorage.setItem("settings.tab", v); } catch {}
@@ -34,10 +42,23 @@ export function Settings() {
     // shown at once
     useStore.setState({ settings: { ...s, ...(p as object) } as typeof s });
     if (p.theme) applyTheme(p.theme);
-    try { useStore.setState({ settings: await S.Patch(p) }); } catch (e) { toastError(e); useStore.getState().refreshSettings(); }
+    // a running core reloads for these, which takes a moment and may fail
+    const keys = state?.core === "running" ? Object.keys(p).filter((k) => CORE_KEYS.has(k)) : [];
+    const mark = (on: boolean) => setApplying((a) => { const n = new Set(a); keys.forEach((k) => on ? n.add(k) : n.delete(k)); return n; });
+    if (keys.length) mark(true);
+    try {
+      useStore.setState({ settings: await S.Patch(p) });
+    } catch (e) {
+      // the backend put the settings back; show them as they are
+      if (keys.length) toast(t("Not applied: {error}", { error: errText(e) }), "err", 5000); else toastError(e);
+      useStore.getState().refreshSettings();
+    } finally {
+      if (keys.length) mark(false);
+    }
   };
 
   return (
+    <Applying.Provider value={applying}>
     <div className="view settings">
       <div className="view-head">
         <Segmented className="track small" value={tab} onChange={pick} options={[
@@ -81,10 +102,10 @@ export function Settings() {
 
       {tab === "network" && <>
         <Section title={t("Network")}>
-          <Row label={t("Mixed port")}><NumberInput value={s.mixedPort} onCommit={(v) => patch({ mixedPort: v })} /></Row>
-          <Row label={t("Allow LAN")}><Switch on={s.allowLan} onChange={(v) => patch({ allowLan: v })} /></Row>
-          <Row label={t("IPv6")}><Switch on={s.ipv6} onChange={(v) => patch({ ipv6: v })} /></Row>
-          <Row label={t("Identify processes")} sub={t("Show which app made each connection")}><Switch on={s.findProcess} onChange={(v) => patch({ findProcess: v })} /></Row>
+          <Row field="mixedPort" label={t("Mixed port")}><NumberInput value={s.mixedPort} onCommit={(v) => patch({ mixedPort: v })} /></Row>
+          <Row field="allowLan" label={t("Allow LAN")}><Switch on={s.allowLan} onChange={(v) => patch({ allowLan: v })} /></Row>
+          <Row field="ipv6" label={t("IPv6")}><Switch on={s.ipv6} onChange={(v) => patch({ ipv6: v })} /></Row>
+          <Row field="findProcess" label={t("Identify processes")} sub={t("Show which app made each connection")}><Switch on={s.findProcess} onChange={(v) => patch({ findProcess: v })} /></Row>
           <Row label={t("Latency test URL")}><TextInput value={s.testUrl} onCommit={(v) => patch({ testUrl: v })} /></Row>
           <Row label={t("Save data on metered networks")} sub={t("On a personal hotspot or in Low Data Mode, subscriptions aren't updated and connectivity isn't measured in the background.")} wrap>
             {state?.network.savingData && <span className="badge">{t("Saving data")}</span>}
@@ -99,10 +120,10 @@ export function Settings() {
       {tab === "tun" && <>
         <Section title={t("Enhanced Mode")}>
           <ServiceModeRow />
-          <Row label={t("TUN stack")}>
+          <Row field="tunStack" label={t("TUN stack")}>
             <Segmented className="track small" value={s.tunStack} onChange={(v) => patch({ tunStack: v })} options={[{ value: "system", label: "System" }, { value: "gvisor", label: "gVisor" }, { value: "mixed", label: "Mixed" }]} />
           </Row>
-          <Row label={t("ICMP forwarding")} sub={t("Pings go out directly, never through a proxy. Off: the core answers every ping itself. Pinging a domain under fake-ip always gets a local answer.")} wrap>
+          <Row field="icmpForwarding" label={t("ICMP forwarding")} sub={t("Pings go out directly, never through a proxy. Off: the core answers every ping itself. Pinging a domain under fake-ip always gets a local answer.")} wrap>
             <Switch on={s.icmpForwarding} onChange={(v) => patch({ icmpForwarding: v })} />
           </Row>
         </Section>
@@ -117,33 +138,150 @@ export function Settings() {
               <div className="end"><button className="btn small primary" onClick={async () => { await patch({ guardIPv6: true, guardDNS: true }); await setTun(true); }}>{t("Turn on TUN and protection")}</button></div>
             </div>
           )}
-          <Row label={t("Route IPv6 into TUN")} sub={t("With IPv6 off, IPv6 traffic would go around TUN, exposing your IPv6 address to WebRTC and sending lookups to an IPv6 DNS server. Names still get no IPv6 answers; the core's own connections may use IPv6.")} wrap>
+          <Row field="guardIPv6" label={t("Route IPv6 into TUN")} sub={t("With IPv6 off, IPv6 traffic would go around TUN, exposing your IPv6 address to WebRTC and sending lookups to an IPv6 DNS server. Names still get no IPv6 answers; the core's own connections may use IPv6.")} wrap>
             <Switch on={s.guardIPv6} onChange={(v) => patch({ guardIPv6: v })} />
           </Row>
-          <Row label={t("Take over DNS")} sub={t("Turns on the core's DNS and, under TUN, hijacks every lookup to port 53, whatever the profile says.")} wrap>
+          <Row field="guardDNS" label={t("Take over DNS")} sub={t("Turns on the core's DNS and, under TUN, hijacks every lookup to port 53, whatever the profile says.")} wrap>
             <Switch on={s.guardDNS} onChange={(v) => patch({ guardDNS: v })} />
           </Row>
-          <Row label={t("Block STUN over UDP")} sub={t("A node without UDP lets WebRTC go direct. Rejected, WebRTC falls back to relays over TCP; some video calls may connect slower or fail.")} wrap>
+          <Row field="blockSTUN" label={t("Block STUN over UDP")} sub={t("A node without UDP lets WebRTC go direct. Rejected, WebRTC falls back to relays over TCP; some video calls may connect slower or fail.")} wrap>
             <Switch on={s.blockSTUN} onChange={(v) => patch({ blockSTUN: v })} />
           </Row>
-          <Row label={t("Look up names along the rules")} sub={t("The core's DNS queries go out through the policy their domain matches, so domestic DNS servers don't see the domains you proxy. Lookups get slower.")} wrap>
+          <Row field="dnsRespectRules" label={t("Look up names along the rules")} sub={t("The core's DNS queries go out through the policy their domain matches, so domestic DNS servers don't see the domains you proxy. Lookups get slower.")} wrap>
             <Switch on={s.dnsRespectRules} onChange={(v) => patch({ dnsRespectRules: v })} />
           </Row>
         </Section>
       </>}
 
-      {tab === "core" && <Section title={t("Core")}>
-        <Row label={t("Log level")}>
-          <select className="input" value={s.logLevel} onChange={(e) => patch({ logLevel: e.target.value })}>
-            {["debug", "info", "warning", "error", "silent"].map((l) => <option key={l}>{l}</option>)}
-          </select>
-        </Row>
-        <Row label={t("Flush DNS cache")}><button className="btn small" disabled={state?.core !== "running"} onClick={() => run(Proxy.FlushDNS(), t("Saved"))}>{t("Clear")}</button></Row>
-        <Row label={t("Update GEO databases")}><button className="btn small" disabled={state?.core !== "running"} onClick={() => run(Proxy.UpdateGeo(), t("Saved"))}>{t("Update")}</button></Row>
-        <Row label={t("Copy shell export command")}><button className="btn small" title={t("⌥-click: use this Mac's LAN address")} onClick={async (e) => { App.CopyText(await (e.altKey ? App.LANProxyCommand() : App.ProxyCommand())); toast(t("Copied")); }}>{t("Copy")}</button></Row>
-        <Row label={t("Open data folder")}><button className="btn small" onClick={() => run(App.RevealData())}>Finder</button></Row>
-      </Section>}
+      {tab === "core" && <>
+        <CoreStatus />
+        <Section title={t("Tools")}>
+          <Row field="logLevel" label={t("Log level")}>
+            <select className="input" value={s.logLevel} onChange={(e) => patch({ logLevel: e.target.value })}>
+              {["debug", "info", "warning", "error", "silent"].map((l) => <option key={l}>{l}</option>)}
+            </select>
+          </Row>
+          <Row label={t("Flush DNS cache")} sub={state?.core === "running" ? t("Also clears the fake-ip pool") : t("Needs the core running")}>
+            <ActionButton label={t("Clear")} busyLabel={t("Clearing…")} disabled={state?.core !== "running"} onClick={() => run(Proxy.FlushDNS(), t("DNS cache cleared"))} />
+          </Row>
+          <GeoRow running={state?.core === "running"} />
+          <Row label={t("Copy shell export command")} sub={t("⌥-click: use this Mac's LAN address")}>
+            <button className="btn small" onClick={(e) => copyCommand(e.altKey, s.allowLan)}>{t("Copy")}</button>
+          </Row>
+          <Row label={t("Open data folder")}><button className="btn small" onClick={() => run(App.RevealData())}>Finder</button></Row>
+        </Section>
+      </>}
     </div>
+    </Applying.Provider>
+  );
+}
+
+// copyCommand copies the shell export line, for this Mac's LAN address when
+// lan, saying when that address isn't there or isn't reachable yet.
+async function copyCommand(lan: boolean, allowLan: boolean) {
+  const t = translate;
+  let cmd = lan ? await App.LANProxyCommand() : "";
+  const fellBack = lan && !cmd;
+  if (!cmd) cmd = await App.ProxyCommand();
+  if (!await App.CopyText(cmd)) return toastError(t("Could not copy to clipboard"));
+  if (fellBack) toast(t("No LAN address; copied the local one"), "", 3500);
+  else if (lan && !allowLan) toast(t("Copied. Other devices need Allow LAN on"), "", 3500);
+  else toast(t("Copied"));
+}
+
+// CoreStatus is the core at a glance, with what to do about it.
+function CoreStatus() {
+  const t = useT();
+  const state = useStore((st) => st.state);
+  const setView = useStore((st) => st.setView);
+  if (!state) return null;
+  const core = state.core;
+  const running = core === "running";
+  const busy = !!state.busy || core === "starting" || core === "stopping";
+  const sub = running
+    ? [`mihomo ${state.coreVersion}`, state.serviceMode ? t("Core runs as root") : t("Core runs as you"), `127.0.0.1:${state.mixedPort}`].join(" · ")
+    : core === "crashed" ? t("Core stopped with an error") : t("Proxies, DNS and the tools below need the core running");
+  return (
+    <>
+      <div className="section-title">{t("Status")}</div>
+      <div className="list">
+        <div className="row core-status">
+          <div className="who">
+            <div className="name"><span className={"cdot " + coreTone()} />{coreLabel()}</div>
+            <div className={"sub" + (core === "crashed" ? " warn" : "")}>{sub}</div>
+          </div>
+          <div className="end">
+            {busy ? <button className="btn small" disabled><Spinner />{coreLabel()}</button>
+              : running ? <>
+                <ActionButton label={t("Restart")} busyLabel={t("Restarting…")} onClick={restartCore} />
+                <ActionButton className="danger" label={t("Stop")} busyLabel={t("Stopping…")} onClick={stopCore} />
+              </> : <ActionButton className="primary" label={t("Start")} busyLabel={t("Starting…")} onClick={startCore} />}
+          </div>
+        </div>
+        {core === "crashed" && state.coreError && (
+          <div className="row core-error">
+            <div className="who"><div className="mono">{state.coreError}</div></div>
+            <div className="end"><button className="btn small" onClick={() => setView("logs")}>{t("Show logs")}</button></div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// GeoRow updates the GEO databases, which takes as long as the download.
+function GeoRow({ running }: { running: boolean }) {
+  const t = useT();
+  const [info, setInfo] = useState<GeoInfo | null>(null);
+  const [mine, setMine] = useState(false);
+  const load = () => Proxy.GeoInfo().then(setInfo).catch(() => {});
+  useEffect(() => { load(); }, []);
+  // someone else's update (another window): follow it until it's done
+  useEffect(() => {
+    if (!info?.updating || mine) return;
+    const id = setInterval(load, 1500);
+    return () => clearInterval(id);
+  }, [info?.updating, mine]);
+
+  const update = async () => {
+    setMine(true);
+    try {
+      const r = await Proxy.UpdateGeo();
+      setInfo(r);
+      if (r.updating) toast(t("An update is already under way"), "", 3000);
+      else toast(t("GEO databases updated"));
+    } catch (e) {
+      toastError(e);
+      load();
+    } finally {
+      setMine(false);
+    }
+  };
+  const when = info?.updated ? t("Updated {t}", { t: ago(info.updated, t) }) : t("Not downloaded yet");
+  return (
+    <Row label={t("Update GEO databases")} sub={running ? when : t("Needs the core running")}>
+      <ActionButton label={t("Update")} busyLabel={t("Updating…")} busy={mine || !!info?.updating} disabled={!running} onClick={update} />
+    </Row>
+  );
+}
+
+const Spinner = () => <span className="spin-svg" style={{ display: "inline-flex" }}><Refresh size={12} /></span>;
+
+// ActionButton is a small button that, while its action runs, spins and
+// says so, and can't be pressed again.
+function ActionButton({ label, busyLabel, busy, disabled, className, onClick }: {
+  label: string; busyLabel: string; busy?: boolean; disabled?: boolean; className?: string; onClick: () => Promise<unknown>;
+}) {
+  const [own, setOwn] = useState(false);
+  const on = own || !!busy;
+  const press = async () => {
+    setOwn(true);
+    try { await onClick(); } finally { setOwn(false); }
+  };
+  return (
+    <button className={"btn small" + (className ? " " + className : "")} disabled={disabled || on} onClick={press}>
+      {on && <Spinner />}{on ? busyLabel : label}
+    </button>
   );
 }
 
@@ -186,11 +324,15 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Row({ label, sub, wrap, children }: { label: string; sub?: string; wrap?: boolean; children: ReactNode }) {
+// Row is a setting; field names the core setting it changes, so the row
+// says so while the core reloads for it.
+function Row({ label, sub, wrap, field, children }: { label: string; sub?: string; wrap?: boolean; field?: keyof Patch; children: ReactNode }) {
+  const t = useT();
+  const applying = useContext(Applying).has(field ?? "");
   return (
     <div className="row">
       <div className="who"><div className="name">{label}</div>{sub && <div className={wrap ? "sub wrap" : "sub"}>{sub}</div>}</div>
-      <div className="end">{children}</div>
+      <div className="end">{applying && <span className="applying"><Spinner />{t("Applying…")}</span>}{children}</div>
     </div>
   );
 }

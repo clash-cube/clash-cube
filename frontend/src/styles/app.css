@@ -417,6 +417,9 @@ select.input { padding-right: 6px; }
 /* ---- settings ---------------------------------------------------------- */
 .settings .row { min-height: 46px; }
 .settings .section-title { margin-top: 4px; }
+.settings .applying { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--muted); margin-right: 4px; animation: view-in .24s var(--ease); }
+.settings .core-status .name { display: flex; align-items: center; gap: 7px; }
+.settings .core-error .mono { color: var(--red); white-space: pre-wrap; word-break: break-all; user-select: text; }
 .name > .badge.net { margin-left: 6px; }
 .network-rule.off .who { opacity: .55; }
 .network-rule-form { width: auto; }

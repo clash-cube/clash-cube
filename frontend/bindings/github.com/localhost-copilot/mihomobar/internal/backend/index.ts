@@ -7,6 +7,7 @@ export type {
     DNSEgress,
     Egress,
     Event,
+    GeoInfo,
     HelperStatus,
     LatencyEvent,
     LatencyResult,

@@ -7,11 +7,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -19,7 +21,7 @@ type Client struct {
 	base   string // http://127.0.0.1:port
 	secret string
 	http   *http.Client
-	stream *http.Client
+	stream *http.Client // no timeout: streams, and calls bounded by their context
 }
 
 func New(addr, secret string) *Client {
@@ -31,6 +33,13 @@ func New(addr, secret string) *Client {
 	}
 }
 
+// IsGeoUpdating says err is the core refusing a GEO update because one is
+// already under way (its own, scheduled, or another caller's).
+func IsGeoUpdating(err error) bool {
+	var e *APIError
+	return errors.As(err, &e) && strings.Contains(e.Message, "is updating")
+}
+
 // APIError is a non-2xx answer, with mihomo's message.
 type APIError struct {
 	Status  int
@@ -40,6 +49,10 @@ type APIError struct {
 func (e *APIError) Error() string { return fmt.Sprintf("mihomo: %d %s", e.Status, e.Message) }
 
 func (c *Client) req(ctx context.Context, method, path string, body, out any) error {
+	return c.send(c.http, ctx, method, path, body, out)
+}
+
+func (c *Client) send(hc *http.Client, ctx context.Context, method, path string, body, out any) error {
 	var rd io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -58,7 +71,7 @@ func (c *Client) req(ctx context.Context, method, path string, body, out any) er
 	if body != nil {
 		r.Header.Set("Content-Type", "application/json")
 	}
-	resp, err := c.http.Do(r)
+	resp, err := hc.Do(r)
 	if err != nil {
 		return err
 	}
@@ -333,8 +346,10 @@ func (c *Client) FlushDNS(ctx context.Context) error {
 	return c.req(ctx, http.MethodPost, "/cache/dns/flush", nil, nil)
 }
 
+// UpdateGeo answers once the core has downloaded every database, which can
+// take minutes; only ctx bounds it.
 func (c *Client) UpdateGeo(ctx context.Context) error {
-	return c.req(ctx, http.MethodPost, "/upgrade/geo", nil, nil)
+	return c.send(c.stream, ctx, http.MethodPost, "/upgrade/geo", nil, nil)
 }
 
 type Traffic struct {

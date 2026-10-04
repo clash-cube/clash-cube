@@ -74,6 +74,8 @@ type Backend struct {
 	logLevel  string
 	logWatch  context.CancelFunc
 	latency   latencyTester
+	// coreops.go
+	geoUpdating bool
 
 	// watch.go
 	events       []Event
@@ -425,6 +427,8 @@ func (b *Backend) releaseProxy() {
 }
 
 // PatchSettings changes settings; those the core runs with are applied.
+// When the core refuses them, they are put back as they were, so the
+// settings never claim what the core doesn't run with.
 func (b *Backend) PatchSettings(fn func(*settings.Settings)) (settings.Settings, error) {
 	before := settings.Load()
 	after, err := settings.Update(fn)
@@ -432,13 +436,21 @@ func (b *Backend) PatchSettings(fn func(*settings.Settings)) (settings.Settings,
 		return after, err
 	}
 	b.emitState()
-	coreChanged := before.MixedPort != after.MixedPort || before.AllowLan != after.AllowLan ||
-		before.IPv6 != after.IPv6 || before.LogLevel != after.LogLevel || before.TunStack != after.TunStack ||
-		before.ICMPForwarding != after.ICMPForwarding || before.FindProcess != after.FindProcess ||
-		before.GuardIPv6 != after.GuardIPv6 || before.GuardDNS != after.GuardDNS ||
-		before.BlockSTUN != after.BlockSTUN || before.DNSRespectRules != after.DNSRespectRules
-	if coreChanged {
+	if coreSettings(before) != coreSettings(after) {
 		if err := b.Reload(); err != nil {
+			// unless another change came in meanwhile
+			want := coreSettings(after)
+			after, _ = settings.Update(func(s *settings.Settings) {
+				if coreSettings(*s) == want {
+					setCoreSettings(s, coreSettings(before))
+				}
+			})
+			b.opMu.Lock()
+			if b.core.Client() != nil {
+				_ = b.writeRuntime(false) // what a crash restart would read
+			}
+			b.opMu.Unlock()
+			b.emitState()
 			return after, err
 		}
 	}
@@ -450,6 +462,29 @@ func (b *Backend) PatchSettings(fn func(*settings.Settings)) (settings.Settings,
 		_ = b.applyProxy(true)
 	}
 	return after, nil
+}
+
+// coreFields is the settings runtimecfg lays over the profile, which a
+// change of has the core reload.
+type coreFields struct {
+	MixedPort                                       int
+	AllowLan, IPv6, ICMPForwarding, FindProcess     bool
+	GuardIPv6, GuardDNS, BlockSTUN, DNSRespectRules bool
+	LogLevel, TunStack                              string
+}
+
+func coreSettings(s settings.Settings) coreFields {
+	return coreFields{
+		MixedPort: s.MixedPort, AllowLan: s.AllowLan, IPv6: s.IPv6, ICMPForwarding: s.ICMPForwarding, FindProcess: s.FindProcess,
+		GuardIPv6: s.GuardIPv6, GuardDNS: s.GuardDNS, BlockSTUN: s.BlockSTUN, DNSRespectRules: s.DNSRespectRules,
+		LogLevel: s.LogLevel, TunStack: s.TunStack,
+	}
+}
+
+func setCoreSettings(s *settings.Settings, f coreFields) {
+	s.MixedPort, s.AllowLan, s.IPv6, s.ICMPForwarding, s.FindProcess = f.MixedPort, f.AllowLan, f.IPv6, f.ICMPForwarding, f.FindProcess
+	s.GuardIPv6, s.GuardDNS, s.BlockSTUN, s.DNSRespectRules = f.GuardIPv6, f.GuardDNS, f.BlockSTUN, f.DNSRespectRules
+	s.LogLevel, s.TunStack = f.LogLevel, f.TunStack
 }
 
 // UseProfile switches to another profile.

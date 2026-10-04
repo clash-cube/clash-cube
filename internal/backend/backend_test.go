@@ -376,6 +376,21 @@ func TestCoreLifecycle(t *testing.T) {
 		t.Error("the core stopped after a failed switch")
 	}
 
+	// a setting the core can't take is put back: here the profile in use
+	// broke on disk, so the reload it needs fails
+	os.WriteFile(p.Path(), []byte("proxies: []\nrules:\n  - MATCH,Nowhere\n"), 0o600)
+	level := settings.Load().LogLevel
+	if _, err := b.PatchSettings(func(s *settings.Settings) { s.LogLevel = "debug"; s.Theme = "dark" }); err == nil {
+		t.Error("a setting the core refused was taken")
+	}
+	if s := settings.Load(); s.LogLevel != level || s.Theme != "dark" {
+		t.Errorf("after a refused reload: logLevel = %q (want %q), theme = %q (want dark)", s.LogLevel, level, s.Theme)
+	}
+	if b.State().Core != "running" {
+		t.Error("the core stopped after a refused setting")
+	}
+	os.WriteFile(p.Path(), []byte(second), 0o600)
+
 	if err := b.Restart(); err != nil {
 		t.Fatalf("restart: %v", err)
 	}

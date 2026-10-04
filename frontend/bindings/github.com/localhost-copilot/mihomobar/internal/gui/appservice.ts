@@ -113,7 +113,7 @@ export function HidePanel(): $CancellablePromise<void> {
 
 /**
  * LANProxyCommand is the same for this Mac's LAN address, for another
- * machine to use (Allow LAN must be on).
+ * machine to use (Allow LAN must be on); "" when the Mac has none.
  */
 export function LANProxyCommand(): $CancellablePromise<string> {
     return $Call.ByID(3811387141);

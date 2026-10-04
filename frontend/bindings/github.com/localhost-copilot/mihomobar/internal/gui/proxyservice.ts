@@ -48,6 +48,13 @@ export function FlushDNS(): $CancellablePromise<void> {
 }
 
 /**
+ * GeoInfo is when the GEO databases last changed, and whether an update runs.
+ */
+export function GeoInfo(): $CancellablePromise<backend$0.GeoInfo> {
+    return $Call.ByID(1234467795);
+}
+
+/**
  * Groups is every proxy group, GLOBAL last.
  */
 export function Groups(): $CancellablePromise<$models.Group[] | null> {
@@ -119,7 +126,11 @@ export function TopClients(n: number): $CancellablePromise<backend$0.ClientRate[
     return $Call.ByID(2078237291, n);
 }
 
-export function UpdateGeo(): $CancellablePromise<void> {
+/**
+ * UpdateGeo waits for the core to download its GEO databases; Updating in
+ * the result means one was already under way.
+ */
+export function UpdateGeo(): $CancellablePromise<backend$0.GeoInfo> {
     return $Call.ByID(1571070136);
 }
 

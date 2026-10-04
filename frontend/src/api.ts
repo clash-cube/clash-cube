@@ -4,7 +4,7 @@ export * as Proxy from "../bindings/github.com/localhost-copilot/mihomobar/inter
 export * as Profiles from "../bindings/github.com/localhost-copilot/mihomobar/internal/gui/profileservice";
 export * as Settings from "../bindings/github.com/localhost-copilot/mihomobar/internal/gui/settingsservice";
 export type { App as AppInfo, Group, Member, Patch, Provider } from "../bindings/github.com/localhost-copilot/mihomobar/internal/gui/models";
-export type { Lookup, State, Event, HelperStatus, Connectivity, ClientRate, Egress, DNSEgress, ProxyEgress, Network } from "../bindings/github.com/localhost-copilot/mihomobar/internal/backend/models";
+export type { Lookup, State, Event, HelperStatus, GeoInfo, Connectivity, ClientRate, Egress, DNSEgress, ProxyEgress, Network } from "../bindings/github.com/localhost-copilot/mihomobar/internal/backend/models";
 export type { NetworkRule, NetworkActions } from "../bindings/github.com/localhost-copilot/mihomobar/internal/settings/models";
 export type { Profile, ImportRequest } from "../bindings/github.com/localhost-copilot/mihomobar/internal/profiles/models";
 export type { Settings as SettingsT } from "../bindings/github.com/localhost-copilot/mihomobar/internal/settings/models";

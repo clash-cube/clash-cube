@@ -154,6 +154,15 @@ export interface Event {
 }
 
 /**
+ * GeoInfo is the core's GEO databases: when they last changed (unix ms, 0
+ * when there are none yet) and whether an update is under way.
+ */
+export interface GeoInfo {
+    "updated": number;
+    "updating": boolean;
+}
+
+/**
  * HelperStatus is what Settings shows of service mode.
  */
 export interface HelperStatus {

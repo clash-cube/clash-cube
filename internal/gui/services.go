@@ -88,12 +88,12 @@ func (s *AppService) OpenURL(url string) error { return s.h.app.Browser.OpenURL(
 func (s *AppService) ProxyCommand() string { return proxyCommand("127.0.0.1") }
 
 // LANProxyCommand is the same for this Mac's LAN address, for another
-// machine to use (Allow LAN must be on).
+// machine to use (Allow LAN must be on); "" when the Mac has none.
 func (s *AppService) LANProxyCommand() string {
 	if ip := lanIP(); ip != "" {
 		return proxyCommand(ip)
 	}
-	return proxyCommand("127.0.0.1")
+	return ""
 }
 
 func proxyCommand(host string) string {
@@ -370,22 +370,14 @@ func (s *ProxyService) Rules() ([]mihomoapi.Rule, error) {
 	return c.Rules(context.Background())
 }
 
-func (s *ProxyService) FlushDNS() error {
-	c, err := s.client()
-	if err != nil {
-		return err
-	}
-	_ = c.FlushFakeIP(context.Background())
-	return c.FlushDNS(context.Background())
-}
+func (s *ProxyService) FlushDNS() error { return s.h.b.FlushDNS() }
 
-func (s *ProxyService) UpdateGeo() error {
-	c, err := s.client()
-	if err != nil {
-		return err
-	}
-	return c.UpdateGeo(context.Background())
-}
+// UpdateGeo waits for the core to download its GEO databases; Updating in
+// the result means one was already under way.
+func (s *ProxyService) UpdateGeo() (backend.GeoInfo, error) { return s.h.b.UpdateGeo() }
+
+// GeoInfo is when the GEO databases last changed, and whether an update runs.
+func (s *ProxyService) GeoInfo() backend.GeoInfo { return s.h.b.GeoInfo() }
 
 // LookupHost tells how the core resolves and routes host (a name, an
 // address, host:port or a URL).
