@@ -226,11 +226,10 @@ select.input { padding-right: 6px; }
 .tc-name { flex: 1; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tc-speed { flex: none; font-size: 11px; color: var(--muted); }
 /* a share of all the traffic now, upload then download */
-.tc-share, .tsplit { display: flex; height: 2px; border-radius: 1px; overflow: hidden; background: var(--line-2); }
-.tc-share i, .tsplit i { display: block; flex: none; height: 100%; transition: width .5s var(--ease-out); }
-.tc-share .up, .tsplit .up { background: var(--up); }
-.tc-share .down, .tsplit .down { background: var(--down); }
-.tsplit .share { background: var(--accent); }
+.tc-share { display: flex; height: 2px; border-radius: 1px; overflow: hidden; background: var(--line-2); }
+.tc-share i { display: block; flex: none; height: 100%; transition: width .5s var(--ease-out); }
+.tc-share .up { background: var(--up); }
+.tc-share .down { background: var(--down); }
 .traffic-head { display: flex; align-items: center; gap: 18px; min-height: 28px; }
 .rate { display: flex; align-items: baseline; gap: 6px; }
 .rate svg { align-self: center; }
@@ -258,12 +257,25 @@ select.input { padding-right: 6px; }
 /* the totals, a strip along the chart's foot */
 .traffic-stats { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--card-2); }
 .tstat { padding: 9px 14px 10px; min-width: 0; text-align: left; }
+.tstat + .tstat { box-shadow: inset 1px 0 0 var(--line-2); }
+.tstat .lbl { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.tstat .val { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; margin-top: 1px; letter-spacing: -.01em; white-space: nowrap; }
+.tstat .val small { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.tstat .tsub .ud + .ud { margin-left: 8px; }
+.tstat .tsub .ud b { font-weight: inherit; }
+.tstat .tsub .ud.up b { color: var(--up); } .tstat .tsub .ud.down b { color: var(--down); }
+/* the ring's legend */
+.tstat .tsub .key { display: inline-block; width: 6px; height: 6px; margin: 0 5px 1px 0; border-radius: 50%; background: var(--fg-2); vertical-align: middle; }
+.tstat .tsub { height: 14px; margin-top: 2px; font-size: 11px; line-height: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a cell that leads somewhere: a chevron that only shows itself on hover */
 .tstat.click { display: flex; flex-direction: column; justify-content: flex-start; transition: background .15s; }
 .tstat.click:hover { background: var(--pill); }
-.tstat .tsplit { max-width: 96px; height: 3px; margin-top: 5px; border-radius: 2px; }
-.tstat + .tstat { box-shadow: inset 1px 0 0 var(--line-2); }
-.tstat .lbl { font-size: 11px; color: var(--muted); white-space: nowrap; }
-.tstat .val { font-size: 14px; font-weight: 600; margin-top: 1px; letter-spacing: -.01em; white-space: nowrap; }
+.tstat .go { color: var(--faint); opacity: .5; transition: opacity .15s, translate .2s var(--ease-out); }
+.tstat.click:hover .go { opacity: 1; translate: 1px 0; }
+/* the proxied share, the strip's one drawing */
+.tring { flex: none; rotate: -90deg; }
+.tring circle { fill: none; stroke: var(--line); stroke-width: 2.5; }
+.tring .arc { stroke: var(--fg-2); stroke-linecap: round; transition: stroke-dasharray .6s var(--ease-out); }
 .section-head { display: flex; align-items: center; justify-content: space-between; }
 .section-head .icon { width: 22px; height: 22px; margin: -4px -2px -4px 0; }
 .controls .seg { flex: none; }

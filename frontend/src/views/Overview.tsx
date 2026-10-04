@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { App } from "../api";
 import { useStore } from "../store";
 import { usePoll } from "../usePoll";
-import { TrafficClients } from "../components/TrafficClients";
+import { TrafficClients, clientOf } from "../components/TrafficClients";
 import { useT } from "../i18n";
 import { bytes, speed } from "../format";
 import { Sparkline } from "../components/Sparkline";
@@ -28,6 +28,7 @@ export function Overview() {
   const memory = useStore((s) => s.memory);
   const setView = useStore((s) => s.setView);
   const conns = useConnectionStore((s) => s.snapshot.active.length);
+  const apps = useConnectionStore((s) => new Set(s.snapshot.active.map((c) => clientOf(c).key)).size);
   const running = state?.core === "running";
   const mode = state?.mode ?? "rule";
   const today = useToday();
@@ -70,16 +71,34 @@ export function Overview() {
           <TrafficClients />
         </div>
         <div className="traffic-stats">
-          <Stat label={t("Today")} up={today?.up} down={today?.down} onClick={() => setView("usage")} title={t("Show traffic statistics")} />
           <Stat
-            label={t("Proxied today")}
-            value={today?.share === undefined ? "—" : pct(today.share)}
-            share={today?.share}
-            title={today ? `${t("Proxy")} ${bytes(today.proxied)}   ${t("Direct")} ${bytes(today.direct)}` : undefined}
+            label={t("Today")}
+            value={today ? bytes(today.up + today.down) : undefined}
+            sub={today && <UpDown up={today.up} down={today.down} />}
+            onClick={() => setView("usage")}
+            title={t("Show traffic statistics")}
           />
-          <Stat label={t("This run")} up={running ? traffic.upTotal : undefined} down={running ? traffic.downTotal : undefined}
-            title={running ? `${t("Core memory")} ${bytes(memory)}` : undefined} />
-          <Stat label={t("Connections")} value={running ? String(conns) : "—"} onClick={() => setView("connections")} title={t("Show connections")} />
+          <Stat
+            label={t("Proxied")}
+            value={today?.share === undefined ? undefined : pct(today.share)}
+            ring={today?.share}
+            sub={today?.share === undefined ? undefined : today.proxied === 0 ? t("All direct today")
+              : <><i className="key" />{t("Proxy")} {bytes(today.proxied)} · {t("Direct")} {bytes(today.direct)}</>}
+            title={t("Today's traffic through a proxy rather than DIRECT")}
+          />
+          <Stat
+            label={t("This run")}
+            value={running ? bytes(traffic.upTotal + traffic.downTotal) : undefined}
+            sub={running && <UpDown up={traffic.upTotal} down={traffic.downTotal} />}
+            title={running ? `${t("Since the core started")}\n${t("Core memory")} ${bytes(memory)}` : undefined}
+          />
+          <Stat
+            label={t("Connections")}
+            value={running ? String(conns) : undefined}
+            sub={running && apps > 0 ? t(apps === 1 ? "{n} app" : "{n} apps", { n: apps }) : undefined}
+            onClick={() => setView("connections")}
+            title={t("Show connections")}
+          />
         </div>
       </div>
 
@@ -116,32 +135,42 @@ export function Overview() {
   );
 }
 
-// Stat is a cell of the strip under the chart: a figure, or a total with a
-// thin bar of how it splits into upload and download, or a share with a
-// bar of it. A cell that leads somewhere is a button.
-function Stat({ label, value, up, down, share, onClick, title }: {
-  label: string; value?: string; up?: number; down?: number; share?: number; onClick?: () => void; title?: string;
+// Stat is a cell of the strip under the chart, each laid out alike: a
+// label, a figure with its unit set small, and a faint line of detail. The
+// proxied share alone also draws, a small ring, so the row has one thing
+// to look at. A cell that leads somewhere is a button with a faint chevron.
+function Stat({ label, value, sub, ring, onClick, title }: {
+  label: string; value?: string; sub?: ReactNode; ring?: number; onClick?: () => void; title?: string;
 }) {
-  const t = useT();
-  const split = up !== undefined && down !== undefined;
-  const sum = split ? up + down : 0;
-  const tip = [title, split && `↑ ${bytes(up)}   ↓ ${bytes(down)}`].filter(Boolean).join("\n") || undefined;
+  // "51.7 MB" → 51.7 and a small MB; "23%" → 23 and a small %
+  const m = value?.match(/^([<>]?[\d.,]+)\s*(.*)$/);
   const body = (
     <>
-      <div className="lbl">{label}</div>
-      <div className="val num">{split ? bytes(sum) : value ?? "—"}</div>
-      {split && (
-        <div className="tsplit" aria-label={`${t("Upload")} ${bytes(up)}, ${t("Download")} ${bytes(down)}`}>
-          <i className="up" style={{ width: sum ? `${(up / sum) * 100}%` : 0 }} />
-          <i className="down" style={{ width: sum ? `${(down / sum) * 100}%` : 0 }} />
-        </div>
-      )}
-      {share !== undefined && <div className="tsplit"><i className="share" style={{ width: `${share * 100}%` }} /></div>}
+      <div className="lbl">{label}{onClick && <Chevron size={10} className="go" />}</div>
+      <div className="val num">
+        <span>{m ? <>{m[1]}{m[2] && <small>{m[2] === "%" ? "%" : " " + m[2]}</small>}</> : value ?? "—"}</span>
+        {ring !== undefined && <Ring share={ring} />}
+      </div>
+      <div className="tsub num">{sub}</div>
     </>
   );
   return onClick
-    ? <button className="tstat click" title={tip} onClick={onClick}>{body}</button>
-    : <div className="tstat" title={tip}>{body}</div>;
+    ? <button className="tstat click" title={title} onClick={onClick}>{body}</button>
+    : <div className="tstat" title={title}>{body}</div>;
+}
+
+const UpDown = ({ up, down }: { up: number; down: number }) => <><span className="ud up"><b>↑</b> {bytes(up)}</span><span className="ud down"><b>↓</b> {bytes(down)}</span></>;
+
+// Ring is a share as a small arc over a faint full circle.
+function Ring({ share }: { share: number }) {
+  const r = 5.25, c = 2 * Math.PI * r;
+  return (
+    <svg className="tring" viewBox="0 0 14 14" width="14" height="14" aria-hidden>
+      <circle cx="7" cy="7" r={r} />
+      {/* a round cap would leave a dot at none */}
+      {share > 0 && <circle className="arc" cx="7" cy="7" r={r} strokeDasharray={`${share * c} ${c}`} />}
+    </svg>
+  );
 }
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
