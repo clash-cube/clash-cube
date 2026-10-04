@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 
-type Option<T extends string> = { value: T; label: string };
+type Option<T extends string> = { value: T; label: string; title?: string };
 
 // A segmented control whose one thumb glides to the chosen option, rather
 // than each option lighting up on its own.
@@ -37,7 +37,7 @@ export function Segmented<T extends string>({ options, value, onChange, classNam
     <div className={"seg " + className} ref={box} role="tablist">
       <span className="thumb" ref={thumb} />
       {options.map((o) => (
-        <button type="button" key={o.value} role="tab" aria-selected={o.value === value} className={o.value === value ? "on" : ""} onClick={() => onChange(o.value)}>
+        <button type="button" key={o.value} role="tab" aria-selected={o.value === value} title={o.title} className={o.value === value ? "on" : ""} onClick={() => onChange(o.value)}>
           {o.label}
         </button>
       ))}

@@ -48,7 +48,7 @@ export interface Settings {
     "logLevel": string;
 
     /**
-     * system | gvisor | mixed
+     * system | gvisor | mixed | mips
      */
     "tunStack": string;
 

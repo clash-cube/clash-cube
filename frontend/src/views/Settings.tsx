@@ -39,6 +39,13 @@ export function Settings() {
   };
   if (!s) return <div className="view" />;
 
+  const tunStacks = [
+    { value: "system", label: "System", title: t("Uses the system network stack.") },
+    { value: "gvisor", label: "gVisor", title: t("Uses gVisor's userspace network stack for TCP and UDP.") },
+    { value: "mixed", label: "Mixed", title: t("Uses the system stack for TCP and gVisor for UDP.") },
+    { value: "mips", label: t("MIPS"), title: t("Uses mihomo's own pure-Go userspace IP stack.") },
+  ];
+
   const patch = async (p: Patch) => {
     // shown at once
     useStore.setState({ settings: { ...s, ...(p as object) } as typeof s });
@@ -125,8 +132,8 @@ export function Settings() {
       {tab === "tun" && <>
         <Section title={t("Enhanced Mode")}>
           <ServiceModeRow />
-          <Row field="tunStack" label={t("TUN stack")}>
-            <Segmented className="track small" value={s.tunStack} onChange={(v) => patch({ tunStack: v })} options={[{ value: "system", label: "System" }, { value: "gvisor", label: "gVisor" }, { value: "mixed", label: "Mixed" }]} />
+          <Row field="tunStack" label={t("TUN stack")} sub={tunStacks.find((stack) => stack.value === s.tunStack)?.title} wrap>
+            <Segmented className="track small" value={s.tunStack} onChange={(v) => patch({ tunStack: v })} options={tunStacks} />
           </Row>
           <Row field="icmpForwarding" label={t("ICMP forwarding")} sub={t("Pings go out directly, never through a proxy. Off: the core answers every ping itself. Pinging a domain under fake-ip always gets a local answer.")} wrap>
             <Switch on={s.icmpForwarding} onChange={(v) => patch({ icmpForwarding: v })} />

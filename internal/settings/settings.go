@@ -20,7 +20,7 @@ type Settings struct {
 	AllowLan  bool   `json:"allowLan"`
 	IPv6      bool   `json:"ipv6"`
 	LogLevel  string `json:"logLevel"`
-	TunStack  string `json:"tunStack"` // system | gvisor | mixed
+	TunStack  string `json:"tunStack"` // system | gvisor | mixed | mips
 	// ICMPForwarding sends pings under TUN out directly; off, the core
 	// answers them itself. ICMP is never proxied either way.
 	ICMPForwarding bool `json:"icmpForwarding"`
