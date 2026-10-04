@@ -33,7 +33,7 @@ func TestSaveAndCheck(t *testing.T) {
 }
 
 func TestRoute(t *testing.T) {
-	body, err := Route{Service: "Telegram", Policy: "select", Region: "hk"}.Body("p", nil)
+	body, err := Route{Service: "Telegram", Policy: "select", Region: "hk"}.Body("p", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,11 +47,11 @@ func TestRoute(t *testing.T) {
 		t.Errorf("group = %v", g)
 	}
 	// a name the profile has already is set apart
-	body, _ = Route{Service: "Google", Policy: "url-test"}.Body("p", func(n string) bool { return n == "Google" })
+	body, _ = Route{Service: "Google", Policy: "url-test"}.Body("p", func(n string) bool { return n == "Google" }, nil)
 	if v, _ := Parse(body); v["append-proxy-groups"].([]any)[0].(map[string]any)["name"] != "Google"+Suffix {
 		t.Errorf("body = %s", body)
 	}
-	body, _ = Route{Service: "Google", Policy: "DIRECT"}.Body("p", nil)
+	body, _ = Route{Service: "Google", Policy: "DIRECT"}.Body("p", nil, nil)
 	if v, _ := Parse(body); v["append-proxy-groups"] != nil || v["prepend-rules"].([]any)[0] != "GEOSITE,google,DIRECT" {
 		t.Errorf("body = %s", body)
 	}
@@ -95,7 +95,7 @@ func TestRegions(t *testing.T) {
 
 func mustGroup(t *testing.T, r Route) map[string]any {
 	t.Helper()
-	body, err := r.Body("p", nil)
+	body, err := r.Body("p", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

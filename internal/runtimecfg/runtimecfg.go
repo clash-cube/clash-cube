@@ -38,8 +38,7 @@ func Build(id string, profile []byte, s settings.Settings, ctl Controller, user 
 		}
 		body := mod.Body
 		if mod.Route != nil {
-			have := policies(m)
-			b, err := mod.Route.Body(id, func(n string) bool { return have[n] || builtin[n] })
+			b, err := RouteBody(id, *mod.Route, m)
 			if err != nil {
 				return nil, fmt.Errorf("module %s: %w", mod.Name, err)
 			}
@@ -103,6 +102,23 @@ func Build(id string, profile []byte, s settings.Settings, ctl Controller, user 
 		m["rules"] = append(pre, own...)
 	}
 	return yaml.Marshal(m)
+}
+
+// RouteBody generates a route against the configuration it will overlay.
+// Only concrete top-level nodes can be referenced through proxies; groups and
+// provider nodes must not be mistaken for directly declared nodes.
+func RouteBody(id string, r modules.Route, config map[string]any) (string, error) {
+	have := policies(config)
+	declared := map[string]bool{}
+	nodes, _ := config["proxies"].([]any)
+	for _, node := range nodes {
+		if node, ok := node.(map[string]any); ok {
+			if name, ok := node["name"].(string); ok {
+				declared[name] = true
+			}
+		}
+	}
+	return r.Body(id, func(n string) bool { return have[n] || builtin[n] }, func(n string) bool { return declared[n] })
 }
 
 // stunRule rejects STUN over UDP. A node without UDP makes mihomo skip

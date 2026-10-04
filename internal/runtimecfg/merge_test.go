@@ -2,6 +2,7 @@ package runtimecfg
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v3"
@@ -9,6 +10,38 @@ import (
 	"github.com/localhost-copilot/mihomobar/internal/modules"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
 )
+
+func TestFixedRouteNodes(t *testing.T) {
+	const name = "🇺🇸 US (01)"
+	r := &modules.Route{Service: "Claude", Policy: "select", Pick: true, Nodes: map[string][]string{"p": {name, name}}}
+	profile := []byte("proxies:\n  - {name: '" + name + "', type: ss}\nrules: [MATCH,DIRECT]\n")
+	build := func(id string, profile []byte) map[string]any {
+		t.Helper()
+		body, err := Build(id, profile, settings.Defaults(), Controller{}, nil, []modules.Module{{Name: "Claude", Enabled: true, Route: r}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		v, err := modules.Parse(string(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v["proxy-groups"].([]any)[0].(map[string]any)
+	}
+	g := build("p", profile)
+	if !reflect.DeepEqual(g["proxies"], []any{name}) || g["filter"] != nil || g["include-all"] != nil {
+		t.Fatalf("fixed picks were not emitted as a deduplicated literal list: %v", g)
+	}
+	// Picks from another profile must never turn into all nodes.
+	if g := build("other", profile); !reflect.DeepEqual(g["proxies"], []any{"REJECT"}) {
+		t.Fatalf("empty picks did not refuse connections: %v", g)
+	}
+	// A removed node cannot remain a dangling proxies reference. It may still
+	// exist in a provider, so keep an exact filter that refuses absent matches.
+	g = build("p", []byte("{}"))
+	if g["proxies"] != nil || g["include-all"] != true || !strings.Contains(g["filter"].(string), `US\ \(01\)`) {
+		t.Fatalf("missing picks did not become an exact dynamic selection: %v", g)
+	}
+}
 
 func TestMerge(t *testing.T) {
 	m := map[string]any{

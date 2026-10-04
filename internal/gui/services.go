@@ -524,7 +524,7 @@ func (s *ProfileService) RouteNodes() []backend.Node { return s.h.b.Nodes() }
 
 // RouteBody is the YAML a route makes, to open as a module of its own.
 func (s *ProfileService) RouteBody(r modules.Route) (string, error) {
-	return r.Body(settings.Load().Profile, nil)
+	return s.h.b.RouteBody(r)
 }
 
 // Reveal shows a profile's file in Finder.

@@ -111,7 +111,7 @@ func Save(ms []Module) error {
 		}
 		ms[i].Name = strings.TrimSpace(ms[i].Name)
 		if r := ms[i].Route; r != nil {
-			ms[i].Body, _ = r.Body("", nil)
+			ms[i].Body, _ = r.Body("", nil, nil)
 		}
 		if ms[i].ID == "" || seen[ms[i].ID] {
 			ms[i].ID = newID()

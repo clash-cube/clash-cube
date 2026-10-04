@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -623,6 +625,11 @@ geo-auto-update: false
 proxies:
   - { name: "🇭🇰 HK 01", type: ss, server: 192.0.2.1, port: 8388, cipher: aes-128-gcm, password: x }
   - { name: "US 01", type: ss, server: 192.0.2.2, port: 8388, cipher: aes-128-gcm, password: x }
+proxy-providers:
+  picked:
+    type: inline
+    payload:
+      - { name: "Provider (01)", type: ss, server: 192.0.2.3, port: 8388, cipher: aes-128-gcm, password: x }
 proxy-groups:
   - { name: OpenAI, type: select, proxies: [DIRECT] }
 rules:
@@ -654,7 +661,7 @@ rules:
 	if !ok || len(g.All) != 1 || g.All[0] != "US 01" {
 		t.Errorf("group = %+v", g)
 	}
-	if n := b.Nodes(); len(n) != 2 || n[0].Name != "US 01" {
+	if n := b.Nodes(); len(n) != 3 || n[0].Name != "Provider (01)" {
 		t.Errorf("nodes = %+v", n)
 	}
 
@@ -672,6 +679,45 @@ rules:
 	}
 	if g := all["Telegram"]; len(g.All) != 1 || g.All[0] != "REJECT" {
 		t.Errorf("Telegram = %+v", g)
+	}
+	// Conversion to editable YAML uses the same concrete-node list as runtime
+	// generation, so fixed picks are readable even with a provider present.
+	body, err := b.RouteBody(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, _ := modules.Parse(body)
+	group := v["append-proxy-groups"].([]any)[0].(map[string]any)
+	if group["filter"] != nil || !reflect.DeepEqual(group["proxies"], []any{"🇭🇰 HK 01"}) {
+		t.Fatalf("editable fixed route = %s", body)
+	}
+	for _, tc := range []struct{ picks, want []string }{
+		{[]string{"🇭🇰 HK 01", "Provider (01)", "gone"}, []string{"Provider (01)", "🇭🇰 HK 01"}},
+		{[]string{"Provider (01)"}, []string{"Provider (01)"}},
+		{[]string{"gone"}, []string{"REJECT"}},
+	} {
+		r.Nodes[id] = tc.picks
+		if err := b.SetModules([]modules.Module{{Name: "Google", Enabled: true, Route: &r}}); err != nil {
+			t.Fatal(err)
+		}
+		body, err := b.RouteBody(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Validate the exported YAML too: provider-only nodes must not become
+		// invalid direct references, and an unmatched name must still refuse.
+		if err := b.SetModules([]modules.Module{{Name: "Google", Enabled: true, Body: body}}); err != nil {
+			t.Fatalf("picks %v: %v", tc.picks, err)
+		}
+		all, err = c.Proxies(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := all["Google"].All
+		sort.Strings(got)
+		if !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("picked group = %v, want %v", got, tc.want)
+		}
 	}
 }
 

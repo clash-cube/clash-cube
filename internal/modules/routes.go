@@ -212,8 +212,10 @@ func (r Route) GroupIn(has func(string) bool) string {
 }
 
 // Body is the module the route makes over the profile of that ID, in a
-// configuration with the names taken has (nil for none).
-func (r Route) Body(profile string, taken func(string) bool) (string, error) {
+// configuration with the names taken has (nil for none). declared identifies
+// nodes defined in top-level proxies, which can be referenced directly. Without
+// that context, names stay filtered so provider nodes remain valid references.
+func (r Route) Body(profile string, taken, declared func(string) bool) (string, error) {
 	if err := r.Check(); err != nil {
 		return "", err
 	}
@@ -240,7 +242,35 @@ func (r Route) Body(profile string, taken func(string) bool) (string, error) {
 		// still loads, and the service isn't let out direct (mihomo's
 		// default, COMPATIBLE).
 		g := map[string]any{"name": group, "type": r.Policy, "include-all": true, "empty-fallback": "REJECT"}
-		if f := r.filter(profile); f != "" {
+		if r.Pick && len(r.Keywords) == 0 {
+			var direct, dynamic []string
+			seen := map[string]bool{}
+			for _, name := range r.Nodes[profile] {
+				if seen[name] {
+					continue
+				}
+				seen[name] = true
+				if declared != nil && declared(name) {
+					direct = append(direct, name)
+				} else {
+					dynamic = append(dynamic, name)
+				}
+			}
+			if len(dynamic) > 0 {
+				// Provider nodes are not in mihomo's top-level proxy map.
+				// Missing picks also stay here: no match safely falls back to REJECT.
+				remaining := Route{Pick: true, Nodes: map[string][]string{profile: dynamic}}
+				g["filter"] = remaining.filter(profile)
+			} else {
+				delete(g, "include-all")
+				if len(direct) == 0 {
+					direct = []string{"REJECT"}
+				}
+			}
+			if len(direct) > 0 {
+				g["proxies"] = direct
+			}
+		} else if f := r.filter(profile); f != "" {
 			g["filter"] = f
 		}
 		m["append-proxy-groups"] = []any{g}

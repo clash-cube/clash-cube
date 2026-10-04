@@ -54,7 +54,7 @@ multiline: "first
 
 func TestRouteEmojiFilter(t *testing.T) {
 	r := Route{Service: "Claude", Policy: "select", Pick: true, Keywords: []string{"🇺🇸", `\U0001F680`}, Nodes: map[string][]string{"p": {"🇸🇬 SG (01)"}}}
-	body, err := r.Body("p", nil)
+	body, err := r.Body("p", nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

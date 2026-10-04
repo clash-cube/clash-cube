@@ -2,10 +2,54 @@ package backend
 
 import (
 	"context"
+	"errors"
+	"os"
 	"sort"
 
+	"go.yaml.in/yaml/v3"
+
 	"github.com/localhost-copilot/mihomobar/internal/modules"
+	"github.com/localhost-copilot/mihomobar/internal/profiles"
+	"github.com/localhost-copilot/mihomobar/internal/runtimecfg"
+	"github.com/localhost-copilot/mihomobar/internal/settings"
 )
+
+// RouteBody makes an editable module using the current profile's declared
+// nodes. Read the source rather than the running core: providers' nodes also
+// appear in the core API, but cannot be referenced directly in proxies.
+func (b *Backend) RouteBody(r modules.Route) (string, error) {
+	id := settings.Load().Profile
+	p, ok := profiles.Get(id)
+	if !ok {
+		return "", errors.New("no profile selected")
+	}
+	body, err := os.ReadFile(p.Path())
+	if err != nil {
+		return "", err
+	}
+	var config map[string]any
+	if err := yaml.Unmarshal(body, &config); err != nil {
+		return "", err
+	}
+	if config == nil {
+		config = map[string]any{}
+	}
+	// YAML modules may add nodes. Route modules only add rules/groups, and
+	// omitting them keeps the route being edited from colliding with itself.
+	for _, mod := range modules.List() {
+		if !mod.Enabled || mod.Route != nil {
+			continue
+		}
+		v, err := modules.Parse(mod.Body)
+		if err != nil {
+			return "", err
+		}
+		if err := runtimecfg.Merge(config, v); err != nil {
+			return "", err
+		}
+	}
+	return runtimecfg.RouteBody(id, r, config)
+}
 
 // Node is one of the running profile's nodes, for a route to pick from.
 type Node struct {
