@@ -27,6 +27,8 @@ type Store = {
   networkReset: number;
   // each connectivity item's recent measures, oldest first
   latency: Record<string, LatencySample[]>;
+  // a search the Connections page takes up when it next shows
+  connQuery: string;
   view: View;
   setView: (v: View) => void;
   refreshSettings: () => Promise<void>;
@@ -48,6 +50,7 @@ export const useStore = create<Store>((set) => ({
   events: [],
   networkReset: 0,
   latency: {},
+  connQuery: "",
   view: (new URLSearchParams(location.search).get("view") as View) || "overview",
   setView: (view) => set({ view }),
   refreshSettings: async () => set({ settings: await Settings.Get() }),

@@ -208,7 +208,29 @@ select.input { padding-right: 6px; }
 }
 
 /* ---- overview ---------------------------------------------------------- */
-.traffic-card { flex: none; padding: 14px 14px 0; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+.traffic-card { flex: none; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+/* the chart, and the apps beside it over the strip's last column, so the
+   rule between them runs on into the strip's */
+.traffic-main { display: grid; grid-template-columns: 3fr 1fr; }
+.traffic-chart { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px 14px 0; }
+.tclients { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px 12px 0; box-shadow: inset 1px 0 0 var(--line-2); }
+.tclients-head { display: flex; align-items: center; min-height: 28px; font-size: 11.5px; color: var(--muted); }
+.tc-list { position: relative; }
+.tc-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11.5px; color: var(--faint); animation: pop-fade .3s ease-out; }
+.tc-row { position: absolute; top: 0; left: -5px; right: -5px; height: 22px; display: flex; align-items: center; gap: 7px; padding: 0 5px; border-radius: 6px; text-align: left; transition: translate .5s var(--spring), opacity .35s var(--ease), background .12s; animation: pop-fade .35s var(--ease-out); }
+.tc-row:hover { background: var(--pill); }
+.tc-row.idle { opacity: .45; }
+.tc-row.out { opacity: 0; pointer-events: none; }
+.tc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.tc-line { display: flex; align-items: baseline; gap: 6px; line-height: 14px; }
+.tc-name { flex: 1; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tc-speed { flex: none; font-size: 11px; color: var(--muted); }
+/* a share of all the traffic now, upload then download */
+.tc-share, .tsplit { display: flex; height: 2px; border-radius: 1px; overflow: hidden; background: var(--line-2); }
+.tc-share i, .tsplit i { display: block; flex: none; height: 100%; transition: width .5s var(--ease-out); }
+.tc-share .up, .tsplit .up { background: var(--up); }
+.tc-share .down, .tsplit .down { background: var(--down); }
+.tsplit .share { background: var(--accent); }
 .traffic-head { display: flex; align-items: center; gap: 18px; min-height: 28px; }
 .rate { display: flex; align-items: baseline; gap: 6px; }
 .rate svg { align-self: center; }
@@ -234,8 +256,11 @@ select.input { padding-right: 6px; }
 .spark .spark-base { stroke: var(--line); stroke-width: 1; }
 .spark .spark-grid { stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 2 4; }
 /* the totals, a strip along the chart's foot */
-.traffic-stats { display: grid; grid-template-columns: repeat(4, 1fr); margin: -10px -14px 0; background: var(--card-2); }
-.tstat { padding: 9px 14px 10px; min-width: 0; }
+.traffic-stats { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--card-2); }
+.tstat { padding: 9px 14px 10px; min-width: 0; text-align: left; }
+.tstat.click { display: flex; flex-direction: column; justify-content: flex-start; transition: background .15s; }
+.tstat.click:hover { background: var(--pill); }
+.tstat .tsplit { max-width: 96px; height: 3px; margin-top: 5px; border-radius: 2px; }
 .tstat + .tstat { box-shadow: inset 1px 0 0 var(--line-2); }
 .tstat .lbl { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .tstat .val { font-size: 14px; font-weight: 600; margin-top: 1px; letter-spacing: -.01em; white-space: nowrap; }

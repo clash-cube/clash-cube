@@ -53,6 +53,13 @@ export function Connections() {
   // the connections the first click of a bulk close will close
   const [armed, setArmed] = useState<Conn[] | null>(null);
   useEffect(() => { setFrozen(null); setSel(null); }, [profile]);
+  // another page asked to show some connections, such as an app's
+  const asked = useStore((s) => s.connQuery);
+  useEffect(() => {
+    if (!asked) return;
+    setQ(asked); setTab("active");
+    useStore.setState({ connQuery: "" });
+  }, [asked]);
   useEffect(() => setArmed(null), [q, net, sources, tab]);
   useEffect(() => {
     if (!armed) return;
