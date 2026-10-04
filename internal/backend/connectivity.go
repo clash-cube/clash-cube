@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -24,10 +25,11 @@ import (
 
 // Connectivity is the four latencies Surge's overview shows (docs/design.md
 // §10.4): the router, DNS, the internet directly, and through the proxy.
-// Each is in ms; 0 means not measured, -1 failed.
+// Each is in ms; 0 means not measured, -1 failed. The router and DNS,
+// timed here, keep hundredths under 1 ms.
 type Connectivity struct {
-	Router   int      `json:"router"`
-	DNS      int      `json:"dns"`
+	Router   float64  `json:"router"`
+	DNS      float64  `json:"dns"`
 	Internet int      `json:"internet"`
 	Proxy    int      `json:"proxy"`
 	Gateway  string   `json:"gateway"`
@@ -37,7 +39,16 @@ type Connectivity struct {
 	DNSMode  string   `json:"dnsMode"` // the core's enhanced-mode: fake-ip | redir-host
 }
 
-func ms(d time.Duration) int { return max(1, int(d.Milliseconds())) }
+func ms(d time.Duration) float64 { return roundMS(float64(d.Microseconds()) / 1000) }
+
+// roundMS rounds to whole ms, or under 1 ms to hundredths, never to 0
+// (that is "not measured").
+func roundMS(f float64) float64 {
+	if f < 1 {
+		return max(0.01, math.Round(f*100)/100)
+	}
+	return math.Round(f)
+}
 
 // ConnectivityItems are the keys ConnectivityItem takes.
 var ConnectivityItems = []string{"router", "dns", "internet", "proxy"}
@@ -250,7 +261,7 @@ func gateway() string {
 var pingRe = regexp.MustCompile(`time=([\d.]+) ms`)
 
 // pingMS sends one ICMP echo (ping needs no root on macOS).
-func pingMS(ctx context.Context, host string) int {
+func pingMS(ctx context.Context, host string) float64 {
 	out, err := exec.CommandContext(ctx, "/sbin/ping", "-c", "1", "-t", "2", "-n", host).Output()
 	if err != nil {
 		return -1
@@ -263,5 +274,5 @@ func pingMS(ctx context.Context, host string) int {
 	if err != nil {
 		return -1
 	}
-	return max(1, int(f+0.5))
+	return roundMS(f)
 }

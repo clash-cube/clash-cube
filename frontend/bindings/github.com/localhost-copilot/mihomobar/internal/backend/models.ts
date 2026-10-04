@@ -23,7 +23,8 @@ export interface ClientRate {
 /**
  * Connectivity is the four latencies Surge's overview shows (docs/design.md
  * §10.4): the router, DNS, the internet directly, and through the proxy.
- * Each is in ms; 0 means not measured, -1 failed.
+ * Each is in ms; 0 means not measured, -1 failed. The router and DNS,
+ * timed here, keep hundredths under 1 ms.
  */
 export interface Connectivity {
     "router": number;

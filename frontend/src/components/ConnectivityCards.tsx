@@ -19,6 +19,9 @@ const fields: Record<Item, (keyof Connectivity)[]> = {
 const route = (chain: string[]) =>
   chain.length > 1 ? `${chain[chain.length - 1]} → ${chain[0]}` : chain[0] ?? "—";
 
+// whole ms, or hundredths under 1 ms (a wired router answers in 0.3)
+const fmtMS = (v: number) => (v < 1 ? v.toFixed(2) : String(Math.round(v)));
+
 type Lookup<T> = T | "loading" | "failed";
 
 // a card's second line that a click swaps for something looked up then,
@@ -60,7 +63,8 @@ export function ConnectivityCards() {
   const [c, setC] = useState<Partial<Connectivity>>({});
   const [pending, setPending] = useState<Set<Item>>(new Set());
   const busy = pending.size > 0;
-  const seq = useRef(0);
+  // one per item, so retesting one card drops only that card's late answer
+  const seq = useRef<Record<Item, number>>({ router: 0, dns: 0, internet: 0, proxy: 0 });
   // the Internet card shows DIRECT, or on a click where direct traffic
   // leaves: the interface and the public address
   const direct = useDetail<Egress>(App.DirectEgress);
@@ -72,29 +76,27 @@ export function ConnectivityCards() {
   const proxy = useDetail<ProxyEgress>(App.ProxyEgress);
 
   // each item lands on its own, so a slow proxy doesn't hold the router back
-  const measure = () => {
-    const n = ++seq.current;
-    direct.refresh();
-    dns.refresh();
-    proxy.refresh();
-    setPending(new Set(items));
-    for (const key of items) {
-      App.ConnectivityItem(key).then((r) => {
-        if (n !== seq.current) return;
-        setC((prev) => {
-          const next = { ...prev };
-          for (const f of fields[key]) (next as any)[f] = r[f];
-          return next;
-        });
-      }).catch(() => { /* the core stopped; the card keeps a dash */ }).finally(() => {
-        if (n !== seq.current) return;
-        setPending((p) => { const s = new Set(p); s.delete(key); return s; });
+  const details: Partial<Record<Item, { refresh: () => void }>> = { dns, internet: direct, proxy };
+  const measureOne = (key: Item) => {
+    const n = ++seq.current[key];
+    details[key]?.refresh();
+    setPending((p) => new Set(p).add(key));
+    App.ConnectivityItem(key).then((r) => {
+      if (n !== seq.current[key]) return;
+      setC((prev) => {
+        const next = { ...prev };
+        for (const f of fields[key]) (next as any)[f] = r[f];
+        return next;
       });
-    }
+    }).catch(() => { /* the core stopped; the card keeps a dash */ }).finally(() => {
+      if (n !== seq.current[key]) return;
+      setPending((p) => { const s = new Set(p); s.delete(key); return s; });
+    });
   };
+  const measure = () => items.forEach(measureOne);
 
   useEffect(() => {
-    if (!running) { seq.current++; setC({}); setPending(new Set()); return; }
+    if (!running) { for (const k of items) seq.current[k]++; setC({}); setPending(new Set()); return; }
     measure();
     // on a metered network only what is asked for is measured
     const id = setInterval(() => { if (!document.hidden && !useStore.getState().state?.network.savingData) measure(); }, 30000);
@@ -180,13 +182,21 @@ export function ConnectivityCards() {
       <div className="conn-cards">
         {cards.map(({ key, label, sub, title, onClick, shown }) => {
           const v = c[key] ?? 0;
+          const testing = pending.has(key);
           return (
             <div className={"card conn-card" + (onClick ? " toggles" : "")} key={key} title={title} onClick={onClick}>
               <div className="lbl">
-                <span className={"cdot " + (pending.has(key) && !v ? "testing" : delayClass(v))} />
+                <span className={"cdot " + (testing && !v ? "testing" : delayClass(v))} />
                 {label}
               </div>
-              <div className={"val " + delayClass(v)}>{v > 0 ? <>{v}<small> ms</small></> : v < 0 ? t("Failed") : "—"}</div>
+              <button
+                className={"val " + delayClass(v) + (testing ? " testing" : "")}
+                title={t("Click to test again")}
+                disabled={!running || testing}
+                onClick={(e) => { e.stopPropagation(); measureOne(key); }}
+              >
+                {v > 0 ? <>{fmtMS(v)}<small> ms</small></> : v < 0 ? t("Failed") : "—"}
+              </button>
               {sub && <div className="sub" key={onClick ? String(shown) : undefined}>{sub}</div>}
             </div>
           );
