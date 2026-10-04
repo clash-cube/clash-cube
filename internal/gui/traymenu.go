@@ -19,7 +19,7 @@ import (
 // trayMenu is the tray icon's right-click menu, laid out as Surge's is
 // (docs/design.md §10.2): the main window, the outbound mode, a submenu per
 // proxy group, the connectivity quality, the apps moving the most traffic,
-// the two switches, profiles, then the core and the app. It is built afresh
+// the two switches, profiles, then startup recovery and quit. It is built afresh
 // from the backend each time something it shows changes, but not while it
 // shows: then only the quality and the apps change, in place.
 type trayMenu struct {
@@ -515,6 +515,10 @@ func (m *trayMenu) rebuild() {
 	if running && len(groups) > 0 {
 		menu.AddSeparator()
 		ps := &ProxyService{h: m.h}
+		menu.Add(stay(tr("Test All Latency", "全部测速"))).OnClick(m.run("test all", func() error {
+			_, err := ps.TestLatency("all", "")
+			return err
+		}))
 		for _, g := range groups {
 			if g.Hidden || (g.Name == "GLOBAL" && st.Mode != "global") {
 				continue
@@ -543,10 +547,6 @@ func (m *trayMenu) rebuild() {
 				}))
 			}
 		}
-		menu.Add(stay(tr("Test All Latency", "全部测速"))).OnClick(m.run("test all", func() error {
-			_, err := ps.TestLatency("all", "")
-			return err
-		}))
 	}
 
 	// how the network does, and who uses it
@@ -615,12 +615,8 @@ func (m *trayMenu) rebuild() {
 		m.h.app.Clipboard.SetText(proxyCommand(host))
 	})
 
-	// core
-	menu.AddSeparator()
-	if running {
-		menu.Add(tr("Restart Core", "重启内核")).OnClick(m.run("restart", b.Restart))
-		menu.Add(tr("Stop Core", "停止内核")).OnClick(m.run("stop", b.Stop))
-	} else {
+	if !running {
+		menu.AddSeparator()
 		menu.Add(tr("Start Core", "启动内核")).OnClick(m.run("start", b.Start))
 	}
 
