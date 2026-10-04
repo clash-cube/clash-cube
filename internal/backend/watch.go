@@ -2,10 +2,13 @@ package backend
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
 
+	"github.com/localhost-copilot/mihomobar/internal/appdir"
+	"github.com/localhost-copilot/mihomobar/internal/profiles"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
 	"github.com/localhost-copilot/mihomobar/internal/sysproxy"
 )
@@ -97,6 +100,7 @@ func (b *Backend) watch() {
 		if i%4 == 0 {
 			b.checkGroups()
 		}
+		b.checkProfileFile()
 	}
 }
 
@@ -267,4 +271,50 @@ func switches(prev, now map[string]string) [][3]string {
 		}
 	}
 	return out
+}
+
+// profileStamp is a profile file as it was read.
+type profileStamp struct {
+	id   string
+	mod  time.Time
+	size int64
+}
+
+// checkProfileFile has the running core take the profile in use again when
+// its file changed since it was read: saved from an editor, say. A file the
+// core refuses leaves the running configuration as it was, and says so.
+func (b *Backend) checkProfileFile() {
+	if b.core.Client() == nil {
+		return
+	}
+	p, ok := profiles.Get(settings.Load().Profile)
+	if !ok {
+		return
+	}
+	fi, err := os.Stat(p.Path())
+	if err != nil {
+		return
+	}
+	b.mu.Lock()
+	read := b.profileRead
+	b.mu.Unlock()
+	now := profileStamp{p.ID, fi.ModTime(), fi.Size()}
+	if read.id != p.ID || read == now {
+		return
+	}
+	// once per change: a refused file isn't tried again until it changes
+	b.mu.Lock()
+	b.profileRead = now
+	b.mu.Unlock()
+	// the configuration the core runs, for a crash restart to read again
+	// if this edit is refused: the profile's old text is gone
+	running, _ := os.ReadFile(appdir.RuntimeConfig())
+	if err := b.Reload(); err != nil {
+		if len(running) > 0 {
+			_ = os.WriteFile(appdir.RuntimeConfig(), running, 0o600)
+		}
+		b.event("profile", "error", "{name} was edited, but the core refused it: {error}", map[string]string{"name": p.Name, "error": err.Error()}, true)
+		return
+	}
+	b.event("profile", "info", "Applied the edited {name}", map[string]string{"name": p.Name}, false)
 }

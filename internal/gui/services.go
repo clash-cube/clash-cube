@@ -492,6 +492,19 @@ func (s *ProfileService) Edit(id, name string, interval int) (profiles.Profile, 
 func (s *ProfileService) Remove(id string) error { return s.h.b.RemoveProfile(id) }
 func (s *ProfileService) Use(id string) error    { return s.h.b.UseProfile(id) }
 
+// Duplicate copies a profile as a local one the user can edit; name is
+// the copy's.
+func (s *ProfileService) Duplicate(id, name string) (profiles.Profile, error) {
+	p, err := profiles.Duplicate(id, name)
+	if err == nil {
+		s.h.b.ProfileChanged("")
+	}
+	return p, err
+}
+
+// ModuleTemplates is the ready-made modules.
+func (s *ProfileService) ModuleTemplates() []modules.Template { return modules.Templates }
+
 // Reveal shows a profile's file in Finder.
 func (s *ProfileService) Reveal(id string) error {
 	p, ok := profiles.Get(id)

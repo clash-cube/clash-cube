@@ -19,7 +19,7 @@ export function Profiles() {
   const [activeImport, setActiveImport] = useState<ImportRequest | null>(null);
   const [updatingAll, setUpdatingAll] = useState(false);
   const [flash, setFlash] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [newAt, setNewAt] = useState<HTMLElement | null>(null);
   const [tab, setTab] = useState<"profiles" | "modules">(location.hash === "#modules" ? "modules" : "profiles");
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export function Profiles() {
           { value: "modules", label: t("Modules") },
         ]} />
         <div className="view-tools">
-          {tab === "modules" && <button className="btn small primary" disabled={adding} onClick={() => setAdding(true)}><Plus size={13} />{t("New module")}</button>}
+          {tab === "modules" && <button className="btn small primary" onClick={(e) => setNewAt(newAt ? null : e.currentTarget)}><Plus size={13} />{t("New module")}</button>}
           {tab === "profiles" && <>
           <button className="btn small" disabled={updatingAll} onClick={updateAll}><Refresh size={13} />{updatingAll ? t("Updating…") : t("Update all")}</button>
           <button ref={importButton} className="btn small primary" onClick={(e) => { if (!importAt) setImportAt(e.currentTarget); }}><Plus size={13} />{t("Import")}</button>
@@ -63,14 +63,14 @@ export function Profiles() {
         </div>
       </div>
       <ImportPopover key={activeImport ? JSON.stringify(activeImport) : "manual"} request={activeImport} anchor={importAt} onClose={closeImport} onDone={(p) => { closeImport(); flashRow(p.id); }} />
-      {tab === "modules" ? <Modules adding={adding} setAdding={setAdding} /> : <div className="list">
-        {profiles.map((p) => <ProfileRow key={p.id} p={p} current={p.id === current} flash={flash === p.id} onFlash={() => flashRow(p.id)} />)}
+      {tab === "modules" ? <Modules newAt={newAt} onNewClose={() => setNewAt(null)} /> : <div className="list">
+        {profiles.map((p) => <ProfileRow key={p.id} p={p} current={p.id === current} flash={flash === p.id} onFlash={() => flashRow(p.id)} onCopied={flashRow} />)}
       </div>}
     </div>
   );
 }
 
-function ProfileRow({ p, current, flash, onFlash }: { p: Profile; current: boolean; flash: boolean; onFlash: () => void }) {
+function ProfileRow({ p, current, flash, onFlash, onCopied }: { p: Profile; current: boolean; flash: boolean; onFlash: () => void; onCopied: (id: string) => void }) {
   const t = useT();
   const [menuAt, setMenuAt] = useState<HTMLElement | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -92,6 +92,22 @@ function ProfileRow({ p, current, flash, onFlash }: { p: Profile; current: boole
     setUpdating(true);
     try { await P.Update(p.id); toast(t("Updated {name}", { name: p.name })); onFlash(); } catch (e) { toastError(e); }
     setUpdating(false);
+  };
+  // a subscription's file is replaced on every update: its copy is the
+  // user's. Copying the one in use moves to the copy, so editing it counts.
+  const duplicate = async () => {
+    try {
+      const cp = await P.Duplicate(p.id, t("{name} (copy)", { name: p.name }));
+      if (current) { await P.Use(cp.id); toast(t("Now using {name}, which you can edit", { name: cp.name })); }
+      else toast(t("Made {name}", { name: cp.name }));
+      onCopied(cp.id);
+    } catch (e) { toastError(e); }
+  };
+  const openInEditor = async () => {
+    try {
+      await P.OpenInEditor(p.id);
+      if (p.url) toast(t("Edits here are lost at the next update. Make an editable copy, or use a module."), "", 5000);
+    } catch (e) { toastError(e); }
   };
   const remove = async () => {
     if (!armed) { setArmed(true); return; }
@@ -136,7 +152,8 @@ function ProfileRow({ p, current, flash, onFlash }: { p: Profile; current: boole
           ...(!current ? [{ label: t("Use"), onClick: use }] : []),
           ...(p.url ? [{ label: t("Copy URL"), onClick: () => { App.CopyText(p.url!); toast(t("Copied")); } }] : []),
           { label: t("Rename"), onClick: () => setRenaming(true) },
-          { label: t("Open in editor"), onClick: () => P.OpenInEditor(p.id).catch(toastError) },
+          ...(p.url ? [{ label: t("Make an editable copy"), onClick: duplicate }] : []),
+          { label: t("Open in editor"), onClick: openInEditor },
           { label: t("Show in Finder"), onClick: () => P.Reveal(p.id).catch(toastError) },
           ...(!current ? ["sep" as const, { label: t("Remove"), danger: true, onClick: remove }] : []),
         ]} />

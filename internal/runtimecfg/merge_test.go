@@ -39,6 +39,14 @@ func TestMerge(t *testing.T) {
 	if !reflect.DeepEqual(m, want) {
 		t.Errorf("got  %v\nwant %v", m, want)
 	}
+	// a section the profile lacks is made, its +keys read
+	m = map[string]any{}
+	if err := Merge(m, map[string]any{"dns": map[string]any{"+fake-ip-filter": []any{"+.lan"}, "nameserver-policy!": map[string]any{"a": "b"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if want := map[string]any{"dns": map[string]any{"fake-ip-filter": []any{"+.lan"}, "nameserver-policy": map[string]any{"a": "b"}}}; !reflect.DeepEqual(m, want) {
+		t.Errorf("got %v, want %v", m, want)
+	}
 	for _, bad := range []map[string]any{
 		{"prepend-rules": "MATCH,DIRECT"},
 		{"+hosts": []any{"x"}},

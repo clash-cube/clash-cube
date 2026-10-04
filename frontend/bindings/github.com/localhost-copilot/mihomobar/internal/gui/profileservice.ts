@@ -17,6 +17,14 @@ import * as modules$0 from "../modules/models.js";
 // @ts-ignore: Unused imports
 import * as profiles$0 from "../profiles/models.js";
 
+/**
+ * Duplicate copies a profile as a local one the user can edit; name is
+ * the copy's.
+ */
+export function Duplicate(id: string, name: string): $CancellablePromise<profiles$0.Profile> {
+    return $Call.ByID(1526146004, id, name);
+}
+
 export function Edit(id: string, name: string, interval: number): $CancellablePromise<profiles$0.Profile> {
     return $Call.ByID(548408207, id, name, interval);
 }
@@ -43,6 +51,13 @@ export function List(): $CancellablePromise<profiles$0.Profile[] | null> {
  */
 export function ModuleKeys(body: string): $CancellablePromise<string[] | null> {
     return $Call.ByID(125334863, body);
+}
+
+/**
+ * ModuleTemplates is the ready-made modules.
+ */
+export function ModuleTemplates(): $CancellablePromise<modules$0.Template[] | null> {
+    return $Call.ByID(1166326602);
 }
 
 /**

@@ -155,6 +155,23 @@ func add(p Profile, body []byte) (Profile, error) {
 	return p, save(ps)
 }
 
+// Duplicate copies a profile as a local one named name: a subscription's
+// file is replaced on every update, its copy is the user's to edit.
+func Duplicate(id, name string) (Profile, error) {
+	p, ok := Get(id)
+	if !ok {
+		return Profile{}, errors.New("no such profile")
+	}
+	body, err := os.ReadFile(p.Path())
+	if err != nil {
+		return Profile{}, err
+	}
+	if strings.TrimSpace(name) == "" {
+		name = p.Name
+	}
+	return add(Profile{ID: newID(), Name: strings.TrimSpace(name)}, body)
+}
+
 // Update downloads a subscription profile again.
 func Update(id string) (Profile, error) {
 	p, ok := Get(id)

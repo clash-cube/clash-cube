@@ -53,10 +53,16 @@ func mergeKey(m map[string]any, k string, v any) error {
 		m[k[:len(k)-1]] = v
 	default:
 		sub, isMap := v.(map[string]any)
-		have, hasMap := m[k].(map[string]any)
-		if !isMap || !hasMap {
+		if !isMap {
 			m[k] = v
 			return nil
+		}
+		// merged into an empty mapping when m has none, so its +keys and
+		// key!s are read rather than kept as names
+		have, hasMap := m[k].(map[string]any)
+		if !hasMap {
+			have = map[string]any{}
+			m[k] = have
 		}
 		for sk, sv := range sub {
 			if err := mergeKey(have, sk, sv); err != nil {

@@ -526,6 +526,79 @@ func TestModules(t *testing.T) {
 	}
 }
 
+// Saving the profile in use from an editor reaches the running core; a
+// broken save is refused, and the core and runtime.yaml keep what they had.
+func TestEditedProfileReloads(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a core")
+	}
+	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
+		t.Fatal(err)
+	}
+	b := New("test", "test", []byte(base), nopSink{make(chan State, 64)})
+	if err := b.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	t.Cleanup(b.Shutdown)
+	c, _ := b.Client()
+	p, _ := profiles.Get(settings.Load().Profile)
+	rules := func() int { r, _ := c.Rules(context.Background()); return len(r) }
+
+	b.checkProfileFile() // nothing changed
+	if n := rules(); n != 1 {
+		t.Fatalf("rules = %d", n)
+	}
+	edited := base + "\n# edited\n"
+	edited = strings.Replace(edited, "rules:\n", "rules:\n  - DOMAIN,edited.example,DIRECT\n", 1)
+	if err := os.WriteFile(p.Path(), []byte(edited), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	b.checkProfileFile()
+	if n := rules(); n != 2 {
+		t.Fatalf("after the edit, rules = %d", n)
+	}
+
+	if err := os.WriteFile(p.Path(), []byte("rules:\n  - MATCH,Nowhere\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	b.checkProfileFile()
+	if n := rules(); n != 2 {
+		t.Errorf("after a broken edit, rules = %d", n)
+	}
+	if rc, _ := os.ReadFile(appdir.RuntimeConfig()); strings.Contains(string(rc), "Nowhere") || !strings.Contains(string(rc), "edited.example") {
+		t.Error("runtime.yaml doesn't hold what the core runs")
+	}
+	evs := b.Events()
+	if len(evs) == 0 || evs[len(evs)-1].Level != "error" {
+		t.Errorf("events = %+v", evs)
+	}
+}
+
+// Every ready-made module is one the core takes, on a bare profile. The
+// templates that need GEO data download it once, so this is skipped short.
+func TestModuleTemplates(t *testing.T) {
+	if testing.Short() {
+		t.Skip("runs the core's check, which may download GEO data")
+	}
+	t.Setenv("MIHOMOBAR_HOME", t.TempDir())
+	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
+		t.Fatal(err)
+	}
+	b := New("test", "test", []byte(base), nopSink{make(chan State, 64)})
+	if err := b.Init(); err != nil {
+		t.Fatal(err)
+	}
+	for _, tpl := range modules.Templates {
+		if err := b.SetModules([]modules.Module{{Name: tpl.Name, Enabled: true, Body: tpl.Body}}); err != nil {
+			t.Errorf("%s: %v", tpl.Name, err)
+		}
+	}
+}
+
 // The core lists a profile's rule providers and takes an update of one.
 func TestRuleProviders(t *testing.T) {
 	if testing.Short() {

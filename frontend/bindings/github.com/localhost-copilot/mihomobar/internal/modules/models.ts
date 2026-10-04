@@ -11,3 +11,16 @@ export interface Module {
      */
     "body": string;
 }
+
+/**
+ * Template is a module offered ready-made, for the cases most people add
+ * one for. Hint says in a line what it does and when to want it; a Draft
+ * holds an example to replace, so it opens in the editor rather than being
+ * added as it is.
+ */
+export interface Template {
+    "name": string;
+    "hint": string;
+    "body": string;
+    "draft"?: boolean;
+}

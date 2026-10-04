@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n";
 import { Profiles as P } from "../api";
-import type { Module } from "../../bindings/github.com/localhost-copilot/mihomobar/internal/modules/models";
+import type { Module, Template } from "../../bindings/github.com/localhost-copilot/mihomobar/internal/modules/models";
+import { Popover } from "./Popover";
 import { Switch } from "./Switch";
 import { Fold } from "./Fold";
 import { Arrow, Close } from "./Icons";
@@ -17,19 +18,32 @@ prepend-rules:
 
 // Modules are YAML laid over every profile in order, as Surge's are: each
 // one a row with its switch, unrolling into its editor when clicked.
-export function Modules({ adding, setAdding }: { adding: boolean; setAdding: (v: boolean) => void }) {
+export function Modules({ newAt, onNewClose }: { newAt: HTMLElement | null; onNewClose: () => void }) {
   const t = useT();
   const [mods, setMods] = useState<Module[] | null>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [open, setOpen] = useState("");
-  useEffect(() => { if (adding) setOpen(""); }, [adding]);
+  // a new module being written, blank or from a template
+  const [draft, setDraft] = useState<Module | null>(null);
+  const [flash, setFlash] = useState("");
   const load = () => P.Modules().then((m) => setMods(m ?? [])).catch(toastError);
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); P.ModuleTemplates().then((ts) => setTemplates(ts ?? [])).catch(() => {}); }, []);
 
   // the core checks every change; one it refuses leaves the list as it was
   const save = async (next: Module[]) => {
     const before = mods;
     setMods(next);
     try { await P.SetModules(next); await load(); return true; } catch (e) { setMods(before); toastError(e); return false; }
+  };
+  // a template is added and on at once, unless it holds an example to fill in
+  const use = async (tpl: Template | null) => {
+    onNewClose();
+    if (!tpl || tpl.draft) { setOpen(""); setDraft({ id: "", name: tpl ? t(tpl.name) : "", enabled: true, body: tpl?.body ?? "" }); return; }
+    const m: Module = { id: "", name: t(tpl.name), enabled: true, body: tpl.body };
+    if (await save([...(mods ?? []), m])) {
+      toast(t("Added {name}", { name: m.name }));
+      setFlash(m.name); setTimeout(() => setFlash(""), 900);
+    }
   };
   const move = (i: number, d: number) => {
     const next = mods!.slice();
@@ -38,21 +52,46 @@ export function Modules({ adding, setAdding }: { adding: boolean; setAdding: (v:
   };
 
   if (!mods) return null;
+  const added = new Set(mods.map((m) => m.name));
   return (
     <>
-      {adding && (
+      <Popover anchor={newAt} open={!!newAt} onClose={onNewClose} align="end" width={340}>
+        <div className="menu templates">
+          {templates.map((tpl) => (
+            <button key={tpl.name} onClick={() => use(tpl)}>
+              <span className="tname">{t(tpl.name)}{added.has(t(tpl.name)) && <span className="badge muted">{t("Added")}</span>}</span>
+              <span className="thint">{t(tpl.hint)}</span>
+            </button>
+          ))}
+          <hr />
+          <button onClick={() => use(null)}><span className="tname">{t("Blank module…")}</span></button>
+        </div>
+      </Popover>
+      {draft && (
         <div className="list modules">
-          <ModuleEditor module={{ id: "", name: "", enabled: true, body: "" }} onCancel={() => setAdding(false)}
-            onSave={async (m) => { if (await save([...mods, m])) { setAdding(false); toast(t("Added {name}", { name: m.name })); } }} />
+          <ModuleEditor module={draft} onCancel={() => setDraft(null)}
+            onSave={async (m) => { if (await save([...mods, m])) { setDraft(null); toast(t("Added {name}", { name: m.name })); } }} />
         </div>
       )}
-      {mods.length === 0 && !adding ? (
-        <div className="list user-rules-empty">{t("Modules change DNS, hosts, rules and more for every profile, and stay across updates. The app's ports, mode and TUN still win.")}</div>
+      {mods.length === 0 && !draft ? (
+        <div className="list modules-empty">
+          <div className="lead">
+            <b>{t("Change every profile, and keep it across updates")}</b>
+            {t("Modules add DNS, hosts, rules and more over the profile in use. The app's ports, mode and TUN still win. Start with one of these:")}
+          </div>
+          {templates.map((tpl, i) => (
+            <button className="row click" key={tpl.name} style={{ ["--i" as string]: i }} onClick={() => use(tpl)}>
+              <div className="who"><div className="name">{t(tpl.name)}</div><div className="sub">{t(tpl.hint)}</div></div>
+              <span className="btn small">{tpl.draft ? t("Edit…") : t("Add")}</span>
+            </button>
+          ))}
+          <button className="row click blank" onClick={() => use(null)}>{t("Blank module…")}</button>
+        </div>
       ) : mods.length > 0 && (
         <div className="list modules">
           {mods.map((m, i) => (
-            <ModuleRow key={m.id} m={m} open={open === m.id} first={i === 0} last={i === mods.length - 1}
-              onOpen={() => setOpen(open === m.id ? "" : m.id)}
+            <ModuleRow key={m.id} m={m} open={open === m.id} flash={flash === m.name} first={i === 0} last={i === mods.length - 1}
+              onOpen={() => { setDraft(null); setOpen(open === m.id ? "" : m.id); }}
               onToggle={(on) => save(mods.map((o) => (o.id === m.id ? { ...o, enabled: on } : o)))}
               onMove={(d) => move(i, d)}
               onRemove={() => save(mods.filter((o) => o.id !== m.id))}
@@ -64,8 +103,8 @@ export function Modules({ adding, setAdding }: { adding: boolean; setAdding: (v:
   );
 }
 
-function ModuleRow({ m, open, first, last, onOpen, onToggle, onMove, onRemove, onSave }: {
-  m: Module; open: boolean; first: boolean; last: boolean;
+function ModuleRow({ m, open, flash, first, last, onOpen, onToggle, onMove, onRemove, onSave }: {
+  m: Module; open: boolean; flash: boolean; first: boolean; last: boolean;
   onOpen: () => void; onToggle: (on: boolean) => Promise<unknown>; onMove: (d: number) => void; onRemove: () => void; onSave: (m: Module) => Promise<void>;
 }) {
   const t = useT();
@@ -74,7 +113,7 @@ function ModuleRow({ m, open, first, last, onOpen, onToggle, onMove, onRemove, o
   useEffect(() => { if (!armed) return; const id = setTimeout(() => setArmed(false), 3000); return () => clearTimeout(id); }, [armed]);
   return (
     <div className={"module" + (open ? " open" : "") + (m.enabled ? "" : " off")}>
-      <div className="row click" onClick={onOpen}>
+      <div className={"row click" + (flash ? " flash" : "")} onClick={onOpen}>
         <div className="who">
           <div className="name">{m.name}</div>
           <div className="sub mono">{keys.length ? keys.join(" · ") : t("Empty")}</div>
@@ -116,7 +155,9 @@ function ModuleEditor({ module, onCancel, onSave }: { module: Module; onCancel: 
   const [busy, setBusy] = useState(false);
   const [, problem] = useKeys(body);
   const nameRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { if (!module.id) setTimeout(() => nameRef.current?.focus(), 60); }, []);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  // a new one starts at its name, or at the example to fill in
+  useEffect(() => { if (!module.id) setTimeout(() => (module.name ? bodyRef.current : nameRef.current)?.focus(), 60); }, []);
   const dirty = name.trim() !== module.name || body !== module.body;
   const submit = async () => {
     if (busy || !name.trim() || problem) return;
@@ -128,7 +169,7 @@ function ModuleEditor({ module, onCancel, onSave }: { module: Module; onCancel: 
     <form className="module-editor stagger" onSubmit={(e) => { e.preventDefault(); submit(); }}
       onKeyDown={(e) => { if (e.key === "s" && e.metaKey) { e.preventDefault(); submit(); } if (e.key === "Escape") onCancel(); }}>
       <input ref={nameRef} className="input" placeholder={t("Module name")} value={name} onChange={(e) => setName(e.target.value)} />
-      <textarea className="input" placeholder={EXAMPLE} rows={Math.min(18, Math.max(8, body.split("\n").length + 1))} value={body} spellCheck={false}
+      <textarea ref={bodyRef} className="input" placeholder={EXAMPLE} rows={Math.min(18, Math.max(8, body.split("\n").length + 1))} value={body} spellCheck={false}
         onChange={(e) => setBody(e.target.value)}
         onKeyDown={(e) => {
           // a tab indents, as YAML wants spaces
@@ -142,7 +183,7 @@ function ModuleEditor({ module, onCancel, onSave }: { module: Module; onCancel: 
         <span className={"hint" + (problem ? " err" : "")}>{problem || t("Mappings merge; +key puts a list first, key+ last, key! replaces. ⌘S saves.")}</span>
         <div className="grow" />
         <button type="button" className="btn small" onClick={onCancel}>{t("Cancel")}</button>
-        <button type="submit" className="btn small primary" disabled={busy || !name.trim() || !!problem || (!!module.id && !dirty)}>{busy ? t("Checking…") : t("Save")}</button>
+        <button type="submit" className="btn small primary" disabled={busy || !name.trim() || !!problem || (!!module.id && !dirty)}>{busy ? t("Checking…") : module.id ? t("Save") : t("Add")}</button>
       </div>
     </form>
   );

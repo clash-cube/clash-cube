@@ -90,6 +90,10 @@ type Backend struct {
 	shutdown     bool
 	done         chan struct{}
 
+	// the profile file the running configuration was written from, so an
+	// edit to it is noticed (watch.go)
+	profileRead profileStamp
+
 	// usage.go
 	usage     *usage.Store
 	usageOnce sync.Once
@@ -215,6 +219,11 @@ func (b *Backend) writeRuntime(fresh bool) error {
 	body, err := os.ReadFile(p.Path())
 	if err != nil {
 		return err
+	}
+	if fi, err := os.Stat(p.Path()); err == nil {
+		b.mu.Lock()
+		b.profileRead = profileStamp{p.ID, fi.ModTime(), fi.Size()}
+		b.mu.Unlock()
 	}
 	ctl := b.core.Controller()
 	if fresh || ctl.Addr == "" {
