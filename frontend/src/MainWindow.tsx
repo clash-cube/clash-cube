@@ -7,6 +7,7 @@ import { Popover, Menu } from "./components/Popover";
 import { coreLabel, coreTone, restartCore, startCore, stopCore } from "./actions";
 import { speed } from "./format";
 import { Overview } from "./views/Overview";
+import { Usage } from "./views/Usage";
 import { Proxies } from "./views/Proxies";
 import { Profiles } from "./views/Profiles";
 import { Connections } from "./views/Connections";
@@ -18,7 +19,7 @@ import { Prewarm } from "./components/Prewarm";
 import { useConnectionFeed } from "./connectionStore";
 
 const VIEWS: Record<View, () => JSX.Element> = {
-  overview: Overview, proxies: Proxies, profiles: Profiles, connections: Connections, rules: Rules, logs: Logs, events: Events, settings: Settings,
+  overview: Overview, usage: Usage, proxies: Proxies, profiles: Profiles, connections: Connections, rules: Rules, logs: Logs, events: Events, settings: Settings,
 };
 
 export function MainWindow() {
@@ -42,7 +43,7 @@ export function MainWindow() {
           <span>MihomoBar</span>
         </div>
         <Segmented
-          value={view === "settings" ? ("" as View) : view === "events" ? "logs" : view}
+          value={view === "settings" ? ("" as View) : view === "events" ? "logs" : view === "usage" ? "overview" : view}
           onChange={setView}
           options={[
             { value: "overview", label: t("Overview") },

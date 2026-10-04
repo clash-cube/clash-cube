@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
+	"github.com/localhost-copilot/mihomobar/internal/usage"
 )
 
 func TestClientMeter(t *testing.T) {
@@ -63,5 +64,39 @@ func TestAppOf(t *testing.T) {
 		if name, _ := appOf(c.md); name != c.name {
 			t.Errorf("appOf(%+v) = %q, want %q", c.md, name, c.name)
 		}
+	}
+}
+
+func TestUsageMeter(t *testing.T) {
+	var m usageMeter
+	conn := func(id string, up, down int64) mihomoapi.Connection {
+		return mihomoapi.Connection{ID: id, Upload: up, Download: down, Chains: []string{"HK", "Proxy"},
+			Metadata: mihomoapi.Metadata{Host: "a.com", ProcessPath: "/Applications/A.app/Contents/MacOS/A"}}
+	}
+	net := usage.Item{Dim: usage.Network, Key: "wired"}
+	// the first sample is the baseline
+	if up, down, items := m.sample(mihomoapi.Connections{UploadTotal: 50, DownloadTotal: 500, Connections: []mihomoapi.Connection{conn("1", 50, 500), conn("3", 1, 1)}}, nil, net); up != 0 || down != 0 || len(items) != 1 {
+		t.Fatal(up, down, items)
+	}
+	// 2 is new; 3 closed with 10 more down; 4 opened and closed in between
+	closed := []mihomoapi.Connection{conn("3", 1, 11), conn("4", 0, 90)}
+	up, down, items := m.sample(mihomoapi.Connections{UploadTotal: 80, DownloadTotal: 1000, Connections: []mihomoapi.Connection{conn("1", 60, 700), conn("2", 20, 200), conn("3", 1, 5)}}, closed, net)
+	if up != 30 || down != 500 || len(m.seen) != 2 {
+		t.Fatal(up, down)
+	}
+	byDim := map[string]int64{}
+	newConns := 0
+	for _, it := range items {
+		byDim[it.Dim+" "+it.Name] += it.Down
+		if it.New && it.Dim == usage.App {
+			newConns++
+		}
+	}
+	if byDim["app A"] != 500 || byDim["host a.com"] != 500 || byDim["policy HK"] != 500 || byDim["network "] != 500 || newConns != 2 {
+		t.Fatal(byDim, newConns)
+	}
+	// the core started again: its totals restart
+	if up, down, _ := m.sample(mihomoapi.Connections{UploadTotal: 5, DownloadTotal: 7}, nil, net); up != 5 || down != 7 {
+		t.Fatal(up, down)
 	}
 }

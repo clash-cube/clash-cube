@@ -13,6 +13,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as backend$0 from "../backend/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as usage$0 from "../usage/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -36,6 +39,13 @@ export function ChooseApp(): $CancellablePromise<$models.App> {
 
 export function ClearEvents(): $CancellablePromise<void> {
     return $Call.ByID(1703361915);
+}
+
+/**
+ * ClearUsage forgets the traffic statistics.
+ */
+export function ClearUsage(): $CancellablePromise<void> {
+    return $Call.ByID(3945536857);
 }
 
 /**
@@ -186,4 +196,13 @@ export function State(): $CancellablePromise<backend$0.State> {
 
 export function Stop(): $CancellablePromise<void> {
     return $Call.ByID(1976075929);
+}
+
+/**
+ * Usage is the traffic statistics of the days from..to ("2006-01-02",
+ * inclusive); a single day comes in hours, and hour (0–23, else -1)
+ * narrows it to one.
+ */
+export function Usage($from: string, to: string, hour: number): $CancellablePromise<usage$0.Report> {
+    return $Call.ByID(2385816252, $from, to, hour);
 }

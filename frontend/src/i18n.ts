@@ -138,9 +138,15 @@ const zh: Record<string, string> = {
   "Domains": "域名", "IP ranges": "IP 段", "Mixed rules": "混合规则", "Remote": "远程", "Inline": "内联",
   "My rules": "我的规则", "Active rules": "生效规则", "Move up": "上移", "Move down": "下移", "Delete": "删除",
   "Rules you add here, or from a connection, go ahead of the profile's and stay across updates.": "在这里或从连接页添加的规则排在配置自带规则之前，更新订阅后仍然保留。",
+  "Traffic statistics": "流量统计", "Today": "今天", "Yesterday": "昨天", "Day": "日", "7 days": "7 天", "30 days": "30 天", "Earlier": "更早", "Later": "更晚",
+  "Click again to clear": "再次点击以清空", "Apps": "应用", "Hosts": "主机", "Policies": "策略", "Networks": "网络", "{n} items": "{n} 项",
+  "No traffic": "没有流量", "Traffic through the core is counted while it runs, and kept for 90 days.": "内核运行期间经过它的流量都会被统计，保留 90 天。", "Show {n} more": "再显示 {n} 项",
 };
 
 export type Vars = Record<string, string | number>;
+
+// locale is the app's language, for dates and numbers
+export const locale = () => lang(useStore.getState().settings?.lang) === "zh" ? "zh-CN" : "en";
 
 function lang(setting: string | undefined): "zh" | "en" {
   if (setting === "zh" || setting === "en") return setting;

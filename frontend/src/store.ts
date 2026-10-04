@@ -4,7 +4,7 @@ import { App, Profiles, Settings, type State, type Profile, type ImportRequest, 
 import { translate as t } from "./i18n";
 import { toast, toastError } from "./components/Toast";
 
-export type View = "overview" | "proxies" | "profiles" | "connections" | "rules" | "logs" | "events" | "settings";
+export type View = "overview" | "usage" | "proxies" | "profiles" | "connections" | "rules" | "logs" | "events" | "settings";
 
 // a point of the traffic chart
 export type Sample = { up: number; down: number; at: number };

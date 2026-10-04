@@ -19,6 +19,7 @@ import (
 	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
 	"github.com/localhost-copilot/mihomobar/internal/profiles"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
+	"github.com/localhost-copilot/mihomobar/internal/usage"
 	"github.com/localhost-copilot/mihomobar/internal/userrules"
 	"github.com/localhost-copilot/mihomobar/internal/wifi"
 )
@@ -616,3 +617,13 @@ func set[T any](dst *T, src *T) {
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
+
+// Usage is the traffic statistics of the days from..to ("2006-01-02",
+// inclusive); a single day comes in hours, and hour (0–23, else -1)
+// narrows it to one.
+func (s *AppService) Usage(from, to string, hour int) (usage.Report, error) {
+	return s.h.b.Usage().Query(from, to, hour)
+}
+
+// ClearUsage forgets the traffic statistics.
+func (s *AppService) ClearUsage() error { return s.h.b.Usage().Clear() }

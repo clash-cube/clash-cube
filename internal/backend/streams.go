@@ -27,6 +27,7 @@ func (b *Backend) startStreams() {
 	go follow(ctx, func(ctx context.Context) error {
 		return mihomoapi.Stream(ctx, c, "/memory", b.sink.Memory)
 	})
+	go b.recordUsage(ctx, c)
 	b.restartLogs()
 }
 

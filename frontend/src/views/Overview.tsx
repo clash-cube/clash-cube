@@ -8,6 +8,7 @@ import { Switch } from "../components/Switch";
 import { Arrow, Globe, Shield, File, Chevron, Route } from "../components/Icons";
 import { setMode, setSystemProxy, setTun, startCore, restartCore } from "../actions";
 import { useConnectionStore } from "../connectionStore";
+import { OverviewTabs } from "./Usage";
 
 const modeHint: Record<string, string> = {
   rule: "Rules pick the policy for each connection",
@@ -28,6 +29,7 @@ export function Overview() {
 
   return (
     <div className="view overview">
+      <div className="view-head"><OverviewTabs value="overview" /></div>
       {state?.core === "crashed" && (
         <div className="banner err">
           <div className="grow">

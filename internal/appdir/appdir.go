@@ -20,6 +20,7 @@ func Profiles() string      { return filepath.Join(Root(), "profiles") }
 func CoreHome() string      { return filepath.Join(Root(), "core") }
 func RuntimeConfig() string { return filepath.Join(CoreHome(), "runtime.yaml") }
 func Logs() string          { return filepath.Join(Root(), "logs") }
+func Usage() string         { return filepath.Join(Root(), "usage") }
 
 // Ensure creates the directories the app writes to.
 func Ensure() error {

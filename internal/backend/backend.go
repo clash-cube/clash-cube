@@ -21,6 +21,7 @@ import (
 	"github.com/localhost-copilot/mihomobar/internal/runtimecfg"
 	"github.com/localhost-copilot/mihomobar/internal/settings"
 	"github.com/localhost-copilot/mihomobar/internal/sysproxy"
+	"github.com/localhost-copilot/mihomobar/internal/usage"
 	"github.com/localhost-copilot/mihomobar/internal/userrules"
 )
 
@@ -87,6 +88,10 @@ type Backend struct {
 	groupProfile string
 	shutdown     bool
 	done         chan struct{}
+
+	// usage.go
+	usage     *usage.Store
+	usageOnce sync.Once
 
 	// network.go
 	net     netWatch
@@ -328,6 +333,7 @@ func (b *Backend) Shutdown() {
 	close(b.done)
 	b.releaseProxy()
 	_ = b.core.Stop()
+	_ = b.Usage().Flush()
 }
 
 // SetMode switches rule / global / direct.
