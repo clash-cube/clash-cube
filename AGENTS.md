@@ -2,7 +2,7 @@
 
 MihomoBar is a macOS menu bar app for mihomo: Go + Wails v3 (beta) + React/TS.
 `docs/design.md` has the architecture, the UI spec and the plan; read it
-before larger changes. The user writes in Chinese; reply in Chinese.
+before larger changes.
 
 ## One binary, three roles
 
