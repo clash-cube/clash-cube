@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { Hotkeys } from "../components/Hotkeys";
 import { translate, useT } from "../i18n";
 import { applyTheme, useStore } from "../store";
 import { App, Proxy, Settings as S, type Patch, type HelperStatus, type GeoInfo } from "../api";
@@ -83,6 +84,10 @@ export function Settings() {
               <option value="never">{t("Never")}</option>
             </select>
           </Row>
+        </Section>
+
+        <Section title={t("Keyboard shortcuts")}>
+          <Hotkeys />
         </Section>
 
         <Section title={t("Appearance")}>

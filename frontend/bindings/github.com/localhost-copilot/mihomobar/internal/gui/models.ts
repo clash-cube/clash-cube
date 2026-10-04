@@ -31,6 +31,23 @@ export interface Group {
     "members": Member[] | null;
 }
 
+/**
+ * Hotkey is an action's global shortcut, as Settings shows it.
+ */
+export interface Hotkey {
+    "action": string;
+
+    /**
+     * as "Ctrl+Option+Cmd+P"; "" for none
+     */
+    "keys": string;
+
+    /**
+     * why it isn't working
+     */
+    "error"?: string;
+}
+
 export interface Member {
     "name": string;
     "type": string;
@@ -92,4 +109,13 @@ export interface Provider {
     "total": number;
     "expire": number;
     "members": Member[] | null;
+}
+
+/**
+ * Recommended is what UseRecommendedHotkeys did: the shortcuts now, and
+ * the actions it left without one, the shortcut being taken.
+ */
+export interface Recommended {
+    "hotkeys": Hotkey[] | null;
+    "skipped": string[] | null;
 }

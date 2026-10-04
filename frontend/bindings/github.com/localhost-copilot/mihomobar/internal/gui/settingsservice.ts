@@ -22,8 +22,23 @@ export function Get(): $CancellablePromise<settings$0.Settings> {
     return $Call.ByID(1268765203);
 }
 
+/**
+ * Hotkeys is every action and its shortcut.
+ */
+export function Hotkeys(): $CancellablePromise<$models.Hotkey[] | null> {
+    return $Call.ByID(2701365356);
+}
+
 export function Patch(p: $models.Patch): $CancellablePromise<settings$0.Settings> {
     return $Call.ByID(3772147429, p);
+}
+
+/**
+ * RecordHotkey lifts every shortcut while the page records one, so that
+ * pressing a set one is recorded rather than run; false puts them back.
+ */
+export function RecordHotkey(on: boolean): $CancellablePromise<void> {
+    return $Call.ByID(782062986, on);
 }
 
 export function RequestWiFiPermission(): $CancellablePromise<void> {
@@ -42,6 +57,15 @@ export function SavedWiFiNetworks(): $CancellablePromise<string[] | null> {
 }
 
 /**
+ * SetHotkey gives an action a shortcut ("" clears it). One refused (taken
+ * by macOS or another action, or not a usable combination) leaves the
+ * settings as they were; the error is a hotkeys.Problem.
+ */
+export function SetHotkey(action: string, keys: string): $CancellablePromise<$models.Hotkey[] | null> {
+    return $Call.ByID(2141032125, action, keys);
+}
+
+/**
  * SetNetworkAuto turns the network rules on or off.
  */
 export function SetNetworkAuto(on: boolean): $CancellablePromise<settings$0.Settings> {
@@ -53,4 +77,13 @@ export function SetNetworkAuto(on: boolean): $CancellablePromise<settings$0.Sett
  */
 export function SetNetworkRules(rules: settings$0.NetworkRule[] | null): $CancellablePromise<settings$0.Settings> {
     return $Call.ByID(2011321974, rules);
+}
+
+/**
+ * UseRecommendedHotkeys gives every action without a shortcut the
+ * recommended one; those already set are kept, and one macOS, another
+ * action or another app holds is skipped.
+ */
+export function UseRecommendedHotkeys(): $CancellablePromise<$models.Recommended> {
+    return $Call.ByID(1257797830);
 }

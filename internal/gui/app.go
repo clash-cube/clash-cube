@@ -47,6 +47,7 @@ type host struct {
 	main  *application.WebviewWindow
 	tray  *application.SystemTray
 	menu  *trayMenu
+	keys  *shortcuts
 
 	panelHeight int
 	closing     atomic.Bool // a full-screen main window leaving it, to hide after
@@ -62,6 +63,7 @@ type host struct {
 // Run starts the GUI.
 func Run(version string) error {
 	h := &host{}
+	h.keys = &shortcuts{h: h, set: map[string]string{}}
 	h.b = backend.New(version, core.Version(), defaultYAML, sink{h})
 	if err := h.b.Init(); err != nil {
 		return fmt.Errorf("init: %w", err)
@@ -183,6 +185,7 @@ func Run(version string) error {
 	h.app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
 		h.startNotifications()
 		h.menu.refresh()
+		h.keys.apply()
 		go h.b.Boot()
 		switch os.Getenv("MIHOMOBAR_SHOW") {
 		case "main":
@@ -239,6 +242,7 @@ func (h *host) showMain(view string) {
 	h.dock(true)
 	h.main.Show()
 	h.main.Focus()
+	activateApp()
 }
 
 func (h *host) hideMain() {

@@ -31,6 +31,14 @@ static void setDock(int on, int front) {
 		if (front) [NSApp activateIgnoringOtherApps:YES];
 	});
 }
+// activate brings the app forward, as a click on its window would: an
+// accessory app's window shown from a global shortcut otherwise opens
+// behind the app in front.
+static void activateApp(void) {
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[NSApp activateIgnoringOtherApps:YES];
+	});
+}
 */
 import "C"
 
@@ -46,6 +54,8 @@ func glide(w *application.WebviewWindow, height, ms int, curve [4]float64) bool 
 	C.glidePanel(nw, C.int(height), C.int(ms), C.double(curve[0]), C.double(curve[1]), C.double(curve[2]), C.double(curve[3]))
 	return true
 }
+
+func activateApp() { C.activateApp() }
 
 func setDock(on, front bool) {
 	b := func(v bool) C.int {

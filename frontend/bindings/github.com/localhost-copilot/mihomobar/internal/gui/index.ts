@@ -15,7 +15,9 @@ export {
 export type {
     App,
     Group,
+    Hotkey,
     Member,
     Patch,
-    Provider
+    Provider,
+    Recommended
 } from "./models.js";

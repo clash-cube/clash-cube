@@ -118,6 +118,12 @@ export interface Settings {
     "window"?: number[] | null;
 
     /**
+     * Hotkeys is the global shortcuts, by action (hotkeys.Actions), as
+     * "Ctrl+Option+Cmd+P"; none are set at first.
+     */
+    "hotkeys"?: { [_ in string]?: string } | null;
+
+    /**
      * NetworkAuto applies NetworkRules as the Mac moves between networks.
      */
     "networkAuto": boolean;

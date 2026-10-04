@@ -53,6 +53,9 @@ type Settings struct {
 	TraySpeed     bool   `json:"traySpeed"`   // speed beside the menu bar icon
 	Notify        bool   `json:"notify"`      // notifications for the events that ask for one
 	Window        []int  `json:"window,omitempty"`
+	// Hotkeys is the global shortcuts, by action (hotkeys.Actions), as
+	// "Ctrl+Option+Cmd+P"; none are set at first.
+	Hotkeys map[string]string `json:"hotkeys,omitempty"`
 
 	// NetworkAuto applies NetworkRules as the Mac moves between networks.
 	NetworkAuto  bool          `json:"networkAuto"`
