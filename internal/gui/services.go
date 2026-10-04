@@ -635,3 +635,12 @@ func (s *ProfileService) Modules() []modules.Module { return modules.List() }
 // SetModules replaces them; a configuration the core refuses keeps the
 // previous ones.
 func (s *ProfileService) SetModules(ms []modules.Module) error { return s.h.b.SetModules(ms) }
+
+// ModuleKeys is the top-level keys a module's body sets, for its summary;
+// an error says why the body isn't a module.
+func (s *ProfileService) ModuleKeys(body string) ([]string, error) {
+	if _, err := modules.Parse(body); err != nil {
+		return []string{}, err
+	}
+	return append([]string{}, modules.Module{Body: body}.Keys()...), nil
+}

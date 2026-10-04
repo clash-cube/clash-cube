@@ -517,6 +517,7 @@ func (b *Backend) useProfile(id string) error {
 	}
 	if err := b.reload(); err != nil {
 		_, _ = settings.Update(func(s *settings.Settings) { s.Profile = before })
+		_ = b.writeRuntime(false) // what a crash restart would read
 		b.emitState()
 		return err
 	}
@@ -587,9 +588,18 @@ func (b *Backend) SetRules(rs []userrules.Rule) error {
 	}
 	if err := b.Reload(); err != nil {
 		_ = userrules.Save(before)
+		b.restoreRuntime()
 		return err
 	}
 	return nil
+}
+
+// restoreRuntime writes the configuration again after a refused change was
+// undone, so the file matches what the core runs.
+func (b *Backend) restoreRuntime() {
+	b.opMu.Lock()
+	defer b.opMu.Unlock()
+	_ = b.writeRuntime(false)
 }
 
 // SetModules replaces the user's modules. The configuration they make is
@@ -602,6 +612,7 @@ func (b *Backend) SetModules(ms []modules.Module) error {
 	}
 	if err := b.check(); err != nil {
 		_ = modules.Save(before)
+		b.restoreRuntime()
 		return err
 	}
 	return nil

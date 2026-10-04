@@ -6,6 +6,8 @@ import { Popover, Menu } from "../components/Popover";
 import { toast, toastError } from "../components/Toast";
 import { Globe, File, More, Plus, Refresh } from "../components/Icons";
 import { ago, bytes } from "../format";
+import { Segmented } from "../components/Segmented";
+import { Modules } from "../components/Modules";
 
 export function Profiles() {
   const t = useT();
@@ -17,9 +19,12 @@ export function Profiles() {
   const [activeImport, setActiveImport] = useState<ImportRequest | null>(null);
   const [updatingAll, setUpdatingAll] = useState(false);
   const [flash, setFlash] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [tab, setTab] = useState<"profiles" | "modules">(location.hash === "#modules" ? "modules" : "profiles");
 
   useEffect(() => {
     if (pendingImport && !importAt) {
+      setTab("profiles");
       setActiveImport(pendingImport);
       setImportAt(importButton.current);
     }
@@ -45,17 +50,22 @@ export function Profiles() {
   return (
     <div className="view">
       <div className="view-head">
-        <h2>{t("Profiles")}</h2>
-        <span className="sub">{profiles.length}</span>
+        <Segmented className="track small" value={tab} onChange={setTab} options={[
+          { value: "profiles", label: `${t("Profiles")} ${profiles.length}` },
+          { value: "modules", label: t("Modules") },
+        ]} />
         <div className="view-tools">
+          {tab === "modules" && <button className="btn small primary" disabled={adding} onClick={() => setAdding(true)}><Plus size={13} />{t("New module")}</button>}
+          {tab === "profiles" && <>
           <button className="btn small" disabled={updatingAll} onClick={updateAll}><Refresh size={13} />{updatingAll ? t("Updating…") : t("Update all")}</button>
           <button ref={importButton} className="btn small primary" onClick={(e) => { if (!importAt) setImportAt(e.currentTarget); }}><Plus size={13} />{t("Import")}</button>
+          </>}
         </div>
       </div>
       <ImportPopover key={activeImport ? JSON.stringify(activeImport) : "manual"} request={activeImport} anchor={importAt} onClose={closeImport} onDone={(p) => { closeImport(); flashRow(p.id); }} />
-      <div className="list">
+      {tab === "modules" ? <Modules adding={adding} setAdding={setAdding} /> : <div className="list">
         {profiles.map((p) => <ProfileRow key={p.id} p={p} current={p.id === current} flash={flash === p.id} onFlash={() => flashRow(p.id)} />)}
-      </div>
+      </div>}
     </div>
   );
 }

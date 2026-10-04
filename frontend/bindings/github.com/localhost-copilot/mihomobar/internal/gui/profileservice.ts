@@ -38,6 +38,14 @@ export function List(): $CancellablePromise<profiles$0.Profile[] | null> {
 }
 
 /**
+ * ModuleKeys is the top-level keys a module's body sets, for its summary;
+ * an error says why the body isn't a module.
+ */
+export function ModuleKeys(body: string): $CancellablePromise<string[] | null> {
+    return $Call.ByID(125334863, body);
+}
+
+/**
  * Modules is the user's modules, merged over every profile in order.
  */
 export function Modules(): $CancellablePromise<modules$0.Module[] | null> {

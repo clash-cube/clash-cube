@@ -583,3 +583,14 @@ select.input { padding-right: 6px; }
 .usage-cell.conns { width: 52px; }
 .usage-more { justify-content: center; color: var(--accent); font-size: 12px; min-height: 36px; width: 100%; }
 @media (max-width: 720px) { .usage-cell.up, .usage-cell.down { display: none; } }
+
+/* modules: a row with its switch, unrolling into its editor */
+.modules .module + .module { border-top: 1px solid var(--line-2); }
+.modules .module.off .name { color: var(--muted); }
+.modules .row .sub.mono { font-size: 11px; }
+.module-editor { display: flex; flex-direction: column; gap: 8px; padding: 2px 14px 14px; }
+.modules > .module-editor { padding-top: 14px; }
+.module-editor textarea { width: 100%; min-height: 140px; tab-size: 2; }
+.module-editor .foot { display: flex; align-items: center; gap: 8px; }
+.module-editor .hint { font-size: 11.5px; color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.module-editor .hint.err { color: var(--red); white-space: normal; }

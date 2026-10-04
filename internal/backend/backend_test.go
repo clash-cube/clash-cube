@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/localhost-copilot/mihomobar/internal/appdir"
 	"github.com/localhost-copilot/mihomobar/internal/core"
 	"github.com/localhost-copilot/mihomobar/internal/coremgr"
 	"github.com/localhost-copilot/mihomobar/internal/mihomoapi"
@@ -374,6 +375,9 @@ func TestCoreLifecycle(t *testing.T) {
 	if settings.Load().Profile != p.ID {
 		t.Error("the failed switch was kept")
 	}
+	if b, _ := os.ReadFile(appdir.RuntimeConfig()); strings.Contains(string(b), "Nowhere") {
+		t.Error("the refused profile was left in the runtime configuration")
+	}
 	if b.State().Core != "running" {
 		t.Error("the core stopped after a failed switch")
 	}
@@ -509,6 +513,9 @@ func TestModules(t *testing.T) {
 	}
 	if got := modules.List(); len(got) != 1 || got[0].Name != "lan" {
 		t.Errorf("saved modules = %+v", got)
+	}
+	if b, _ := os.ReadFile(appdir.RuntimeConfig()); strings.Contains(string(b), "Nowhere") {
+		t.Error("the refused module was left in the runtime configuration")
 	}
 	good.Enabled = false
 	if err := b.SetModules([]modules.Module{good}); err != nil {

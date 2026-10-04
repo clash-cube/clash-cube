@@ -55,7 +55,7 @@ func (m Module) Check() error {
 		return errors.New("a module needs a name")
 	}
 	if _, err := Parse(m.Body); err != nil {
-		return fmt.Errorf("%s: %w", m.Name, err)
+		return fmt.Errorf("%s: %w", strings.TrimSpace(m.Name), err)
 	}
 	return nil
 }
