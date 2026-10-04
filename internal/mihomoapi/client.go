@@ -464,12 +464,12 @@ func (c *Client) DNSLookup(ctx context.Context, name, qtype string) ([]string, e
 }
 
 // ClosedConnections is the connections that ended since the last call,
-// with their final byte counts (internal/core's /clashferry/closed). An
+// with their final byte counts (internal/core's /clashcube/closed). An
 // older core doesn't serve it, and answers 404.
 func (c *Client) ClosedConnections(ctx context.Context) ([]Connection, error) {
 	var v struct {
 		Connections []Connection `json:"connections"`
 	}
-	err := c.req(ctx, http.MethodGet, "/clashferry/closed", nil, &v)
+	err := c.req(ctx, http.MethodGet, "/clashcube/closed", nil, &v)
 	return v.Connections, err
 }

@@ -51,7 +51,7 @@ export function Overview() {
         <div className="banner warn">
           <div className="grow">
             <b>{t("Another app changed the system proxy")}</b>
-            <div>{t("Apps that follow the system proxy no longer go through ClashFerry.")}</div>
+            <div>{t("Apps that follow the system proxy no longer go through ClashCube.")}</div>
           </div>
           <button className="btn small primary" onClick={() => setSystemProxy(true)}>{t("Take it back")}</button>
         </div>

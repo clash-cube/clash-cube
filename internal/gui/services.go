@@ -15,16 +15,16 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/localhost-copilot/clashferry/internal/appdir"
-	"github.com/localhost-copilot/clashferry/internal/backend"
-	"github.com/localhost-copilot/clashferry/internal/hotkeys"
-	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
-	"github.com/localhost-copilot/clashferry/internal/modules"
-	"github.com/localhost-copilot/clashferry/internal/profiles"
-	"github.com/localhost-copilot/clashferry/internal/settings"
-	"github.com/localhost-copilot/clashferry/internal/usage"
-	"github.com/localhost-copilot/clashferry/internal/userrules"
-	"github.com/localhost-copilot/clashferry/internal/wifi"
+	"github.com/localhost-copilot/clashcube/internal/appdir"
+	"github.com/localhost-copilot/clashcube/internal/backend"
+	"github.com/localhost-copilot/clashcube/internal/hotkeys"
+	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
+	"github.com/localhost-copilot/clashcube/internal/modules"
+	"github.com/localhost-copilot/clashcube/internal/profiles"
+	"github.com/localhost-copilot/clashcube/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/usage"
+	"github.com/localhost-copilot/clashcube/internal/userrules"
+	"github.com/localhost-copilot/clashcube/internal/wifi"
 )
 
 // AppService is the app and its windows.
@@ -71,11 +71,11 @@ func (s *AppService) EnableServiceMode() error { return s.h.b.EnableServiceMode(
 
 // DisableServiceMode runs the core as the user again; uninstall removes the helper.
 func (s *AppService) DisableServiceMode(uninstall bool) error {
-	return s.h.b.DisableServiceMode(uninstall, tr("ClashFerry wants to remove its privileged helper.", "ClashFerry 需要移除特权助手。"))
+	return s.h.b.DisableServiceMode(uninstall, tr("ClashCube wants to remove its privileged helper.", "ClashCube 需要移除特权助手。"))
 }
 
 func helperPrompt() string {
-	return tr("ClashFerry needs to install a privileged helper to run Enhanced Mode (TUN).", "ClashFerry 需要安装特权助手以启用增强模式 (TUN)。")
+	return tr("ClashCube needs to install a privileged helper to run Enhanced Mode (TUN).", "ClashCube 需要安装特权助手以启用增强模式 (TUN)。")
 }
 
 // ShowMain opens the main window, on view if one is given.

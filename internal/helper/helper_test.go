@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/localhost-copilot/clashferry/internal/core"
-	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
-	"github.com/localhost-copilot/clashferry/internal/runtimecfg"
+	"github.com/localhost-copilot/clashcube/internal/core"
+	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
+	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
 )
 
 // The test binary is the core too: the helper starts os.Executable() "core".
@@ -122,7 +122,7 @@ func TestHelperRefusesOtherUsers(t *testing.T) {
 
 func TestPlistIsValid(t *testing.T) {
 	f := filepath.Join(t.TempDir(), "p.plist")
-	os.WriteFile(f, []byte(plist(501, "/tmp/a b/Application Support/ClashFerry & co")), 0o644)
+	os.WriteFile(f, []byte(plist(501, "/tmp/a b/Application Support/ClashCube & co")), 0o644)
 	if out, err := execOut("plutil", "-lint", f); err != nil {
 		t.Fatalf("%s", out)
 	}

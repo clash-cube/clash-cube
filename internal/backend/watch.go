@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/localhost-copilot/clashferry/internal/appdir"
-	"github.com/localhost-copilot/clashferry/internal/profiles"
-	"github.com/localhost-copilot/clashferry/internal/settings"
-	"github.com/localhost-copilot/clashferry/internal/sysproxy"
+	"github.com/localhost-copilot/clashcube/internal/appdir"
+	"github.com/localhost-copilot/clashcube/internal/profiles"
+	"github.com/localhost-copilot/clashcube/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/sysproxy"
 )
 
 // Event is something that happened, for the events list and, when Notify

@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
-	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
+	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
 // Lookup is what the core makes of a name: how its resolver answers, and

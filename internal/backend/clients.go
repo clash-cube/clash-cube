@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
+	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 )
 
 // ClientRate is one app's traffic now, as Surge's "Top Clients" lists it:

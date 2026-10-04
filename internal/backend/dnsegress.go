@@ -10,8 +10,8 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/localhost-copilot/clashferry/internal/appdir"
-	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
+	"github.com/localhost-copilot/clashcube/internal/appdir"
+	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 )
 
 // DNSEgress is where name lookups leave: the resolver that answers them

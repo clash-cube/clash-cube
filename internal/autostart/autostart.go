@@ -1,4 +1,4 @@
-// Package autostart opens ClashFerry at login through a LaunchAgent, which
+// Package autostart opens ClashCube at login through a LaunchAgent, which
 // (unlike SMAppService) needs no signed bundle.
 package autostart
 
@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-const label = "com.localhost-copilot.clashferry"
+const label = "com.localhost-copilot.clashcube"
 
 func record() string {
 	home, _ := os.UserHomeDir()

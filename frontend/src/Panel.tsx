@@ -51,7 +51,7 @@ export function Panel() {
       <div className="ptop" ref={top}>
         <span className={"plogo logo" + (opened ? " spin" : "")} key={opened}><Logo size={20} /></span>
         <div className="pstatus">
-          <div className="pname">{state?.profileName || t("ClashFerry")}</div>
+          <div className="pname">{state?.profileName || t("ClashCube")}</div>
           <div className="pspeed">
             <span className={"cdot " + coreTone()} />
             <span className="ptext">{running ? <>{coreLabel()} · <span className="num">127.0.0.1:{state?.mixedPort}</span></> : state?.coreError || coreLabel()}</span>

@@ -14,12 +14,12 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 
-	"github.com/localhost-copilot/clashferry/internal/autostart"
-	"github.com/localhost-copilot/clashferry/internal/backend"
-	"github.com/localhost-copilot/clashferry/internal/core"
-	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
-	"github.com/localhost-copilot/clashferry/internal/profiles"
-	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/autostart"
+	"github.com/localhost-copilot/clashcube/internal/backend"
+	"github.com/localhost-copilot/clashcube/internal/core"
+	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
+	"github.com/localhost-copilot/clashcube/internal/profiles"
+	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
 //go:embed all:dist
@@ -75,7 +75,7 @@ func Run(version string) error {
 
 	assets, _ := fs.Sub(dist, "dist")
 	h.app = application.New(application.Options{
-		Name:        "ClashFerry",
+		Name:        "ClashCube",
 		Description: "A menu bar app for mihomo",
 		Services: []application.Service{
 			application.NewService(&AppService{h}),
@@ -88,12 +88,12 @@ func Run(version string) error {
 		OnShutdown: func() {
 			h.b.Shutdown()
 		},
-		ErrorHandler: func(err error) { log.Println("clashferry:", err) },
+		ErrorHandler: func(err error) { log.Println("clashcube:", err) },
 	})
 
 	h.panel = h.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:            "panel",
-		Title:           "ClashFerry",
+		Title:           "ClashCube",
 		URL:             "/?mode=panel",
 		Width:           panelWidth,
 		Height:          panelStart,
@@ -117,7 +117,7 @@ func Run(version string) error {
 	}
 	h.main = h.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:      "main",
-		Title:     "ClashFerry",
+		Title:     "ClashCube",
 		URL:       "/" + startView(),
 		Width:     width,
 		Height:    height,
@@ -161,7 +161,7 @@ func Run(version string) error {
 
 	h.tray = h.app.SystemTray.New()
 	h.tray.SetTemplateIcon(trayIconOff)
-	h.tray.SetTooltip("ClashFerry")
+	h.tray.SetTooltip("ClashCube")
 	h.menu = newTrayMenu(h)
 	h.tray.SetMenu(h.app.NewMenu()) // replaced by the first rebuild
 	// the menu takes the panel's place; opening it doesn't take focus
@@ -187,7 +187,7 @@ func Run(version string) error {
 		h.menu.refresh()
 		h.keys.apply()
 		go h.b.Boot()
-		switch os.Getenv("CLASHFERRY_SHOW") {
+		switch os.Getenv("CLASHCUBE_SHOW") {
 		case "main":
 			h.showMain("")
 		case "panel":
@@ -199,9 +199,9 @@ func Run(version string) error {
 	return h.app.Run()
 }
 
-// startView is the page the window opens on, $CLASHFERRY_VIEW (for screenshots).
+// startView is the page the window opens on, $CLASHCUBE_VIEW (for screenshots).
 func startView() string {
-	if v := os.Getenv("CLASHFERRY_VIEW"); v != "" {
+	if v := os.Getenv("CLASHCUBE_VIEW"); v != "" {
 		v, hash, _ := strings.Cut(v, "#")
 		if hash != "" {
 			hash = "#" + hash

@@ -4,10 +4,10 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/localhost-copilot/clashferry/internal/appdir"
-	"github.com/localhost-copilot/clashferry/internal/coremgr"
-	"github.com/localhost-copilot/clashferry/internal/helper"
-	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/appdir"
+	"github.com/localhost-copilot/clashcube/internal/coremgr"
+	"github.com/localhost-copilot/clashcube/internal/helper"
+	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
 // The runners the core can run under.

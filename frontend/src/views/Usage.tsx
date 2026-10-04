@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { locale, useT } from "../i18n";
 import { useStore, type View } from "../store";
 import { App } from "../api";
-import type { Report, Row, Bar } from "../../bindings/github.com/localhost-copilot/clashferry/internal/usage/models";
+import type { Report, Row, Bar } from "../../bindings/github.com/localhost-copilot/clashcube/internal/usage/models";
 import { Segmented } from "../components/Segmented";
 import { AppIcon } from "../components/AppIcon";
 import { Chevron, Close, Globe, Route, Wifi } from "../components/Icons";

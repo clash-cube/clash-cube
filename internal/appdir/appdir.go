@@ -1,4 +1,4 @@
-// Package appdir names where ClashFerry keeps its files.
+// Package appdir names where ClashCube keeps its files.
 package appdir
 
 import (
@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 )
 
-// Root is ~/Library/Application Support/ClashFerry, or $CLASHFERRY_HOME.
+// Root is ~/Library/Application Support/ClashCube, or $CLASHCUBE_HOME.
 func Root() string {
-	if d := os.Getenv("CLASHFERRY_HOME"); d != "" {
+	if d := os.Getenv("CLASHCUBE_HOME"); d != "" {
 		return d
 	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, "Library", "Application Support", "ClashFerry")
+	return filepath.Join(home, "Library", "Application Support", "ClashCube")
 }
 
 func Settings() string      { return filepath.Join(Root(), "settings.json") }

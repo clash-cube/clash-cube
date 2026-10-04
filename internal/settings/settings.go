@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/localhost-copilot/clashferry/internal/appdir"
+	"github.com/localhost-copilot/clashcube/internal/appdir"
 )
 
 type Settings struct {

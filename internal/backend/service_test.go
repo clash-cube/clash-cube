@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
 func TestHelperUpdatePreservesCoreRunningState(t *testing.T) {

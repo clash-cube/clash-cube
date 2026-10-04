@@ -18,7 +18,7 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/localhost-copilot/clashferry/internal/appdir"
+	"github.com/localhost-copilot/clashcube/internal/appdir"
 )
 
 type Module struct {

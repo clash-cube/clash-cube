@@ -61,8 +61,8 @@ func plist(uid int, data string) string {
 	</array>
 	<key>RunAtLoad</key><true/>
 	<key>KeepAlive</key><true/>
-	<key>StandardErrorPath</key><string>/var/log/clashferry-helper.log</string>
-	<key>StandardOutPath</key><string>/var/log/clashferry-helper.log</string>
+	<key>StandardErrorPath</key><string>/var/log/clashcube-helper.log</string>
+	<key>StandardOutPath</key><string>/var/log/clashcube-helper.log</string>
 </dict>
 </plist>
 `
@@ -99,7 +99,7 @@ func Install(data, prompt string) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp("", "clashferry-helper-*.plist")
+	tmp, err := os.CreateTemp("", "clashcube-helper-*.plist")
 	if err != nil {
 		return err
 	}

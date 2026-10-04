@@ -1,4 +1,4 @@
-module github.com/localhost-copilot/clashferry
+module github.com/localhost-copilot/clashcube
 
 go 1.25.0
 

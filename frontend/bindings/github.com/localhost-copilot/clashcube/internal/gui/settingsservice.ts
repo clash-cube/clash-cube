@@ -19,18 +19,18 @@ import * as settings$0 from "../settings/models.js";
 import * as $models from "./models.js";
 
 export function Get(): $CancellablePromise<settings$0.Settings> {
-    return $Call.ByID(1183445836);
+    return $Call.ByID(170134267);
 }
 
 /**
  * Hotkeys is every action and its shortcut.
  */
 export function Hotkeys(): $CancellablePromise<$models.Hotkey[] | null> {
-    return $Call.ByID(3419540779);
+    return $Call.ByID(2653561428);
 }
 
 export function Patch(p: $models.Patch): $CancellablePromise<settings$0.Settings> {
-    return $Call.ByID(792558414, p);
+    return $Call.ByID(967256093, p);
 }
 
 /**
@@ -38,22 +38,22 @@ export function Patch(p: $models.Patch): $CancellablePromise<settings$0.Settings
  * pressing a set one is recorded rather than run; false puts them back.
  */
 export function RecordHotkey(on: boolean): $CancellablePromise<void> {
-    return $Call.ByID(1269547523, on);
+    return $Call.ByID(2495876466, on);
 }
 
 export function RequestWiFiPermission(): $CancellablePromise<void> {
-    return $Call.ByID(3126239291);
+    return $Call.ByID(3076769724);
 }
 
 /**
  * ResumeNetworkAuto drops the changes made by hand and applies the rule again.
  */
 export function ResumeNetworkAuto(): $CancellablePromise<void> {
-    return $Call.ByID(2005867984);
+    return $Call.ByID(3333090283);
 }
 
 export function SavedWiFiNetworks(): $CancellablePromise<string[] | null> {
-    return $Call.ByID(2102391821);
+    return $Call.ByID(1004623426);
 }
 
 /**
@@ -62,21 +62,21 @@ export function SavedWiFiNetworks(): $CancellablePromise<string[] | null> {
  * settings as they were; the error is a hotkeys.Problem.
  */
 export function SetHotkey(action: string, keys: string): $CancellablePromise<$models.Hotkey[] | null> {
-    return $Call.ByID(3474565066, action, keys);
+    return $Call.ByID(2079363301, action, keys);
 }
 
 /**
  * SetNetworkAuto turns the network rules on or off.
  */
 export function SetNetworkAuto(on: boolean): $CancellablePromise<settings$0.Settings> {
-    return $Call.ByID(1539211897, on);
+    return $Call.ByID(2185060964, on);
 }
 
 /**
  * SetNetworkRules replaces the network rules; the one in effect is applied.
  */
 export function SetNetworkRules(rules: settings$0.NetworkRule[] | null): $CancellablePromise<settings$0.Settings> {
-    return $Call.ByID(1901370345, rules);
+    return $Call.ByID(3075235294, rules);
 }
 
 /**
@@ -85,5 +85,5 @@ export function SetNetworkRules(rules: settings$0.NetworkRule[] | null): $Cancel
  * action or another app holds is skipped.
  */
 export function UseRecommendedHotkeys(): $CancellablePromise<$models.Recommended> {
-    return $Call.ByID(3411286057);
+    return $Call.ByID(696107918);
 }

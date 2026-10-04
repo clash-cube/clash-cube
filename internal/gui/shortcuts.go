@@ -6,7 +6,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
 // shortcuts keeps the global shortcuts registered as the settings say.

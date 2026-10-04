@@ -3,7 +3,7 @@ package backend
 import (
 	"testing"
 
-	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
 func TestParseNetwork(t *testing.T) {
@@ -44,7 +44,7 @@ func (s eventSink) Event(e Event) { s.events <- e }
 // second look, said once, and the icon no longer claims the traffic; our
 // setting it again clears that.
 func TestProxyLost(t *testing.T) {
-	t.Setenv("CLASHFERRY_HOME", t.TempDir())
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
 	fake.reset()
 	port := freePort(t)
 	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort, s.SystemProxy = port, true }); err != nil {

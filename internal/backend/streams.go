@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
-	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
+	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
 // startStreams follows the core's traffic, memory and logs while it runs.

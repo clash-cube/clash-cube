@@ -40,7 +40,7 @@ export function MainWindow() {
       <header className="top">
         <div className="brand" onMouseEnter={() => setWag((w) => w + 1)}>
           <span className={"logo" + (wag ? " spin" : "")} key={wag}><Logo /></span>
-          <span>{t("ClashFerry")}</span>
+          <span>{t("ClashCube")}</span>
         </div>
         <Segmented
           value={view === "settings" ? ("" as View) : view === "events" ? "logs" : view === "usage" ? "overview" : view}

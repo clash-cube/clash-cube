@@ -1,12 +1,12 @@
 #!/bin/sh
-# Assemble bin/ClashFerry.app around bin/clashferry and sign it ad hoc.
+# Assemble bin/ClashCube.app around bin/clashcube and sign it ad hoc.
 set -eu
 cd "$(dirname "$0")/.."
 VERSION="${1:-dev}"
-APP=bin/ClashFerry.app
+APP=bin/ClashCube.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp bin/clashferry "$APP/Contents/MacOS/clashferry"
+cp bin/clashcube "$APP/Contents/MacOS/clashcube"
 sed "s/@VERSION@/${VERSION#v}/g" build/darwin/Info.plist > "$APP/Contents/Info.plist"
 if [ ! -f build/darwin/icons.icns ]; then
   set=$(mktemp -d)/AppIcon.iconset

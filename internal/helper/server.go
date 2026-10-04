@@ -22,14 +22,14 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Main is the helper role: `clashferry helper serve --uid N --data DIR`.
+// Main is the helper role: `clashcube helper serve --uid N --data DIR`.
 func Main(args []string, version string) error {
 	if len(args) == 0 || args[0] != "serve" {
-		return errors.New("usage: clashferry helper serve --uid N --data DIR [--socket PATH]")
+		return errors.New("usage: clashcube helper serve --uid N --data DIR [--socket PATH]")
 	}
 	fs := flag.NewFlagSet("helper", flag.ContinueOnError)
 	uid := fs.Int("uid", -1, "the user allowed to connect")
-	data := fs.String("data", "", "that user's ClashFerry data directory")
+	data := fs.String("data", "", "that user's ClashCube data directory")
 	sock := fs.String("socket", SocketPath, "socket path")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
@@ -196,7 +196,7 @@ func (s *server) start(req Request, c *net.UnixConn, rd *bufio.Reader, enc *json
 		return
 	}
 	cmd := exec.Command(exe, "core", "-d", req.Home, "-f", req.Config, "-ext-ctl", req.Ctl)
-	cmd.Env = []string{"CLASHFERRY_SECRET=" + req.Secret, "HOME=" + filepath.Dir(s.data), "PATH=/usr/bin:/bin:/usr/sbin:/sbin"}
+	cmd.Env = []string{"CLASHCUBE_SECRET=" + req.Secret, "HOME=" + filepath.Dir(s.data), "PATH=/usr/bin:/bin:/usr/sbin:/sbin"}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	out, err := cmd.StdoutPipe()
 	if err != nil {

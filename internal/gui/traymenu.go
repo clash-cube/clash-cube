@@ -11,9 +11,9 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
-	"github.com/localhost-copilot/clashferry/internal/backend"
-	"github.com/localhost-copilot/clashferry/internal/profiles"
-	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/backend"
+	"github.com/localhost-copilot/clashcube/internal/profiles"
+	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
 // trayMenu is the tray icon's right-click menu, laid out as Surge's is
@@ -621,7 +621,7 @@ func (m *trayMenu) rebuild() {
 	}
 
 	menu.AddSeparator()
-	keyed(menu, menu.Add(tr("Quit ClashFerry", "退出 ClashFerry")), "Q", func(*application.Context) { m.h.app.Quit() })
+	keyed(menu, menu.Add(tr("Quit ClashCube", "退出 ClashCube")), "Q", func(*application.Context) { m.h.app.Quit() })
 
 	m.h.tray.SetMenu(menu)
 	styleTrayMenu()

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/localhost-copilot/clashferry/internal/appdir"
+	"github.com/localhost-copilot/clashcube/internal/appdir"
 )
 
 // Rule is one rule, as mihomo writes it: TYPE,payload,policy.

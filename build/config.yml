@@ -6,8 +6,8 @@ version: '3'
 # This information is used to generate the build assets.
 info:
   companyName: "localhost-copilot" # The name of the company
-  productName: "ClashFerry" # The name of the application
-  productIdentifier: "com.localhost-copilot.clashferry" # The unique product identifier
+  productName: "ClashCube" # The name of the application
+  productIdentifier: "com.localhost-copilot.clashcube" # The unique product identifier
   description: "A menu bar app for mihomo" # The application description
   copyright: "(c) localhost-copilot" # Copyright text
   comments: "Some Product Comments" # Comments
@@ -20,7 +20,7 @@ info:
 # Note: Keys under `ios` OVERRIDE values under `info` when set.
 # ios:
 #   # The iOS bundle identifier used in the generated Xcode project (CFBundleIdentifier)
-#   bundleID: "com.localhost-copilot.clashferry"
+#   bundleID: "com.localhost-copilot.clashcube"
 #   # The display name shown under the app icon (CFBundleDisplayName/CFBundleName)
 #   displayName: "My Product"
 #   # The app version to embed in Info.plist (CFBundleShortVersionString/CFBundleVersion)

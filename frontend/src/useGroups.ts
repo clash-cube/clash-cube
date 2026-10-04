@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { Proxy, type Group, type Member, type Provider } from "./api";
-import type { LatencyEvent } from "../bindings/github.com/localhost-copilot/clashferry/internal/backend/models";
+import type { LatencyEvent } from "../bindings/github.com/localhost-copilot/clashcube/internal/backend/models";
 import { useStore } from "./store";
 import { toast, toastError } from "./components/Toast";
 import { useT } from "./i18n";

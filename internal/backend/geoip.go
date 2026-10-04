@@ -16,8 +16,8 @@ import (
 
 	"github.com/oschwald/maxminddb-golang"
 
-	"github.com/localhost-copilot/clashferry/internal/appdir"
-	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/appdir"
+	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
 // The country database is the core's own: the file and the URL mihomo

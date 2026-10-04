@@ -12,8 +12,8 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
-	"github.com/localhost-copilot/clashferry/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
+	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
 // LatencyEvent describes one test operation. Pending contains display names,

@@ -1,4 +1,4 @@
-import type { Connection } from "../bindings/github.com/localhost-copilot/clashferry/internal/mihomoapi/models";
+import type { Connection } from "../bindings/github.com/localhost-copilot/clashcube/internal/mihomoapi/models";
 
 export type Conn = Connection & { up: number; down: number; closedAt?: number };
 export type ConnectionSnapshot = { active: Conn[]; closed: Conn[]; at: number };

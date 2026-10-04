@@ -14,14 +14,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/localhost-copilot/clashferry/internal/appdir"
-	"github.com/localhost-copilot/clashferry/internal/core"
-	"github.com/localhost-copilot/clashferry/internal/coremgr"
-	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
-	"github.com/localhost-copilot/clashferry/internal/modules"
-	"github.com/localhost-copilot/clashferry/internal/profiles"
-	"github.com/localhost-copilot/clashferry/internal/settings"
-	"github.com/localhost-copilot/clashferry/internal/userrules"
+	"github.com/localhost-copilot/clashcube/internal/appdir"
+	"github.com/localhost-copilot/clashcube/internal/core"
+	"github.com/localhost-copilot/clashcube/internal/coremgr"
+	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
+	"github.com/localhost-copilot/clashcube/internal/modules"
+	"github.com/localhost-copilot/clashcube/internal/profiles"
+	"github.com/localhost-copilot/clashcube/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/userrules"
 )
 
 // The test binary is its own core: LocalRunner starts os.Executable() with
@@ -100,7 +100,7 @@ func freePort(t *testing.T) int {
 // though this run never set it.
 func TestStaleSystemProxy(t *testing.T) {
 	newBackend := func(t *testing.T, port int, systemProxy bool) *Backend {
-		t.Setenv("CLASHFERRY_HOME", t.TempDir())
+		t.Setenv("CLASHCUBE_HOME", t.TempDir())
 		if _, err := settings.Update(func(s *settings.Settings) {
 			s.MixedPort, s.SystemProxy, s.AutoStart = port, systemProxy, false
 		}); err != nil {
@@ -184,7 +184,7 @@ func TestSystemProxyFollowsCore(t *testing.T) {
 		t.Skip("starts a core")
 	}
 	fake.reset()
-	t.Setenv("CLASHFERRY_HOME", t.TempDir())
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
 	port := freePort(t)
 	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort, s.SystemProxy, s.AutoStart = port, true, false }); err != nil {
 		t.Fatal(err)
@@ -220,7 +220,7 @@ func TestProxyLatencyFollowsRules(t *testing.T) {
 	fake.reset()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }))
 	defer srv.Close()
-	t.Setenv("CLASHFERRY_HOME", t.TempDir())
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
 	port := freePort(t)
 	if _, err := settings.Update(func(s *settings.Settings) {
 		s.MixedPort, s.AutoStart, s.Mode, s.TestURL = port, false, "rule", srv.URL+"/generate_204"
@@ -301,7 +301,7 @@ func TestCoreLifecycle(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts a core")
 	}
-	t.Setenv("CLASHFERRY_HOME", t.TempDir())
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
 	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = 17899; s.AutoStart = false }); err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +433,7 @@ func TestUserRules(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts a core")
 	}
-	t.Setenv("CLASHFERRY_HOME", t.TempDir())
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
 	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
 		t.Fatal(err)
 	}
@@ -475,7 +475,7 @@ func TestModules(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts a core")
 	}
-	t.Setenv("CLASHFERRY_HOME", t.TempDir())
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
 	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
 		t.Fatal(err)
 	}
@@ -535,7 +535,7 @@ func TestEditedProfileReloads(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts a core")
 	}
-	t.Setenv("CLASHFERRY_HOME", t.TempDir())
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
 	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
 		t.Fatal(err)
 	}
@@ -587,7 +587,7 @@ func TestModuleTemplates(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs the core's check, which may download GEO data")
 	}
-	t.Setenv("CLASHFERRY_HOME", t.TempDir())
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
 	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
 		t.Fatal(err)
 	}
@@ -616,7 +616,7 @@ func TestRouteModule(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts a core")
 	}
-	t.Setenv("CLASHFERRY_HOME", t.TempDir())
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
 	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
 		t.Fatal(err)
 	}
@@ -727,7 +727,7 @@ func TestRuleProviders(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts a core")
 	}
-	t.Setenv("CLASHFERRY_HOME", t.TempDir())
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
 	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
 		t.Fatal(err)
 	}
@@ -769,7 +769,7 @@ func TestLookupHost(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts a core")
 	}
-	t.Setenv("CLASHFERRY_HOME", t.TempDir())
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
 	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = freePort(t); s.AutoStart = false }); err != nil {
 		t.Fatal(err)
 	}

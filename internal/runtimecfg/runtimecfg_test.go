@@ -5,8 +5,8 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/localhost-copilot/clashferry/internal/settings"
-	"github.com/localhost-copilot/clashferry/internal/userrules"
+	"github.com/localhost-copilot/clashcube/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/userrules"
 )
 
 func TestBuildOverlays(t *testing.T) {

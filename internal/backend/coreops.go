@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/localhost-copilot/clashferry/internal/appdir"
-	"github.com/localhost-copilot/clashferry/internal/mihomoapi"
+	"github.com/localhost-copilot/clashcube/internal/appdir"
+	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 )
 
 // FlushDNS clears the core's DNS cache and its fake-ip pool (a no-op
