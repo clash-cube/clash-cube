@@ -12,7 +12,8 @@ import (
 
 // The runners the core can run under.
 var (
-	localRunner = &coremgr.LocalRunner{}
+	localRunner   = &coremgr.LocalRunner{}
+	helperInstall = helper.Install
 )
 
 func serviceRunner() coremgr.Runner {
@@ -23,7 +24,7 @@ func serviceRunner() coremgr.Runner {
 // service mode if it answers, else as a child. Called before a start.
 func (b *Backend) pickRunner() {
 	if settings.Load().ServiceMode {
-		if running, _ := helper.Installed(); running {
+		if running, _ := helperInstalled(); running {
 			b.core.SetRunner(serviceRunner())
 			return
 		}
@@ -49,8 +50,11 @@ func (b *Backend) HelperStatus() HelperStatus {
 // EnableServiceMode installs (or updates) the helper, asking for an
 // administrator's password, and moves the core to it.
 func (b *Backend) EnableServiceMode(prompt string) error {
-	if running, current := helper.Installed(); !running || !current {
-		if err := helper.Install(appdir.Root(), prompt); err != nil {
+	// Replacing the helper disconnects its core. Remember the running state
+	// before installation, while the old helper is still alive.
+	wasRunning := b.core.Client() != nil
+	if running, current := helperInstalled(); !running || !current {
+		if err := helperInstall(appdir.Root(), prompt); err != nil {
 			return err
 		}
 	}
@@ -58,7 +62,7 @@ func (b *Backend) EnableServiceMode(prompt string) error {
 		return err
 	}
 	b.emitState()
-	if b.core.Client() != nil {
+	if wasRunning {
 		return b.Restart()
 	}
 	return nil
