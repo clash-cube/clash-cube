@@ -89,8 +89,9 @@ tasks:
 
   test:
     cmds:
+      # Go embeds the frontend; a fresh checkout has no dist directory yet.
+      - cd frontend && pnpm run build
       - go test ./internal/...
-      - cd frontend && pnpm run typecheck
       - cd frontend && pnpm test
 
   sync-replaces:
