@@ -4,3 +4,12 @@ internal/gui/dist/*
 !internal/gui/dist/.gitkeep
 .task/
 .DS_Store
+
+# Local credentials and signing material must stay outside version control.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
