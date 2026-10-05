@@ -1,5 +1,16 @@
 ClashCube for macOS 12 and later. This is a prerelease; please report issues with your macOS version and CPU architecture.
 
+### What's new in v0.1.3
+
+- Drag ClashCube directly onto the Applications shortcut in the DMG to install.
+- A new installer layout with subtle cube artwork and a clear direction arrow.
+- Both Apple Silicon and Intel packages use the same installer layout.
+
+### 本次更新
+
+- DMG 新增 Applications 快捷入口，直接拖入即可安装。
+- 安装窗口采用浅灰立方体背景和细线箭头，两个架构保持一致。
+
 ### Downloads
 
 - **Apple Silicon (M1 and later):** choose the `macos-arm64.dmg` file.
