@@ -18,7 +18,7 @@ const TWO_COLUMNS_MIN = 760;
 export function Proxies() {
   const t = useT();
   const core = useStore((s) => s.state?.core);
-  const { groups, providers, select, testGroup, testProvider, testOne, testAll, updateProvider, testing, progress, flash } = useGroups({ providers: true });
+  const { groups, providers, select, testGroup, testProvider, testOne, testAll, updateProvider, testing, progress, flash } = useGroups({ providers: true, testOnOpen: true });
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [sorted, setSorted] = useState(false);
   // ?view=proxies#providers opens on the providers

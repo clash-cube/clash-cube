@@ -17,20 +17,22 @@ const groups = (delay) => [{ name: "group", members: [{ name: "node", delay }] }
 
 // Exercise the real hooks with controlled Wails responses and browser timers.
 // No browser or running core is needed, and races never depend on wall time.
-async function mount() {
+async function mount({ hidden = false } = {}) {
   const document = new EventTarget();
-  document.hidden = false;
+  document.hidden = hidden;
   const timers = new Set();
   const listeners = new Map();
   let state = { core: "running", profile: "one", busy: false };
   let snapshot = groups(-1);
   let requests = 0;
+  let tests = 0;
   let read = async () => snapshot;
   const useStore = (select) => select({ state });
   useStore.getState = () => ({ state });
   const mocks = {
     "./store": { useStore },
     "./api": { Proxy: {
+      TestLatency: async () => { tests++; return { total: 1, failed: 0 }; },
       Groups: () => { requests++; return read(); },
       Providers: async () => [{ name: "provider", members: snapshot[0].members }],
     } },
@@ -57,12 +59,13 @@ async function mount() {
   mocks["./usePoll"] = load("usePoll");
   const { useGroups } = load("useGroups");
   let value;
-  function View() { value = useGroups({ providers: true }); return null; }
+  function View() { value = useGroups({ providers: true, testOnOpen: true }); return null; }
   let root;
   await act(async () => { root = create(React.createElement(View)); });
   return {
     get value() { return value; },
     get requests() { return requests; },
+    get tests() { return tests; },
     get timerCount() { return timers.size; },
     setSnapshot: (next) => { snapshot = next; },
     setRead: (next) => { read = next; },
@@ -81,6 +84,7 @@ test("background recovery and reopening update stale failures without running a 
   const h = await mount();
   try {
     assert.equal(h.value.groups[0].members[0].delay, -1);
+    assert.equal(h.tests, 1);
     h.setSnapshot(groups(166));
     await h.tick();
     assert.equal(h.value.groups[0].members[0].delay, 166);
@@ -92,8 +96,25 @@ test("background recovery and reopening update stale failures without running a 
     assert.equal(h.requests, requests);
     await h.visibility(false);
     assert.equal(h.value.groups[0].members[0].delay, 203);
+    assert.equal(h.tests, 1, "polling and reopening must not keep probing");
   } finally { await h.close(); }
   assert.equal(h.timerCount, 0);
+});
+
+test("initial testing waits for visibility and streams each completed node independently", async () => {
+  const h = await mount({ hidden: true });
+  try {
+    assert.equal(h.tests, 0);
+    h.setSnapshot([{ name: "group", members: [{ name: "fast", delay: -1 }, { name: "slow", delay: -1 }] }]);
+    await h.visibility(false);
+    assert.equal(h.tests, 1);
+    await h.emit({ key: "all/", running: true, pending: ["fast", "slow"], delays: {}, total: 2, completed: 0 });
+    await h.emit({ key: "all/", running: true, pending: ["slow"], delays: { fast: 42 }, total: 2, completed: 1 });
+    assert.equal(h.value.groups[0].members[0].delay, 42);
+    assert.equal(h.value.groups[0].members[1].delay, -1);
+    assert.equal(h.value.testing["#fast"], undefined);
+    assert.equal(h.value.testing["#slow"], true);
+  } finally { await h.close(); }
 });
 
 test("a streamed result wins over an older pending snapshot", async () => {

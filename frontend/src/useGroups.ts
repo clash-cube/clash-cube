@@ -9,7 +9,7 @@ import { usePoll } from "./usePoll";
 
 // useGroups loads the proxy groups while the core runs, with the delay tests
 // and selection that change them; with providers, their providers too.
-export function useGroups({ providers: withProviders = false } = {}) {
+export function useGroups({ providers: withProviders = false, testOnOpen = false } = {}) {
   const t = useT();
   const core = useStore((s) => s.state?.core);
   const profile = useStore((s) => s.state?.profile);
@@ -91,22 +91,32 @@ export function useGroups({ providers: withProviders = false } = {}) {
   }) : "";
 
   const requested = useRef(new Set<string>());
-  const test = async (kind: string, name = "") => {
+  const test = async (kind: string, name = "", automatic = false) => {
     const key = kind + "/" + name;
     if (requested.current.has(key) || runs[key]) return;
     requested.current.add(key);
     try {
       const result = await Proxy.TestLatency(kind, name);
-      if (kind !== "node") toast(t("Tested {total}: {success} succeeded, {failed} failed", {
+      if (!automatic && kind !== "node") toast(t("Tested {total}: {success} succeeded, {failed} failed", {
         total: result.total, success: result.total - result.failed, failed: result.failed,
       }), result.failed ? "err" : "ok");
-    } catch (e) { toastError(e); }
+    } catch (e) { if (!automatic) toastError(e); }
     finally { requested.current.delete(key); await load(); }
   };
   const testGroup = (g: Group) => test("group", g.name);
   const testProvider = (p: Provider) => test("provider", p.name);
   const testOne = (name: string) => test("node", name);
   const testAll = () => test("all");
+
+  // A persistent panel may first mount hidden. Start its initial probe only
+  // after it is shown and discovery has loaded the running profile.
+  const initiallyTested = useRef<string | null>(null);
+  useEffect(() => {
+    if (core !== "running") { initiallyTested.current = null; return; }
+    if (!testOnOpen || busy || document.hidden || !groups?.length || initiallyTested.current === (profile ?? "")) return;
+    initiallyTested.current = profile ?? "";
+    void test("all", "", true);
+  }, [core, profile, busy, groups, testOnOpen]);
 
   // updateProvider fetches a provider again; its nodes come back untested
   const updateProvider = async (name: string) => {

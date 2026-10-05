@@ -30,6 +30,88 @@ func latencyCore(t *testing.T, proxies map[string]mihomoapi.Proxy, providers map
 	return mihomoapi.New(strings.TrimPrefix(s.URL, "http://"), "")
 }
 
+func TestAutomaticGroupStreamsBeforeSlowProbeCompletes(t *testing.T) {
+	const testURL = "https://group.invalid/204"
+	var started atomic.Bool
+	release := make(chan struct{})
+	var once sync.Once
+	unblock := func() { once.Do(func() { close(release) }) }
+	defer unblock()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/group/auto/delay":
+			started.Store(true)
+			select {
+			case <-release:
+				fmt.Fprint(w, `{"fast":42,"slow":250}`)
+			case <-r.Context().Done():
+			}
+		case "/proxies":
+			old := mihomoapi.DelayHistory{Time: time.Now().Add(-time.Hour), Delay: 900}
+			slow := mihomoapi.Proxy{Name: "slow", Extra: map[string]mihomoapi.ProxyHistory{
+				testURL:                 {History: []mihomoapi.DelayHistory{old}},
+				"https://other.invalid": {History: []mihomoapi.DelayHistory{{Time: time.Now(), Delay: 1}}},
+			}}
+			json.NewEncoder(w).Encode(map[string]any{"proxies": map[string]mihomoapi.Proxy{
+				"auto": {Name: "auto", Type: "URLTest", TestURL: testURL, All: []string{"fast", "slow"}},
+				"slow": slow,
+			}})
+		case "/providers/proxies":
+			history := []mihomoapi.DelayHistory{{Time: time.Now().Add(-time.Hour), Delay: 0}}
+			if started.Load() {
+				history = append(history, mihomoapi.DelayHistory{Time: time.Now(), Delay: 42})
+			}
+			json.NewEncoder(w).Encode(map[string]any{"providers": map[string]mihomoapi.ProxyProvider{
+				"subscription": {Name: "subscription", VehicleType: "HTTP", Proxies: []mihomoapi.Proxy{
+					{Name: "fast", Extra: map[string]mihomoapi.ProxyHistory{testURL: {History: history}}},
+				}},
+			}})
+		default:
+			t.Errorf("unexpected extra probe: %s", r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	// Release handlers even if an assertion fails before the group completes.
+	defer unblock()
+	c := mihomoapi.New(strings.TrimPrefix(server.URL, "http://"), "")
+	events := make(chan LatencyEvent, 10)
+	done := make(chan error, 1)
+	go func() {
+		var tester latencyTester
+		_, err := tester.run(c, "https://app.invalid", "group", "auto", func(e LatencyEvent) { events <- e })
+		done <- err
+	}()
+	deadline := time.After(3 * time.Second)
+	for {
+		select {
+		case e := <-events:
+			if e.Delays["fast"] != 42 {
+				continue
+			}
+			if e.Completed != 1 || len(e.Pending) != 1 || e.Pending[0] != "slow" || !e.Running {
+				t.Fatalf("fast result should arrive while slow remains pending: %+v", e)
+			}
+			unblock()
+			if err := <-done; err != nil {
+				t.Fatal(err)
+			}
+			var last LatencyEvent
+			for len(events) > 0 {
+				last = <-events
+			}
+			if last.Completed != 2 || last.Running || last.Failed != 0 {
+				t.Fatalf("completion counted twice: %+v", last)
+			}
+			return
+		case err := <-done:
+			t.Fatalf("group completed before streamed progress: %v", err)
+		case <-deadline:
+			t.Fatal("fast result was held until group completion")
+		}
+	}
+}
+
 func TestLatencyAllDeduplicatesAndUsesProviders(t *testing.T) {
 	proxies := map[string]mihomoapi.Proxy{
 		"first":  {Name: "first", Type: "Selector", All: []string{"shared", "sub"}, Now: "shared"},

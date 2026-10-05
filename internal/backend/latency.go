@@ -219,15 +219,46 @@ func (t *latencyTester) execute(c *mihomoapi.Client, url, kind, name, key string
 	}
 	if coreGroup {
 		t.slots <- struct{}{}
-		res, err := c.GroupDelay(ctx, name, url, 5*time.Second)
+		testURL := url
+		// URLTest groups use their configured URL even when the API caller
+		// supplies a different one. Read only that URL's new history.
+		if strings.EqualFold(all[name].Type, "URLTest") && all[name].TestURL != "" {
+			testURL = all[name].TestURL
+		}
+		finished := map[string]int{}
+		res, err := streamGroupDelay(c, name, url, testURL, owners, targets, func(target string, d int) {
+			finished[target] = d
+			finish(target, d, nil)
+		})
 		<-t.slots
 		if err != nil {
-			return result, err
+			var ae *mihomoapi.APIError
+			if !errors.As(err, &ae) || (ae.Status != http.StatusGatewayTimeout && ae.Status != http.StatusServiceUnavailable) {
+				return result, err
+			}
 		}
 		for target := range targets {
 			d := res[target]
 			if d <= 0 {
 				d = -1
+			}
+			if previous, ok := finished[target]; ok {
+				// A concurrent health check can also append history. The group
+				// response is authoritative, without counting a node twice.
+				if previous != d {
+					if previous <= 0 {
+						result.Failed--
+					}
+					if d <= 0 {
+						result.Failed++
+					}
+					delays := map[string]int{target: d}
+					for _, alias := range targets[target] {
+						delays[alias] = d
+					}
+					emit(true, delays)
+				}
+				continue
 			}
 			finish(target, d, nil)
 		}
@@ -252,6 +283,77 @@ func (t *latencyTester) execute(c *mihomoapi.Client, url, kind, name, key string
 	}
 	wg.Wait()
 	return result, firstErr
+}
+
+// The group endpoint returns only after its slowest probe. Observe fresh
+// per-URL histories meanwhile so completed nodes leave the pending list.
+// Keep the group request: it also clears forced automatic-group selections.
+func streamGroupDelay(c *mihomoapi.Client, name, url, testURL string, owners map[string]string, targets map[string][]string, complete func(string, int)) (map[string]int, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	started := time.Now()
+	type response struct {
+		delays map[string]int
+		err    error
+	}
+	done := make(chan response, 1)
+	go func() {
+		delays, err := c.GroupDelay(ctx, name, url, 5*time.Second)
+		done <- response{delays, err}
+		cancel() // stop an in-flight history read as soon as the group finishes
+	}()
+	finished := map[string]bool{}
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case result := <-done:
+			return result.delays, result.err
+		case <-ticker.C:
+			proxies, err := c.Proxies(ctx)
+			if err != nil {
+				continue
+			}
+			needProviders := false
+			for target := range targets {
+				if !finished[target] && owners[target] != "" {
+					needProviders = true
+				}
+			}
+			if needProviders {
+				providers, err := c.ProxyProviders(ctx)
+				if err != nil {
+					continue
+				}
+				for _, provider := range providers {
+					for _, p := range provider.Proxies {
+						if _, exists := proxies[p.Name]; !exists {
+							proxies[p.Name] = p
+						}
+					}
+				}
+			}
+			for target := range targets {
+				if finished[target] {
+					continue
+				}
+				history := proxies[target].Extra[testURL].History
+				if len(history) == 0 {
+					continue
+				}
+				last := history[len(history)-1]
+				if last.Time.Before(started) {
+					continue
+				}
+				d := last.Delay
+				if d <= 0 {
+					d = -1
+				}
+				finished[target] = true
+				complete(target, d)
+			}
+		}
+	}
 }
 
 func (t *latencyTester) node(c *mihomoapi.Client, name, owner, url string, timeout time.Duration) (int, error) {

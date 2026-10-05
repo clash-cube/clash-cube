@@ -133,17 +133,22 @@ func (c *Client) ReloadConfigs(ctx context.Context, path string) error {
 
 // Proxy is a proxy or a group, as /proxies has it.
 type Proxy struct {
-	Name     string         `json:"name"`
-	Type     string         `json:"type"`
-	UDP      bool           `json:"udp"`
-	Alive    bool           `json:"alive"`
-	Now      string         `json:"now,omitempty"`
-	All      []string       `json:"all,omitempty"`
-	Hidden   bool           `json:"hidden,omitempty"`
-	Icon     string         `json:"icon,omitempty"`
-	TestURL  string         `json:"testUrl,omitempty"`
-	Provider string         `json:"provider-name,omitempty"`
-	History  []DelayHistory `json:"history"`
+	Name     string                  `json:"name"`
+	Type     string                  `json:"type"`
+	UDP      bool                    `json:"udp"`
+	Alive    bool                    `json:"alive"`
+	Now      string                  `json:"now,omitempty"`
+	All      []string                `json:"all,omitempty"`
+	Hidden   bool                    `json:"hidden,omitempty"`
+	Icon     string                  `json:"icon,omitempty"`
+	TestURL  string                  `json:"testUrl,omitempty"`
+	Provider string                  `json:"provider-name,omitempty"`
+	History  []DelayHistory          `json:"history"`
+	Extra    map[string]ProxyHistory `json:"extra"`
+}
+
+type ProxyHistory struct {
+	History []DelayHistory `json:"history"`
 }
 
 type DelayHistory struct {

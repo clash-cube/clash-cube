@@ -23,7 +23,7 @@ export function Panel() {
   const state = useStore((s) => s.state);
   const traffic = useStore((s) => s.traffic);
   const history = useStore((s) => s.history);
-  const { groups, select, testGroup, testOne, testAll, testing, progress, flash } = useGroups();
+  const { groups, select, testGroup, testOne, testAll, testing, progress, flash } = useGroups({ testOnOpen: true });
   const [open, setOpen] = useState<string>("");
   // the sample under the pointer, shown in place of the speeds now
   const [scrub, setScrub] = useState<Sample | null>(null);
