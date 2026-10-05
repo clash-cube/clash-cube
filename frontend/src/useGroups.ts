@@ -5,6 +5,7 @@ import type { LatencyEvent } from "../bindings/github.com/localhost-copilot/clas
 import { useStore } from "./store";
 import { toast, toastError } from "./components/Toast";
 import { useT } from "./i18n";
+import { usePoll } from "./usePoll";
 
 // useGroups loads the proxy groups while the core runs, with the delay tests
 // and selection that change them; with providers, their providers too.
@@ -23,7 +24,9 @@ export function useGroups({ providers: withProviders = false } = {}) {
 
   const load = useCallback(async () => {
     const seq = ++loadSeq.current;
-    if (useStore.getState().state?.core !== "running") { setGroups(null); setProviders(null); return; }
+    const state = useStore.getState().state;
+    if (state?.core !== "running") { setGroups(null); setProviders(null); return; }
+    if (state.busy) return;
     try {
       const [g, p] = await Promise.all([Proxy.Groups(), withProviders ? Proxy.Providers() : Promise.resolve(null)]);
       if (!alive.current || seq !== loadSeq.current) return;
@@ -32,8 +35,15 @@ export function useGroups({ providers: withProviders = false } = {}) {
     } catch { /* the core went away; its state event says so */ }
   }, [withProviders]);
 
-  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-  useEffect(() => { if (!busy) load(); }, [core, profile, busy, load]);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; ++loadSeq.current; }; }, []);
+  // Invalidate snapshots even while a reload is busy or the window is hidden.
+  useEffect(() => {
+    ++loadSeq.current;
+    if (core !== "running") { setGroups(null); setProviders(null); }
+  }, [core, profile, busy]);
+  // mihomo's background health checks have no proxy-latency event. Read their
+  // results while visible, including when the persistent tray panel reopens.
+  usePoll(() => { if (!busy) void load(); }, 5000, [core, profile, busy, load]);
   useEffect(() => { setRuns({}); }, [core, profile]);
 
   const select = async (group: string, name: string) => {
