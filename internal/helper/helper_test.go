@@ -2,6 +2,8 @@ package helper
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/json"
 	"net"
 	"os"
@@ -13,6 +15,7 @@ import (
 	"github.com/localhost-copilot/clashcube/internal/core"
 	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
+	"github.com/localhost-copilot/clashcube/internal/updatesig"
 )
 
 // The test binary is the core too: the helper starts os.Executable() "core".
@@ -125,5 +128,143 @@ func TestPlistIsValid(t *testing.T) {
 	os.WriteFile(f, []byte(plist(501, "/tmp/a b/Application Support/ClashCube & co")), 0o644)
 	if out, err := execOut("plutil", "-lint", f); err != nil {
 		t.Fatalf("%s", out)
+	}
+}
+
+// updateServer is a helper whose own executable is a temporary file, with
+// a test key.
+func updateServer(t *testing.T) (s *server, priv ed25519.PrivateKey, app string, exited *bool) {
+	t.Helper()
+	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
+	dir := t.TempDir()
+	self := filepath.Join(dir, "helper")
+	os.WriteFile(self, []byte("old"), 0o755)
+	exited = new(bool)
+	s = &server{uid: os.Getuid(), data: dir, version: "test", self: self, key: pub, stamp: 100, exit: func(int) { *exited = true }}
+	app = filepath.Join(dir, "ClashCube.app", "Contents", "MacOS", "clashcube")
+	os.MkdirAll(filepath.Dir(app), 0o755)
+	os.MkdirAll(filepath.Dir(updatesig.SigPath(app)), 0o755)
+	exe, _ := os.Executable()
+	b, _ := os.ReadFile(exe)
+	os.WriteFile(app, b, 0o755)
+	return s, priv, app, exited
+}
+
+func signApp(t *testing.T, priv ed25519.PrivateKey, app string, stamp int64) {
+	t.Helper()
+	b, _ := os.ReadFile(app)
+	sig, err := updatesig.Sign(priv, b, stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(updatesig.SigPath(app), sig, 0o644)
+}
+
+func TestHelperUpdatesItself(t *testing.T) {
+	s, priv, app, _ := updateServer(t)
+	signApp(t, priv, app, 200)
+	if err := s.update(app); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(s.self)
+	want, _ := os.ReadFile(app)
+	if string(got) != string(want) {
+		t.Fatal("the helper was not replaced")
+	}
+	if fi, _ := os.Stat(s.self); fi.Mode().Perm() != 0o755 {
+		t.Errorf("mode %v", fi.Mode())
+	}
+}
+
+func TestHelperRefusesBadUpdates(t *testing.T) {
+	cases := map[string]func(t *testing.T, s *server, priv ed25519.PrivateKey, app string) string{
+		"unsigned": func(t *testing.T, s *server, priv ed25519.PrivateKey, app string) string {
+			return app
+		},
+		"another key": func(t *testing.T, s *server, _ ed25519.PrivateKey, app string) string {
+			_, other, _ := ed25519.GenerateKey(rand.Reader)
+			signApp(t, other, app, 200)
+			return app
+		},
+		"older": func(t *testing.T, s *server, priv ed25519.PrivateKey, app string) string {
+			signApp(t, priv, app, 50)
+			return app
+		},
+		"same build": func(t *testing.T, s *server, priv ed25519.PrivateKey, app string) string {
+			signApp(t, priv, app, 100)
+			return app
+		},
+		"changed after signing": func(t *testing.T, s *server, priv ed25519.PrivateKey, app string) string {
+			signApp(t, priv, app, 200)
+			f, _ := os.OpenFile(app, os.O_WRONLY, 0)
+			f.WriteAt([]byte{0xff, 0xff}, 4096)
+			f.Close()
+			return app
+		},
+		"symlink": func(t *testing.T, s *server, priv ed25519.PrivateKey, app string) string {
+			signApp(t, priv, app, 200)
+			link := filepath.Join(filepath.Dir(app), "link")
+			os.Symlink(app, link)
+			return link
+		},
+		"relative path": func(t *testing.T, s *server, priv ed25519.PrivateKey, app string) string {
+			signApp(t, priv, app, 200)
+			return "clashcube"
+		},
+		"directory": func(t *testing.T, s *server, priv ed25519.PrivateKey, app string) string {
+			return filepath.Dir(app)
+		},
+	}
+	for name, setup := range cases {
+		t.Run(name, func(t *testing.T) {
+			s, priv, app, _ := updateServer(t)
+			path := setup(t, s, priv, app)
+			if err := s.update(path); err == nil {
+				t.Fatal("accepted")
+			}
+			if b, _ := os.ReadFile(s.self); string(b) != "old" {
+				t.Fatal("the helper was replaced")
+			}
+		})
+	}
+}
+
+func TestHelperRefusesOtherUsersFiles(t *testing.T) {
+	s, priv, app, _ := updateServer(t)
+	signApp(t, priv, app, 200)
+	s.uid = os.Getuid() + 12345
+	if os.Getuid() == 0 {
+		t.Skip("files are root's")
+	}
+	if err := s.update(app); err == nil || !strings.Contains(err.Error(), "not the user's") {
+		t.Fatalf("accepted another user's file: %v", err)
+	}
+}
+
+func TestHelperUpdateOverSocket(t *testing.T) {
+	s, priv, app, exited := updateServer(t)
+	signApp(t, priv, app, 200)
+	dir, _ := os.MkdirTemp("/tmp", "mbh")
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	sock := filepath.Join(dir, "h.sock")
+	go s.serve(sock)
+	for i := 0; i < 50; i++ {
+		if _, err := os.Stat(sock); err == nil {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if _, err := call(sock, Request{Op: "update", Path: app + ".missing"}); err == nil {
+		t.Fatal("accepted a missing file")
+	}
+	if *exited {
+		t.Fatal("exited after a refusal")
+	}
+	if _, err := call(sock, Request{Op: "update", Path: app}); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(50 * time.Millisecond)
+	if !*exited {
+		t.Fatal("did not restart after updating")
 	}
 }

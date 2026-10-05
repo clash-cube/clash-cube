@@ -72,11 +72,18 @@ Ask first before any of these:
 
 ## The helper is security-sensitive
 
-`internal/helper` runs as root, so keep its surface small. It has three
-operations (`start`, `stop`, `version`), checks the peer uid, and runs `core`
-only on the user's own `<data>/core/runtime.yaml`. Don't add operations that
+`internal/helper` runs as root, so keep its surface small. It has four
+operations (`start`, `stop`, `version`, `update`), checks the peer uid, and
+runs `core` only on the user's own `<data>/core/runtime.yaml`. `update`
+replaces the helper only with a build signed by the update key
+(`internal/updatesig`) and newer than itself. Don't add operations that
 run arbitrary commands or paths. Extend `helper_test.go`, which covers the
 refusals, for anything new.
+
+The private update key is `~/.config/clashcube/update.key` (or
+`$CLASHCUBE_UPDATE_KEY`). `wails3 task app` signs with it when it exists;
+builds without it fall back to reinstalling the helper with a password.
+Never commit the key or print it.
 
 ## Frontend conventions
 

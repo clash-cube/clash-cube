@@ -14,7 +14,22 @@ import (
 var (
 	localRunner   = &coremgr.LocalRunner{}
 	helperInstall = helper.Install
+	helperUpdate  = helper.Update
 )
+
+// freshHelper is helperInstalled, after updating a helper of another build
+// in place when it accepts this one (no password).
+func freshHelper() (running, current bool) {
+	running, current = helperInstalled()
+	if running && !current {
+		if err := helperUpdate(); err != nil {
+			log.Println("helper update:", err)
+			return running, false
+		}
+		running, current = helperInstalled()
+	}
+	return running, current
+}
 
 func serviceRunner() coremgr.Runner {
 	return &helper.Runner{Test_: localRunner.Test}
@@ -24,7 +39,10 @@ func serviceRunner() coremgr.Runner {
 // service mode if it answers, else as a child. Called before a start.
 func (b *Backend) pickRunner() {
 	if settings.Load().ServiceMode {
-		if running, _ := helperInstalled(); running {
+		if running, current := freshHelper(); running {
+			if !current {
+				b.event("core", "warning", "The privileged helper is from another version; update it in Settings", nil, true)
+			}
 			b.core.SetRunner(serviceRunner())
 			return
 		}
@@ -42,7 +60,7 @@ type HelperStatus struct {
 }
 
 func (b *Backend) HelperStatus() HelperStatus {
-	running, current := helper.Installed()
+	running, current := helperInstalled()
 	_, active := b.core.Runner().(*helper.Runner)
 	return HelperStatus{Installed: running, Current: current, Enabled: settings.Load().ServiceMode, Active: active && b.core.Client() != nil}
 }
@@ -53,7 +71,7 @@ func (b *Backend) EnableServiceMode(prompt string) error {
 	// Replacing the helper disconnects its core. Remember the running state
 	// before installation, while the old helper is still alive.
 	wasRunning := b.core.Client() != nil
-	if running, current := helperInstalled(); !running || !current {
+	if running, current := freshHelper(); !running || !current {
 		if err := helperInstall(appdir.Root(), prompt); err != nil {
 			return err
 		}

@@ -3,6 +3,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 VERSION="${1:-dev}"
+STAMP="${2:-}"
 APP=bin/ClashCube.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -18,5 +19,15 @@ if [ ! -f build/darwin/icons.icns ]; then
   iconutil -c icns "$set" -o build/darwin/icons.icns
 fi
 cp build/darwin/icons.icns "$APP/Contents/Resources/icons.icns"
+# Sign the executable for the helper's passwordless self-update when the
+# update key is here (internal/updatesig); without it the helper is updated
+# by reinstalling, with a password.
+KEY="${CLASHCUBE_UPDATE_KEY:-$HOME/.config/clashcube/update.key}"
+if [ -n "$STAMP" ] && [ -f "$KEY" ]; then
+  go run ./scripts/signhelper -key "$KEY" -stamp "$STAMP" bin/clashcube > "$APP/Contents/Resources/helper.sig"
+fi
 codesign --force --deep --sign - "$APP"
+if [ -f "$APP/Contents/Resources/helper.sig" ]; then
+  go run ./scripts/signhelper -check "$APP/Contents/MacOS/clashcube" "$APP/Contents/Resources/helper.sig" >/dev/null
+fi
 echo "built $APP"

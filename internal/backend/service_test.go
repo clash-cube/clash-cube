@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/localhost-copilot/clashcube/internal/settings"
@@ -49,5 +50,23 @@ func TestHelperUpdatePreservesCoreRunningState(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestFreshHelperUpdatesInPlace(t *testing.T) {
+	oi, ou := helperInstalled, helperUpdate
+	t.Cleanup(func() { helperInstalled, helperUpdate = oi, ou })
+	current := false
+	helperInstalled = func() (bool, bool) { return true, current }
+
+	helperUpdate = func() error { current = true; return nil }
+	if running, cur := freshHelper(); !running || !cur {
+		t.Fatalf("after update: %v %v", running, cur)
+	}
+
+	current = false
+	helperUpdate = func() error { return errors.New("bad signature") }
+	if running, cur := freshHelper(); !running || cur {
+		t.Fatalf("after a refused update: %v %v", running, cur)
 	}
 }

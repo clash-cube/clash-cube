@@ -5,10 +5,12 @@ vars:
   BIN: clashcube
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  STAMP:
+    sh: date +%s
   TAGS: with_gvisor
   MIHOMO_VERSION:
     sh: cd third_party/mihomo && echo "alpha-$(git rev-parse --short HEAD)"
-  LDFLAGS: -X main.version={{.VERSION}} -X github.com/metacubex/mihomo/constant.Version={{.MIHOMO_VERSION}}
+  LDFLAGS: -X main.version={{.VERSION}} -X github.com/localhost-copilot/clashcube/internal/updatesig.Stamp={{.STAMP}} -X github.com/metacubex/mihomo/constant.Version={{.MIHOMO_VERSION}}
 
 env:
   CGO_ENABLED: 1
@@ -64,7 +66,7 @@ tasks:
     summary: Bundle bin/ClashCube.app (ad-hoc signed)
     deps: [build]
     cmds:
-      - scripts/bundle.sh "{{.VERSION}}"
+      - scripts/bundle.sh "{{.VERSION}}" "{{.STAMP}}"
 
   install:
     summary: Bundle the app, then quit, replace and reopen ~/Applications/ClashCube.app

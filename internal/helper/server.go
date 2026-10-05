@@ -2,6 +2,7 @@ package helper
 
 import (
 	"bufio"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -20,6 +21,8 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
+
+	"github.com/localhost-copilot/clashcube/internal/updatesig"
 )
 
 // Main is the helper role: `clashcube helper serve --uid N --data DIR`.
@@ -37,7 +40,11 @@ func Main(args []string, version string) error {
 	if *uid < 0 || *data == "" {
 		return errors.New("helper: --uid and --data are required")
 	}
-	s := &server{uid: *uid, data: filepath.Clean(*data), version: version}
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	s := &server{uid: *uid, data: filepath.Clean(*data), version: version, self: exe, key: updatesig.Key(), stamp: updatesig.OwnStamp(), exit: os.Exit}
 	return s.serve(*sock)
 }
 
@@ -45,6 +52,13 @@ type server struct {
 	uid     int
 	data    string
 	version string
+
+	// for update: the executable to replace, the key builds are signed
+	// with, this build's stamp, and how to end (launchd starts us again)
+	self  string
+	key   ed25519.PublicKey
+	stamp int64
+	exit  func(int)
 
 	mu  sync.Mutex
 	cur *running
@@ -152,6 +166,17 @@ func (s *server) handle(c *net.UnixConn) {
 		_ = enc.Encode(Response{OK: true})
 	case "start":
 		s.start(req, c, rd, enc)
+	case "update":
+		if err := s.update(req.Path); err != nil {
+			log.Printf("refused an update from %s: %v", req.Path, err)
+			_ = enc.Encode(Response{Error: err.Error()})
+			return
+		}
+		log.Printf("updated from %s; restarting", req.Path)
+		_ = enc.Encode(Response{OK: true})
+		c.Close()
+		s.stop()
+		s.exit(0)
 	default:
 		_ = enc.Encode(Response{Error: "unknown op"})
 	}
@@ -307,4 +332,74 @@ func (s *server) giveBack(home string) {
 		}
 		return nil
 	})
+}
+
+const maxExe = 512 << 20
+
+// update replaces the helper with the app's executable at path, if a key
+// this build trusts signed it and it is newer. The bytes checked are the
+// bytes installed: path is read once, into memory.
+func (s *server) update(path string) error {
+	if !filepath.IsAbs(path) {
+		return errors.New("path must be absolute")
+	}
+	exe, err := s.readOwn(path, maxExe)
+	if err != nil {
+		return err
+	}
+	sig, err := s.readOwn(updatesig.SigPath(path), 64<<10)
+	if err != nil {
+		return err
+	}
+	stamp, err := updatesig.Verify(s.key, exe, sig)
+	if err != nil {
+		return err
+	}
+	if stamp <= s.stamp {
+		return errors.New("not newer than the helper")
+	}
+	tmp := s.self + ".new"
+	_ = os.Remove(tmp)
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o755)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(exe); err != nil {
+		f.Close()
+		os.Remove(tmp)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	if err := os.Rename(tmp, s.self); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return nil
+}
+
+// readOwn reads a regular file, not a symlink, of the user's or root's,
+// and at most limit bytes.
+func (s *server) readOwn(path string, limit int64) ([]byte, error) {
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !fi.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s is not a regular file", path)
+	}
+	if st, ok := fi.Sys().(*syscall.Stat_t); ok && int(st.Uid) != s.uid && st.Uid != 0 {
+		return nil, fmt.Errorf("%s is not the user's", path)
+	}
+	if fi.Size() > limit {
+		return nil, fmt.Errorf("%s is too large", path)
+	}
+	return io.ReadAll(io.LimitReader(f, limit))
 }

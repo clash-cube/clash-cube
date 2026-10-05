@@ -32,7 +32,8 @@ GUI 用 `os.Executable()` 加 `core` 参数拉起自己。GUI 进程也会执行
 ### 1.3 控制接口与安全
 - **core 控制接口**：`127.0.0.1:<空闲端口>`，secret 每次启动随机生成。不用 mihomo 的 unix socket：它不校验 secret、文件权限 0666，core 以 root 运行时任何本地进程都能控制它。
 - **helper socket**：`/var/run/clashcube-helper.sock`，每个连接只处理一条 JSON 请求；用 `LOCAL_PEERCRED` 取对端 uid，只放行安装用户和 root。
-- **helper 操作**：只有 `start`、`stop`、`version`。`start` 只接受 `<数据目录>/core/runtime.yaml`，拒绝符号链接和非本人所有的文件。不执行任意命令或路径。
+- **helper 操作**：只有 `start`、`stop`、`version`、`update`。`start` 只接受 `<数据目录>/core/runtime.yaml`，拒绝符号链接和非本人所有的文件。不执行任意命令或路径。
+- **helper 免密更新**：helper 和 app 是同一个二进制，每次发版 hash 都变。没有 Developer ID，所以用自己的 ed25519 钥匙：`bundle.sh` 对 `go build` 的产物签名（`Contents/Resources/helper.sig`），签的是去掉 Mach-O 签名区后的 hash，ad-hoc codesign 不影响它。GUI 发现 helper 不是当前版本时发 `update`；helper 把文件读进内存（`O_NOFOLLOW`、必须属于本人）再验签，要求构建时间比自己新，然后 `rename` 替换自己并退出，由 launchd 拉起新版本。验签失败（自己编译、没有钥匙）就退回弹密码重装。私钥泄露等于所有装了 helper 的机器的 root，只放在构建者本机或 CI secret 里。
 - **残余风险**：root core 读取用户目录里的配置，所以以该用户身份运行的进程能通过改配置影响 root core。所有 clash 类 GUI 的服务模式都有这个问题。
 - helper 安装时由 root 拷贝到 `/Library/PrivilegedHelperTools` 并清除 quarantine；没有 Developer ID，app 只做 ad-hoc 签名。
 

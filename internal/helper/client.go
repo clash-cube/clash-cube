@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -20,12 +21,16 @@ func dial(sock string) (*net.UnixConn, error) {
 }
 
 func call(sock string, req Request) (Response, error) {
+	return callWithin(sock, req, 5*time.Second)
+}
+
+func callWithin(sock string, req Request, d time.Duration) (Response, error) {
 	c, err := dial(sock)
 	if err != nil {
 		return Response{}, err
 	}
 	defer c.Close()
-	_ = c.SetDeadline(time.Now().Add(5 * time.Second))
+	_ = c.SetDeadline(time.Now().Add(d))
 	if err := json.NewEncoder(c).Encode(req); err != nil {
 		return Response{}, err
 	}
@@ -41,6 +46,27 @@ func call(sock string, req Request) (Response, error) {
 
 // Status asks the installed helper for its version and executable hash.
 func Status() (Response, error) { return call(SocketPath, Request{Op: "version"}) }
+
+// Update asks the installed helper to replace itself with this app's
+// executable, which works without a password when the build is signed
+// (internal/updatesig), and waits for the new helper to answer. Replacing
+// it stops the core it runs.
+func Update() error {
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	if _, err := callWithin(SocketPath, Request{Op: "update", Path: exe}, 30*time.Second); err != nil {
+		return err
+	}
+	for i := 0; i < 50; i++ {
+		time.Sleep(200 * time.Millisecond)
+		if _, current := Installed(); current {
+			return nil
+		}
+	}
+	return errors.New("the updated helper does not answer")
+}
 
 // Runner runs the core through the helper, as root: coremgr's service mode.
 type Runner struct {

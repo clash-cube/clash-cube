@@ -16,11 +16,12 @@ const (
 )
 
 type Request struct {
-	Op     string `json:"op"` // version | start | stop
+	Op     string `json:"op"` // version | start | stop | update
 	Home   string `json:"home,omitempty"`
 	Config string `json:"config,omitempty"`
 	Ctl    string `json:"ctl,omitempty"`
 	Secret string `json:"secret,omitempty"`
+	Path   string `json:"path,omitempty"` // update: the app's executable
 }
 
 type Response struct {

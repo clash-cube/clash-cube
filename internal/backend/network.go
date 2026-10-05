@@ -320,7 +320,7 @@ func ptr[T any](v T) *T { return &v }
 // without the helper it is left as it is.
 func (b *Backend) applyTun(on bool) error {
 	if on {
-		if running, current := helperInstalled(); !running || !current {
+		if running, current := freshHelper(); !running || !current {
 			return errors.New("TUN needs the privileged helper; install it in Settings")
 		}
 	}
