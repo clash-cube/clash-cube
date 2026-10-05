@@ -9,8 +9,7 @@ import (
 	"testing"
 )
 
-// The test binary is a signed Mach-O like the app's (the Go linker signs
-// it ad hoc), so it stands in for a build.
+// Sign a copy as bundling does: Intel test binaries may be unsigned.
 func testExe(t *testing.T) []byte {
 	t.Helper()
 	exe, err := os.Executable()
@@ -18,6 +17,17 @@ func testExe(t *testing.T) []byte {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(exe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(t.TempDir(), "clashcube")
+	if err := os.WriteFile(p, b, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("codesign", "--force", "--sign", "-", p).CombinedOutput(); err != nil {
+		t.Fatalf("codesign: %v: %s", err, out)
+	}
+	b, err = os.ReadFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +63,10 @@ func TestVerifyRefuses(t *testing.T) {
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
 	other, _, _ := ed25519.GenerateKey(rand.Reader)
 	exe := testExe(t)
-	sig, _ := Sign(priv, exe, 42)
+	sig, err := Sign(priv, exe, 42)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if _, err := Verify(other, exe, sig); err == nil {
 		t.Error("accepted another key's signature")

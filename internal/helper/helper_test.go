@@ -147,6 +147,10 @@ func updateServer(t *testing.T) (s *server, priv ed25519.PrivateKey, app string,
 	exe, _ := os.Executable()
 	b, _ := os.ReadFile(exe)
 	os.WriteFile(app, b, 0o755)
+	// Match bundle.sh even when the Intel linker leaves this binary unsigned.
+	if out, err := execOut("codesign", "--force", "--sign", "-", app); err != nil {
+		t.Fatalf("codesign: %v: %s", err, out)
+	}
 	return s, priv, app, exited
 }
 
