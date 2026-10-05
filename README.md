@@ -113,16 +113,15 @@ English · [简体中文](README.zh-CN.md)
 > [!NOTE]
 > ClashCube isn't notarized yet; release builds are ad-hoc signed.
 
-1. Download `ClashCube.dmg` from [Releases](https://github.com/clash-cube/clash-cube/releases) and drag the app to `Applications`.
-2. On first launch macOS will block it. Right-click the app and choose **Open**, or run:
-   ```sh
-   xattr -dr com.apple.quarantine /Applications/ClashCube.app
-   ```
+1. Download the `macos-arm64.dmg` (Apple Silicon) or `macos-amd64.dmg` (Intel) asset from [Releases](https://github.com/clash-cube/clash-cube/releases) and drag the app to `Applications`.
+2. After the first blocked launch, open **System Settings → Privacy & Security → Open Anyway** if you trust the download.
 3. Import a subscription from **Profiles → Import**, then turn on **System Proxy** or **Enhanced Mode**.
 
 Enhanced Mode installs a LaunchDaemon helper the first time you turn it on and asks for your administrator password once.
 
 ## Build from source
+
+Maintainers: see [the release workflow](docs/releasing.md) for signing setup, version tags and Release drafts. While the repository is private, downloads require repository access.
 
 Requirements: macOS 12+, Xcode command line tools, Go 1.25+, Node with pnpm, and the Wails v3 CLI:
 

@@ -94,16 +94,15 @@
 > [!NOTE]
 > ClashCube 暂未公证，发布版本为 ad-hoc 签名。
 
-1. 从 [Releases](https://github.com/clash-cube/clash-cube/releases) 下载 `ClashCube.dmg`，把应用拖进“应用程序”。
-2. 首次打开会被 macOS 拦截。右键应用选择“打开”，或执行：
-   ```sh
-   xattr -dr com.apple.quarantine /Applications/ClashCube.app
-   ```
+1. 从 [Releases](https://github.com/clash-cube/clash-cube/releases) 下载 `macos-arm64.dmg`（Apple Silicon）或 `macos-amd64.dmg`（Intel），把应用拖进“应用程序”。
+2. 首次打开被 macOS 拦截后，在确认下载可信的前提下，前往“系统设置 → 隐私与安全性 → 仍要打开”。
 3. 在“配置 → 导入”添加订阅，然后打开“系统代理”或“增强模式”。
 
 第一次打开增强模式时会安装 LaunchDaemon 助手，并请求一次管理员密码。
 
 ## 从源码构建
+
+维护者请参考[发布流程](docs/releasing.md)，配置签名、版本 tag 和 Release 草稿。仓库仍为私有时，下载需要仓库访问权限。
 
 需要 macOS 12+、Xcode 命令行工具、Go 1.25+、Node 与 pnpm，以及 Wails v3 CLI：
 

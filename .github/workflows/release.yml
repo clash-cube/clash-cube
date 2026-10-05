@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      stamp: ${{ steps.metadata.outputs.stamp }}
+    steps:
+      - name: Validate release tag and choose a shared build timestamp
+        id: metadata
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+            echo 'Expected a tag such as v0.1.0; use the Release prerelease flag for test versions.' >&2
+            exit 1
+          }
+          echo "stamp=$(date +%s)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: amd64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.26.6'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install build tools and frontend dependencies
+        run: |
+          npm install --global pnpm@12.4.1
+          pnpm --dir frontend install --frozen-lockfile
+          go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.27
+      - name: Test
+        run: wails3 task test
+      - name: Build signed release package
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_STAMP: ${{ needs.prepare.outputs.stamp }}
+          EXPECTED_ARCH: ${{ matrix.arch }}
+          UPDATE_KEY: ${{ secrets.CLASHCUBE_UPDATE_KEY }}
+        run: |
+          test "$(go env GOARCH)" = "$EXPECTED_ARCH"
+          if [ -z "$UPDATE_KEY" ]; then
+            echo 'Configure the CLASHCUBE_UPDATE_KEY repository secret before releasing.' >&2
+            exit 1
+          fi
+          umask 077
+          export CLASHCUBE_UPDATE_KEY="$RUNNER_TEMP/clashcube-update.key"
+          trap 'rm -f "$CLASHCUBE_UPDATE_KEY"' EXIT
+          printf '%s\n' "$UPDATE_KEY" > "$CLASHCUBE_UPDATE_KEY"
+          unset UPDATE_KEY
+          wails3 task release VERSION="$RELEASE_TAG" STAMP="$RELEASE_STAMP"
+          git diff --exit-code -- frontend/bindings
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: bin/release/*.dmg
+          if-no-files-found: error
+          retention-days: 7
+
+  draft:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: macos-*
+          path: release
+          merge-multiple: true
+      - name: Create release draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cd release
+          test -f "ClashCube-${RELEASE_TAG#v}-macos-arm64.dmg"
+          test -f "ClashCube-${RELEASE_TAG#v}-macos-amd64.dmg"
+          sha256sum ./*.dmg > SHA256SUMS
+          # Never replace assets on an existing release, including a published one.
+          gh release create "$RELEASE_TAG" ./*.dmg SHA256SUMS \
+            --verify-tag --draft --prerelease --title "ClashCube $RELEASE_TAG" \
+            --notes-file ../docs/release-notes.md

@@ -81,6 +81,12 @@ tasks:
       - rm -f bin/{{.APP_NAME}}.dmg
       - hdiutil create -volname {{.APP_NAME}} -srcfolder bin/{{.APP_NAME}}.app -ov -format UDZO bin/{{.APP_NAME}}.dmg
 
+  release:
+    summary: Build and verify a versioned DMG (requires the helper signing key)
+    deps: [dmg]
+    cmds:
+      - sh scripts/release.sh "{{.VERSION}}"
+
   test:
     cmds:
       - go test ./internal/...
