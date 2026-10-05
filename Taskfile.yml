@@ -75,11 +75,10 @@ tasks:
       - scripts/install.sh
 
   dmg:
-    summary: Package bin/ClashCube.dmg
+    summary: Package bin/ClashCube.dmg with a drag-to-Applications window
     deps: [app]
     cmds:
-      - rm -f bin/{{.APP_NAME}}.dmg
-      - hdiutil create -volname {{.APP_NAME}} -srcfolder bin/{{.APP_NAME}}.app -ov -format UDZO bin/{{.APP_NAME}}.dmg
+      - sh scripts/dmg.sh
 
   release:
     summary: Build and verify a versioned DMG (requires the helper signing key)

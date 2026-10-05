@@ -6,6 +6,8 @@
 
 ## 首次配置
 
+本机打包需要 Python 3（macOS runner 已提供）。`wails3 task dmg` 会在忽略提交的 `bin/dmg-tools` 中安装固定版本的 dmgbuild，生成带应用图标、箭头和 `/Applications` 快捷入口的 Finder 安装窗口，无需 Finder 自动化权限。
+
 1. 在仓库启用 GitHub Actions，并确保组织策略允许工作流使用 `contents: write` 创建 Release。
 2. 将现有 helper 私钥文件的内容存入 repository Actions secret `CLASHCUBE_UPDATE_KEY`。必须与 `internal/updatesig.PublicKey` 对应，不要重新生成或输出私钥。可以从本机直接通过标准输入设置：
 
