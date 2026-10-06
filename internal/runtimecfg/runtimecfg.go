@@ -25,6 +25,41 @@ type Controller struct {
 // the global ones then its own (modules.For), then s and ctl, which win
 // over both, and the user's rules ahead of all others.
 func Build(id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module) ([]byte, error) {
+	return buildSteps(id, profile, s, ctl, user, mods, func(string, map[string]any) {})
+}
+
+// Layer is the configuration as Build has it after one source is laid
+// over it. Source is "" for the profile itself, "module:<name>" for a
+// module, "settings" for the user's settings, "app" for what the app
+// itself requires (the controller, nodes hidden behind a chain) and
+// "rules" for the user's rules.
+type Layer struct {
+	Source string
+	Body   []byte
+}
+
+// Layers is Build taken a source at a time, for telling what each one
+// made of the profile: the first is the profile as Build reads it, the
+// last what Build gives.
+func Layers(id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module) ([]Layer, error) {
+	var out []Layer
+	var err error
+	_, berr := buildSteps(id, profile, s, ctl, user, mods, func(src string, m map[string]any) {
+		if err != nil {
+			return
+		}
+		var b []byte
+		b, err = yaml.Marshal(m)
+		out = append(out, Layer{src, b})
+	})
+	if berr != nil {
+		return nil, berr
+	}
+	return out, err
+}
+
+// buildSteps is Build, telling step what the configuration is after each source.
+func buildSteps(id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module, step func(source string, m map[string]any)) ([]byte, error) {
 	var m map[string]any
 	if err := yaml.Unmarshal(profile, &m); err != nil {
 		return nil, fmt.Errorf("profile: %w", err)
@@ -32,6 +67,7 @@ func Build(id string, profile []byte, s settings.Settings, ctl Controller, user 
 	if m == nil {
 		m = map[string]any{}
 	}
+	step("", m)
 	for _, mod := range modules.For(id, mods) {
 		body := mod.Body
 		if mod.Route != nil {
@@ -48,8 +84,10 @@ func Build(id string, profile []byte, s settings.Settings, ctl Controller, user 
 		if err != nil {
 			return nil, fmt.Errorf("module %s: %w", mod.Name, err)
 		}
+		step("module:"+mod.Name, m)
 	}
 	hideChainNodes(m)
+	step("app", m)
 	if s.MixedPort > 0 {
 		m["mixed-port"] = s.MixedPort
 	}
@@ -67,6 +105,7 @@ func Build(id string, profile []byte, s settings.Settings, ctl Controller, user 
 	if s.FindProcess {
 		m["find-process-mode"] = "always"
 	}
+	step("settings", m)
 	// The app is the only controller: a profile's own (or a unix socket,
 	// which takes no secret) must not open another way in.
 	m["external-controller"] = ctl.Addr
@@ -74,6 +113,7 @@ func Build(id string, profile []byte, s settings.Settings, ctl Controller, user 
 	for _, k := range []string{"external-controller-unix", "external-controller-pipe", "external-controller-tls", "external-ui", "external-ui-url", "external-ui-name"} {
 		delete(m, k)
 	}
+	step("app", m)
 
 	tun, _ := m["tun"].(map[string]any)
 	if tun == nil {
@@ -91,14 +131,17 @@ func Build(id string, profile []byte, s settings.Settings, ctl Controller, user 
 	}
 	m["tun"] = tun
 	guard(m, tun, s)
+	step("settings", m)
 
-	pre := userRules(m, user)
-	if s.BlockSTUN {
-		pre = append([]any{stunRule}, pre...)
-	}
-	if len(pre) > 0 {
+	if pre := userRules(m, user); len(pre) > 0 {
 		own, _ := m["rules"].([]any)
 		m["rules"] = append(pre, own...)
+		step("rules", m)
+	}
+	if s.BlockSTUN {
+		own, _ := m["rules"].([]any)
+		m["rules"] = append([]any{stunRule}, own...)
+		step("settings", m)
 	}
 	return yaml.Marshal(m)
 }

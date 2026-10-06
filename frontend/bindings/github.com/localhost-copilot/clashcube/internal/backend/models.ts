@@ -228,6 +228,19 @@ export interface LatencySample {
 }
 
 /**
+ * Line is a line of the merged configuration shown against the profile:
+ * Op is "+" for a line the profile doesn't have, "-" for one of the
+ * profile's that is gone, "" for one kept, and Source what added or
+ * removed it (runtimecfg.Layer's, or "stale" for a difference between the
+ * configuration the core has and what the settings make now).
+ */
+export interface Line {
+    "text": string;
+    "op"?: string;
+    "source"?: string;
+}
+
+/**
  * Lookup is what the core makes of a name: how its resolver answers, and
  * the rule and route a connection to it takes.
  */
@@ -401,11 +414,12 @@ export interface RuleEntries {
 
 /**
  * RuntimeView is the configuration the core was last given, and the last
- * one refused since, each with the controller's secret masked as the text
- * is shown and may be copied.
+ * one refused since, as written, the controller's secret too. Lines is
+ * Body against the profile it was made from, when the profile can be read.
  */
 export interface RuntimeView {
     "body": string;
+    "lines"?: Line[] | null;
     "refusal"?: Refusal | null;
     "refused"?: string;
 }

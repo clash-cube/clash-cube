@@ -1,13 +1,12 @@
 package backend
 
-import "testing"
+import (
+	"math/rand/v2"
+	"reflect"
+	"testing"
 
-func TestMaskSecret(t *testing.T) {
-	got := string(maskSecret([]byte("external-controller: 127.0.0.1:1234\nsecret: s3cr3t\ntun:\n    secret: kept\n")))
-	if got != "external-controller: 127.0.0.1:1234\nsecret: \"********\"\ntun:\n    secret: kept\n" {
-		t.Fatalf("got %q", got)
-	}
-}
+	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
+)
 
 func TestRefusedLine(t *testing.T) {
 	body := []byte(`mixed-port: 7890
@@ -81,8 +80,71 @@ func TestBrokenLine(t *testing.T) {
 
 func TestReadable(t *testing.T) {
 	got := readable([]byte("secret: x\nrules:\n    - \"RULE-SET,a,\\U0001F9E0 Claude\"\n    - \"a\\\\U0001F9E0\"\n"))
-	want := "secret: \"********\"\nrules:\n    - \"RULE-SET,a,🧠 Claude\"\n    - \"a\\\\U0001F9E0\"\n"
+	want := "secret: x\nrules:\n    - \"RULE-SET,a,🧠 Claude\"\n    - \"a\\\\U0001F9E0\"\n"
 	if got != want {
 		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestMatch(t *testing.T) {
+	lcs := func(a, b []string) int {
+		t := make([][]int, len(a)+1)
+		for i := range t {
+			t[i] = make([]int, len(b)+1)
+		}
+		for i := len(a) - 1; i >= 0; i-- {
+			for j := len(b) - 1; j >= 0; j-- {
+				if a[i] == b[j] {
+					t[i][j] = t[i+1][j+1] + 1
+				} else {
+					t[i][j] = max(t[i+1][j], t[i][j+1])
+				}
+			}
+		}
+		return t[0][0]
+	}
+	r := rand.New(rand.NewPCG(1, 2))
+	for n := 0; n < 500; n++ {
+		a, b := make([]string, r.IntN(12)), make([]string, r.IntN(12))
+		for i := range a {
+			a[i] = string(rune('a' + r.IntN(3)))
+		}
+		for i := range b {
+			b[i] = string(rune('a' + r.IntN(3)))
+		}
+		keep, kept, last := match(a, b), 0, -1
+		for i, j := range keep {
+			if j < 0 {
+				continue
+			}
+			if j <= last || a[j] != b[i] {
+				t.Fatalf("%v → %v: bad match %v", a, b, keep)
+			}
+			last, kept = j, kept+1
+		}
+		if want := lcs(a, b); kept != want {
+			t.Fatalf("%v → %v: kept %d, want %d", a, b, kept, want)
+		}
+	}
+}
+
+func TestChanges(t *testing.T) {
+	layers := []runtimecfg.Layer{
+		{Source: "", Body: []byte("mixed-port: 7890\nrules:\n    - MATCH,DIRECT\n")},
+		{Source: "module:m", Body: []byte("mixed-port: 7890\nrules:\n    - DOMAIN,a.com,DIRECT\n    - MATCH,DIRECT\n")},
+		{Source: "settings", Body: []byte("mixed-port: 7891\nrules:\n    - DOMAIN,a.com,DIRECT\n    - MATCH,DIRECT\nsecret: s\n")},
+	}
+	got := changes(layers, "mixed-port: 7891\nrules:\n    - DOMAIN,a.com,DIRECT\n    - MATCH,DIRECT\nsecret: s\nlog-level: info\n")
+	want := []Line{
+		{Text: "mixed-port: 7890", Op: "-", Source: "settings"},
+		{Text: "mixed-port: 7891", Op: "+", Source: "settings"},
+		{Text: "rules:"},
+		{Text: "    - DOMAIN,a.com,DIRECT", Op: "+", Source: "module:m"},
+		{Text: "    - MATCH,DIRECT"},
+		{Text: "secret: s", Op: "+", Source: "settings"},
+		{Text: "log-level: info", Op: "+", Source: "stale"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got  %v\nwant %v", got, want)
 	}
 }

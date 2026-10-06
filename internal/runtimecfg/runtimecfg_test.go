@@ -1,10 +1,12 @@
 package runtimecfg
 
 import (
+	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v3"
 
+	"github.com/localhost-copilot/clashcube/internal/modules"
 	"github.com/localhost-copilot/clashcube/internal/settings"
 	"github.com/localhost-copilot/clashcube/internal/userrules"
 )
@@ -155,5 +157,32 @@ func TestGuard(t *testing.T) {
 	dns = build(t, "", s)["dns"].(map[string]any)
 	if dns["enable"] != true || len(dns["nameserver"].([]any)) == 0 {
 		t.Errorf("dns = %v", dns)
+	}
+}
+
+// Layers ends in what Build gives, each step from the source it names.
+func TestLayers(t *testing.T) {
+	s := settings.Defaults()
+	s.BlockSTUN = true
+	profile := []byte("proxies: [{name: a, type: ss}]\nrules: [\"MATCH,DIRECT\"]\n")
+	user := []userrules.Rule{{Type: "DOMAIN", Payload: "x.com", Policy: "a"}}
+	mods := []modules.Module{{Name: "m", Enabled: true, Body: "rules: [\"DOMAIN,y.com,DIRECT\"]"}}
+	want, err := Build("p", profile, s, Controller{Addr: "127.0.0.1:1"}, user, mods)
+	if err != nil {
+		t.Fatal(err)
+	}
+	layers, err := Layers("p", profile, s, Controller{Addr: "127.0.0.1:1"}, user, mods)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var srcs []string
+	for _, l := range layers {
+		srcs = append(srcs, l.Source)
+	}
+	if got := strings.Join(srcs, ","); got != ",module:m,app,settings,app,settings,rules,settings" {
+		t.Errorf("sources %q", got)
+	}
+	if string(layers[len(layers)-1].Body) != string(want) {
+		t.Errorf("last layer\n%s\nwant\n%s", layers[len(layers)-1].Body, want)
 	}
 }

@@ -126,7 +126,7 @@ export function RouteServices(): $CancellablePromise<modules$0.Service[] | null>
 
 /**
  * RuntimeConfig is the configuration the core was last given, and the
- * last one it refused, with the controller's secret masked.
+ * last one it refused, as written.
  */
 export function RuntimeConfig(): $CancellablePromise<backend$0.RuntimeView> {
     return $Call.ByID(1594899807);

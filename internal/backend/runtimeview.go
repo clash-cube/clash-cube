@@ -12,6 +12,11 @@ import (
 	"go.yaml.in/yaml/v3"
 
 	"github.com/localhost-copilot/clashcube/internal/appdir"
+	"github.com/localhost-copilot/clashcube/internal/modules"
+	"github.com/localhost-copilot/clashcube/internal/profiles"
+	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
+	"github.com/localhost-copilot/clashcube/internal/settings"
+	"github.com/localhost-copilot/clashcube/internal/userrules"
 )
 
 // Refusal is the last configuration the core, or the merge before it,
@@ -26,10 +31,11 @@ type Refusal struct {
 }
 
 // RuntimeView is the configuration the core was last given, and the last
-// one refused since, each with the controller's secret masked as the text
-// is shown and may be copied.
+// one refused since, as written, the controller's secret too. Lines is
+// Body against the profile it was made from, when the profile can be read.
 type RuntimeView struct {
 	Body    string   `json:"body"`
+	Lines   []Line   `json:"lines,omitempty"`
 	Refusal *Refusal `json:"refusal,omitempty"`
 	Refused string   `json:"refused,omitempty"`
 }
@@ -40,12 +46,31 @@ func (b *Backend) RuntimeConfig() (RuntimeView, error) {
 		return RuntimeView{}, err
 	}
 	v := RuntimeView{Body: readable(body)}
+	if len(body) > 0 {
+		v.Lines = changes(b.layers(), v.Body)
+	}
 	b.mu.Lock()
 	if r := b.refusal; r != nil {
 		v.Refusal, v.Refused = r, readable(r.body)
 	}
 	b.mu.Unlock()
 	return v, nil
+}
+
+// layers is the runtime configuration built again from what it is made
+// of now, a source at a time; nil when the profile can't be read.
+func (b *Backend) layers() []runtimecfg.Layer {
+	s := settings.Load()
+	p, ok := profiles.Get(s.Profile)
+	if !ok {
+		return nil
+	}
+	body, err := os.ReadFile(p.Path())
+	if err != nil {
+		return nil
+	}
+	l, _ := runtimecfg.Layers(p.ID, body, s, b.core.Controller(), userrules.List(), modules.List())
+	return l
 }
 
 // test has the core check the runtime configuration, keeping what it
@@ -89,19 +114,11 @@ func (b *Backend) setRefusal(r *Refusal) {
 	}
 }
 
-// runtimecfg.Build writes the secret as a top-level key
-var secretLine = regexp.MustCompile(`(?m)^secret:.*$`)
-
-func maskSecret(body []byte) []byte {
-	return secretLine.ReplaceAll(body, []byte(`secret: "********"`))
-}
-
-// readable is body to show: the secret masked, and emoji as themselves.
-// The YAML encoder escapes what lies beyond the BMP as \UXXXXXXXX in
-// double-quoted strings, where YAML takes it as written too; a backslash
-// escaped before it is left alone.
-func readable(body []byte) string {
-	b := maskSecret(body)
+// readable is body to show, with emoji as themselves. The YAML encoder
+// escapes what lies beyond the BMP as \UXXXXXXXX in double-quoted strings,
+// where YAML takes it as written too; a backslash escaped before it is
+// left alone.
+func readable(b []byte) string {
 	out := make([]byte, 0, len(b))
 	for i := 0; i < len(b); i++ {
 		if b[i] != '\\' || i+1 >= len(b) {

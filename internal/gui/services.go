@@ -552,7 +552,7 @@ func (s *ProfileService) Reveal(id string) error {
 }
 
 // RuntimeConfig is the configuration the core was last given, and the
-// last one it refused, with the controller's secret masked.
+// last one it refused, as written.
 func (s *ProfileService) RuntimeConfig() (backend.RuntimeView, error) { return s.h.b.RuntimeConfig() }
 
 // DismissRefusal forgets the last configuration the core refused.

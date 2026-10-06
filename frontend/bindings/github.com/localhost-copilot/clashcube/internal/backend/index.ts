@@ -12,6 +12,7 @@ export type {
     LatencyEvent,
     LatencyResult,
     LatencySample,
+    Line,
     Lookup,
     Network,
     Node,

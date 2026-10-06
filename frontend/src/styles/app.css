@@ -771,6 +771,16 @@ select.input { padding-right: 6px; }
 .runtime-yaml .ln { display: inline-block; width: 44px; padding-right: 12px; text-align: right; color: var(--faint); user-select: none; }
 .runtime-yaml .key { color: var(--accent); }
 .runtime-yaml .cm { color: var(--muted); }
+.runtime-yaml .sg { display: inline-block; width: 16px; color: var(--faint); user-select: none; }
+.runtime-yaml > .add { background: var(--green-soft); }
+.runtime-yaml > .add .sg, .runtime-yaml > .add .ln { color: var(--green); }
+.runtime-yaml > .del { background: var(--red-soft); }
+.runtime-yaml > .del .sg { color: var(--red); }
+.runtime-yaml > .del, .runtime-yaml > .del .key { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--red); }
+.runtime-yaml > .hunk { margin-top: 6px; background: var(--accent-soft); color: var(--accent); font-weight: 600; user-select: none; }
+.runtime-yaml > .hunk:first-child { margin-top: 0; }
+.runtime-yaml > .hunk .counts { font-weight: 400; color: var(--muted); }
+.runtime-config .hunk-nav { display: flex; gap: 2px; }
 .rules .idx { display: flex; align-items: center; gap: 3px; }
 .rules .idx .chev { flex: none; color: var(--faint); transition: transform .2s var(--ease); }
 .rules .trow.open .idx .chev { transform: rotate(90deg); }
