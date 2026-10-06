@@ -567,8 +567,7 @@ select.input { padding-right: 6px; }
 .conn-virtual-space { position: relative; }
 .conn-virtual-row { position: absolute; left: 0; right: 0; background: var(--card); border-bottom: 1px solid var(--line-2); }
 .conn-virtual-row .trow { height: 44px; }
-.conns-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-.conns-body.with-detail { grid-template-columns: minmax(0, 1fr) clamp(240px, 34%, 300px); }
+.conns-body { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
 .conns-list { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; container-type: inline-size; }
 .conns-list::-webkit-scrollbar { width: 0; }
 .cgroup { flex: none; }
@@ -585,10 +584,20 @@ select.input { padding-right: 6px; }
 .cgroup .table { border-top: 1px solid var(--line-2); }
 .trow.sel { background: var(--sel); }
 .live { color: var(--accent); font-weight: 500; }
-.detail { min-height: 0; overflow: hidden; display: flex; flex-direction: column; animation: detail-in .32s var(--spring); max-height: 100%; }
+/* the details: an inspector floating over the table's right side, which
+   keeps its full width; rows under it stay clickable to inspect another */
+.detail {
+  position: absolute; z-index: 3; top: 8px; right: 8px; bottom: 8px; width: clamp(260px, 36%, 320px);
+  min-height: 0; overflow: hidden; display: flex; flex-direction: column;
+  background: var(--pop-bg); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+  border-radius: 11px; box-shadow: var(--shadow);
+  animation: pop-fade .18s ease-out, detail-in .42s var(--spring);
+}
+.detail.leaving { pointer-events: none; animation: detail-out .2s cubic-bezier(.4, 0, .7, .2) forwards; }
 .detail-head, .detail-tabs, .detail-foot { flex-shrink: 0; }
 .detail-body { flex: 1; min-height: 0; overflow-y: auto; }
-@keyframes detail-in { from { opacity: 0; transform: translateX(10px); } }
+@keyframes detail-in { from { transform: translateX(14px); } }
+@keyframes detail-out { to { opacity: 0; transform: translateX(10px); } }
 .detail-head { display: flex; align-items: center; gap: 8px; padding: 10px 8px 8px 14px; border-bottom: 1px solid var(--line-2); }
 .detail-head b { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .detail dl { padding: 4px 0; }
@@ -741,6 +750,28 @@ select.input { padding-right: 6px; }
 .menu.node-menu button.on { font-weight: 600; }
 .menu.node-menu button.on::before { content: "✓"; width: 10px; margin-left: -2px; }
 .menu.node-menu button:not(.on)::before { content: ""; width: 10px; margin-left: -2px; }
+/* a connection's route in its details: the rule, then each group to pick in */
+.route-chain { display: flex; flex-direction: column; gap: 7px; padding: 10px 10px 11px; border-bottom: 1px solid var(--line-2); animation: pop-fade .15s ease-out; }
+.route-rule { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12px; color: var(--fg-2); }
+.route-rule .rtype { flex: none; }
+.route-rule .mono { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route-hops { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 4px; min-width: 0; }
+.route-hops .hop { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; }
+.route-hops .node-pick { max-width: 100%; }
+.route-hops .exit { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; font-weight: 500; line-height: 22px; padding: 0 8px; border-radius: 7px; }
+.route-hops .delay { min-width: 0; padding: 0 5px; }
+.route-sep { flex: none; color: var(--faint); }
+.route-was { font-size: 11.5px; color: var(--muted); word-break: break-all; }
+.menu.node-menu.group-menu { max-height: none; overflow: visible; }
+.gm-head { display: flex; align-items: center; gap: 8px; padding: 3px 3px 5px 9px; }
+.gm-head b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 600; }
+.gm-head .muted { flex: 1; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.gm-head .icon { width: 22px; height: 22px; flex: none; }
+.group-menu .search { min-width: 0; height: 28px; margin: 0 0 4px; }
+.gm-list { display: flex; flex-direction: column; max-height: 288px; overflow-y: auto; }
+.gm-list button:disabled:hover { background: none; color: inherit; }
+.gm-list button:not(:disabled):hover .delay { background: rgba(255, 255, 255, .2); color: inherit; }
+.group-menu .mnote { padding: 4px 9px 5px; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
 .modules-empty .row.blank { justify-content: center; min-height: 40px; color: var(--accent); font-size: 12.5px; }
 
 /* a shortcut field, as macOS draws one: the keys in a pill, or a prompt */

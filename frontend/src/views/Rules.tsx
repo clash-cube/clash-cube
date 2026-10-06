@@ -13,6 +13,7 @@ import { toast, toastError } from "../components/Toast";
 import { Segmented } from "../components/Segmented";
 import { ago, nodeLabel } from "../format";
 import { useGroups } from "../useGroups";
+import { routeOf } from "../components/RouteChain";
 
 type Tab = "rules" | "providers" | "lookup";
 
@@ -157,13 +158,6 @@ function PolicyRoute({ policy, nowOf }: { policy: string; nowOf: Map<string, str
     {via.length > 0 && <span className="via">{via.join(" → ")} →</span>}
     <span className={"exit " + tone}>{exit}</span>
   </span>;
-}
-
-// a policy, then each group's selection down to a node
-function routeOf(policy: string, nowOf: Map<string, string>) {
-  const path = [policy];
-  for (let now = nowOf.get(policy); now && !path.includes(now); now = nowOf.get(now)) path.push(now);
-  return path;
 }
 
 // a rule's value; a process rule shows the program's icon and name

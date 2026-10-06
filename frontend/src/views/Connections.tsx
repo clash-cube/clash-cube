@@ -17,8 +17,11 @@ import { AppIcon } from "../components/AppIcon";
 import { ConnectionFilter, useSourceLabels } from "../components/ConnectionSources";
 import { VirtualConnections, type VirtualRow } from "../components/VirtualConnections";
 import { toast, toastError } from "../components/Toast";
-import { Popover, Menu } from "../components/Popover";
+import { Popover, Menu, type MenuItem, type Point } from "../components/Popover";
 import { RuleEditor, suggestions } from "../components/RuleEditor";
+import { GroupPicker, RouteChain, routeGroups } from "../components/RouteChain";
+import { useGroups } from "../useGroups";
+import type { Group } from "../api";
 
 const ROW = 44, HEAD = 34;
 
@@ -46,9 +49,12 @@ export function Connections() {
   const [reveal, setReveal] = useState<{ key: string } | null>(null);
   const [sources, setSources] = useState(new Set<string>());
   const { labels, save } = useSourceLabels();
-  // the row a right-click opened the menu on, then the rule editor
-  const [menu, setMenu] = useState<{ c: Conn; at: HTMLElement } | null>(null);
-  const [ruleFor, setRuleFor] = useState<{ c: Conn; at: HTMLElement } | null>(null);
+  // the row a right-click opened the menu on, at the pointer, then the rule
+  // editor or a group's nodes, opened there or from the details
+  const [menu, setMenu] = useState<{ c: Conn; point: Point } | null>(null);
+  const [ruleFor, setRuleFor] = useState<{ c: Conn; at?: HTMLElement; point?: Point } | null>(null);
+  const [pick, setPick] = useState<{ c: Conn; group: string; at?: HTMLElement; point?: Point } | null>(null);
+  const { groups: proxyGroups, select, testGroup, testing } = useGroups();
   const [hold, setHold] = useState(false);
   // the connections the first click of a bulk close will close
   const [armed, setArmed] = useState<Conn[] | null>(null);
@@ -101,6 +107,43 @@ export function Connections() {
   const selected = sel && ([...snapshot.active, ...snapshot.closed].find((c) => c.id === sel.id) ?? sel);
   // Keep the inspected record even when it ages out of the bounded history.
   useEffect(() => { if (selected && selected !== sel) setSel(selected); }, [selected, sel]);
+  // a group opened from the details goes with them
+  useEffect(() => setPick((p) => p?.at ? null : p), [sel?.id]);
+  // The details float over the table; closed, they slide away holding the
+  // last connection shown.
+  const lastShown = useRef<Conn | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  if (selected) lastShown.current = selected;
+  useEffect(() => {
+    if (selected) { setLeaving(false); return; }
+    if (!lastShown.current) return;
+    setLeaving(true);
+    const tm = setTimeout(() => { lastShown.current = null; setLeaving(false); }, 200);
+    return () => clearTimeout(tm);
+  }, [!!selected]);
+  const inspected = selected ?? lastShown.current;
+  // A press outside the rows and the details puts them away. While a menu
+  // or popover is open, that press only closes it.
+  const popped = !!(menu || pick || ruleFor);
+  useEffect(() => {
+    if (!sel || popped) return;
+    const down = (e: PointerEvent) => {
+      if (!(e.target as Element).closest?.(".trow, .detail, .pop, .toast")) setSel(null);
+    };
+    document.addEventListener("pointerdown", down, true);
+    return () => document.removeEventListener("pointerdown", down, true);
+  }, [!!sel, popped]);
+
+  // the connections a switch in group closes, as the backend picks them
+  const through = (group: string) => live.active.filter((c) => c.chains?.includes(group)).length;
+  const switchNode = async (group: string, name: string) => {
+    const n = through(group);
+    if (!await select(group, name)) return;
+    toast(n ? t("{group} → {node}; {n} connections reconnect", { group: nodeLabel(group), node: nodeLabel(name), n })
+      : t("{group} → {node}", { group: nodeLabel(group), node: nodeLabel(name) }));
+  };
+  const picked = pick && proxyGroups?.find((g) => g.name === pick.group) || null;
+  const menuGroups = menu ? routeGroups(menu.c, proxyGroups) : [];
 
   const close = async (list: Conn[]) => {
     const failures = await closeConnections(closeable(list).map((c) => c.id));
@@ -125,7 +168,7 @@ export function Connections() {
       if (e.key === "Escape" && el === search.current) { if (q) setQ(""); else el.blur(); }
       return;
     }
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.metaKey || e.ctrlKey || e.altKey || menu || pick || ruleFor) return;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       if (!order.length) return;
       e.preventDefault();
@@ -135,6 +178,10 @@ export function Connections() {
       setReveal({ key: next.id });
     } else if (e.key === "Escape" && sel) setSel(null);
     else if ((e.key === "Backspace" || e.key === "Delete") && selected) { e.preventDefault(); close([selected]); }
+    else if (e.key.toLowerCase() === "p" && selected) {
+      const at = document.querySelector<HTMLElement>(".detail .route-chain .node-pick:not(:disabled)");
+      if (at?.dataset.group) { e.preventDefault(); setPick({ c: selected, group: at.dataset.group, at }); }
+    }
     else if (e.key === " " && !(el instanceof HTMLButtonElement)) { e.preventDefault(); setFrozen(frozen ? null : live); }
   };
   useEffect(() => {
@@ -171,12 +218,13 @@ export function Connections() {
     if (zero) return <span key={id} className="cell num zero">—</span>;
     return <span key={id} className={"cell" + (isTextColumn(id) ? "" : " num") + (id === "up" ? " up" : id === "down" ? " down" : "")} title={value}>{value || "—"}</span>;
   };
+  const menuOn = (c: Conn) => menu?.c.id === c.id || (!!pick?.point && pick.c.id === c.id) || (!!ruleFor?.point && ruleFor.c.id === c.id);
   const row = (c: Conn) => {
     const born = births.get(c.id);
     return (
-      <div className={"trow" + (sel?.id === c.id ? " sel" : "") + (menu?.c.id === c.id ? " menu-on" : "") + (gone(c) ? " gone" : born && born > snapshot.at - 1000 ? " fresh" : "")}
+      <div className={"trow" + (sel?.id === c.id ? " sel" : "") + (menuOn(c) ? " menu-on" : "") + (gone(c) ? " gone" : born && born > snapshot.at - 1000 ? " fresh" : "")}
         key={c.id} data-id={c.id} onClick={() => setSel(sel?.id === c.id ? null : c)}
-        onContextMenu={(e) => { e.preventDefault(); setMenu({ c, at: e.currentTarget }); }}>
+        onContextMenu={(e) => { e.preventDefault(); setPick(null); setRuleFor(null); setMenu({ c, point: { x: e.clientX, y: e.clientY } }); }}>
         {columns.map((id) => cell(c, id))}
         <span className="cell r"><button className="icon" title={t("Close connection")} aria-label={t("Close connection")}
           disabled={!activeIDs.has(c.id) || closing.has(c.id)} onClick={(e) => { e.stopPropagation(); close([c]); }}><Close size={12} /></button></span>
@@ -236,7 +284,7 @@ export function Connections() {
         </div>
       </div>
       {(error || frozen) && <div className="conn-notice" role="status">{error ? t("Refresh failed. Showing the last successful snapshot.") : t("Paused. History collection continues.")} {error && <span>{error}</span>}</div>}
-      <div className={"conns-body" + (selected ? " with-detail" : "")}>
+      <div className="conns-body">
         <div className="conn-table-scroll" onPointerEnter={() => setHold(true)} onPointerLeave={() => setHold(false)}>
           <div className="conn-table-content" style={tableStyle}>
             <ConnectionColumnHeader columns={columns} widths={columnWidths} sort={sort} ascending={ascending} onSort={selectSort}
@@ -254,18 +302,24 @@ export function Connections() {
             </div>}
           </div>
         </div>
-        {selected && <Detail c={selected} sourceLabel={labels[selected.metadata.sourceIP]} at={snapshot.at} closeDisabled={!activeIDs.has(selected.id) || closing.has(selected.id)} onClose={() => setSel(null)} onKill={() => close([selected])}
-          onAddRule={(at) => setRuleFor({ c: selected, at })} />}
+        {inspected && <Detail c={inspected} leaving={!selected && leaving} sourceLabel={labels[inspected.metadata.sourceIP]} at={snapshot.at} closeDisabled={!activeIDs.has(inspected.id) || closing.has(inspected.id)} onClose={() => setSel(null)} onKill={() => close([inspected])}
+          onAddRule={(at) => setRuleFor({ c: inspected, at })} groups={proxyGroups} picking={pick?.at ? pick.group : ""}
+          onPick={(group, at) => setPick(pick?.at === at ? null : { c: inspected, group, at })} />}
       </div>
-      <Popover anchor={menu?.at ?? null} open={!!menu} onClose={() => setMenu(null)}>
+      <Popover anchor={null} point={menu?.point} open={!!menu} onClose={() => setMenu(null)}>
         {menu && <Menu close={() => setMenu(null)} items={[
-          { label: t("Add rule…"), onClick: () => setRuleFor(menu) },
+          ...menuGroups.map((group): MenuItem => ({ label: t("Switch {group}…", { group: nodeLabel(group) }), onClick: () => setPick({ c: menu.c, group, point: menu.point }) })),
+          ...(menuGroups.length ? ["sep" as const] : []),
+          { label: t("Add rule…"), onClick: () => setRuleFor({ c: menu.c, point: menu.point }) },
           { label: t("Copy host"), onClick: () => App.CopyText(hostOf(menu.c)).then(() => toast(t("Copied"))) },
           "sep",
           { label: t("Close connection"), danger: true, onClick: () => close([menu.c]) },
         ]} />}
       </Popover>
-      <RuleEditor anchor={ruleFor?.at ?? null} onClose={() => setRuleFor(null)} choices={ruleFor ? suggestions(ruleFor.c) : []} />
+      <GroupPicker group={picked} anchor={pick?.at} point={pick?.point} affected={pick ? through(pick.group) : 0} host={pick ? hostOf(pick.c) : ""}
+        testing={(name) => !!testing[name]} onClose={() => setPick(null)} onSelect={switchNode} onTest={(g: Group) => testGroup(g)}
+        onOnly={() => pick && setRuleFor({ c: pick.c, at: pick.at, point: pick.point })} />
+      <RuleEditor anchor={ruleFor?.at ?? null} point={ruleFor?.point} onClose={() => setRuleFor(null)} choices={ruleFor ? suggestions(ruleFor.c) : []} />
     </div>
   );
 }
@@ -285,7 +339,10 @@ function Chain({ c }: { c: Conn }) {
   </span>;
 }
 
-function Detail({ c, sourceLabel, at, closeDisabled, onClose, onKill, onAddRule }: { c: Conn; sourceLabel?: string; at: number; closeDisabled: boolean; onClose: () => void; onKill: () => void; onAddRule: (at: HTMLElement) => void }) {
+function Detail({ c, leaving, sourceLabel, at, closeDisabled, onClose, onKill, onAddRule, groups, picking, onPick }: {
+  c: Conn; leaving: boolean; sourceLabel?: string; at: number; closeDisabled: boolean; onClose: () => void; onKill: () => void; onAddRule: (at: HTMLElement) => void;
+  groups: Group[] | null; picking: string; onPick: (group: string, at: HTMLElement) => void;
+}) {
   const t = useT();
   const m = c.metadata;
   const [raw, setRaw] = useState(false);
@@ -310,12 +367,13 @@ function Detail({ c, sourceLabel, at, closeDisabled, onClose, onKill, onAddRule 
     [t("Time"), `${duration(c.start, c.closedAt ?? at)} · ${new Date(c.start).toLocaleTimeString([], { hour12: false })}`],
   ];
   return (
-    <aside className="detail list">
+    <aside className={"detail" + (leaving ? " leaving" : "")}>
       <div className="detail-head"><AppIcon path={m.processPath} core={m.type === "Inner"} /><b title={hostOf(c)}>{hostOf(c)}</b><button className="icon" title={t("Close details")} onClick={onClose}><Close size={12} /></button></div>
       <div className="detail-tabs"><Segmented className="track small fill" value={raw ? "raw" : "details"} onChange={(v) => setRaw(v === "raw")}
         options={[{ value: "details", label: t("Details") }, { value: "raw", label: t("Raw JSON") }]} /></div>
       <div className="detail-body" key={c.id + (raw ? ":raw" : ":details")}>
-        {raw ? <pre className="conn-json">{json}</pre> : <dl>{rows.map(([k, v]) => <div key={k}>
+        {!raw && <RouteChain c={c} groups={groups} open={picking} onOpen={onPick} />}
+        {raw ? <pre className="conn-json">{json}</pre> : <dl>{rows.filter(([k]) => k !== t("Rule") && k !== t("Chain")).map(([k, v]) => <div key={k}>
           <dt>{k}</dt><dd onDoubleClick={() => copy(v)} title={t("Double-click to copy")}>{v}</dd>
           <button className="icon" title={t("Copy {field}", { field: k })} aria-label={t("Copy {field}", { field: k })} onClick={() => copy(v)}><Copy size={12} /></button>
         </div>)}</dl>}

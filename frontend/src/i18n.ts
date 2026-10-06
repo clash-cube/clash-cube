@@ -220,6 +220,11 @@ const zh: Record<string, string> = {
   "Traffic statistics": "流量统计", "Today": "今天", "Yesterday": "昨天", "Day": "日", "7 days": "7 天", "30 days": "30 天", "Earlier": "更早", "Later": "更晚",
   "Click again to clear": "再次点击以清空", "Apps": "应用", "Hosts": "主机", "Policies": "策略", "Networks": "网络", "{n} items": "{n} 项",
   "No traffic": "没有流量", "Traffic through the core is counted while it runs, and kept for 90 days.": "内核运行期间经过它的流量都会被统计，保留 90 天。", "Show {n} more": "再显示 {n} 项",
+  "Switch {group}…": "切换 {group}…", "Opened through {chain}": "建立时经由 {chain}",
+  "Applies to every rule that uses {group}.": "所有使用 {group} 的规则都会生效。",
+  "Applies to every rule that uses {group}; {n} connections through it reconnect.": "所有使用 {group} 的规则都会生效，经过它的 {n} 个连接将重连。",
+  "Send only {host} elsewhere…": "仅让 {host} 走其他策略…",
+  "{group} → {node}": "{group} → {node}", "{group} → {node}; {n} connections reconnect": "{group} → {node}，{n} 个连接已重连",
 };
 
 export type Vars = Record<string, string | number>;

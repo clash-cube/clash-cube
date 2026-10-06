@@ -54,8 +54,10 @@ export function useGroups({ providers: withProviders = false, testOnOpen = false
     setGroups((gs) => gs?.map((g) => (g.name === group ? { ...g, now: name } : g)) ?? gs);
     setFlash(group + "/" + name);
     setTimeout(() => setFlash(""), 900);
-    try { await Proxy.Select(group, name); } catch (e) { toastError(e); }
+    let ok = false;
+    try { await Proxy.Select(group, name); ok = true; } catch (e) { toastError(e); }
     load();
+    return ok;
   };
 
   // a node's delay is the node's, wherever it is listed

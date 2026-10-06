@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Proxy, type Connection, type UserRule } from "../api";
 import { useT } from "../i18n";
-import { Popover } from "./Popover";
+import { Popover, type Point } from "./Popover";
 import { toast, toastError } from "./Toast";
 import { useGroups } from "../useGroups";
 import { AppPicker, isProcessType, processPayload } from "./AppPicker";
@@ -32,8 +32,9 @@ const BUILTIN = ["DIRECT", "REJECT"];
 // A popover to add a rule ahead of the profile's, or with onSave to edit
 // one: the type and value prefilled from what it was opened on, the policy
 // picked from the groups, a process picked from the running programs.
-export function RuleEditor({ anchor, onClose, initial, choices = [], onSave }: {
+export function RuleEditor({ anchor, point, onClose, initial, choices = [], onSave }: {
   anchor: HTMLElement | null;
+  point?: Point | null;
   onClose: () => void;
   initial?: UserRule;
   choices?: UserRule[];
@@ -50,12 +51,12 @@ export function RuleEditor({ anchor, onClose, initial, choices = [], onSave }: {
 
   useEffect(() => { Proxy.RuleTypes().then((r) => setTypes(r ?? [])).catch(() => {}); }, []);
   useEffect(() => {
-    if (!anchor) return;
+    if (!anchor && !point) return;
     const start = initial ?? choices[0] ?? { type: "DOMAIN-SUFFIX", payload: "", policy: "" };
     setRule({ ...start, policy: start.policy || policies[0] || "DIRECT" });
     setPicking(false);
     setTimeout(() => input.current?.focus(), 60);
-  }, [anchor]);
+  }, [anchor, point]);
   useEffect(() => { if (!rule.policy && policies.length) setRule((r) => ({ ...r, policy: policies[0] })); }, [policies]);
 
   const submit = async () => {
@@ -74,7 +75,7 @@ export function RuleEditor({ anchor, onClose, initial, choices = [], onSave }: {
   };
 
   return (
-    <Popover anchor={anchor} open={!!anchor} onClose={onClose} align="end" width={360}>
+    <Popover anchor={anchor} point={point} open={!!(anchor || point)} onClose={onClose} align="end" width={360}>
       <form className="pop-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <h3>{t(onSave ? "Edit rule" : "Add rule")}</h3>
         {choices.length > 1 && (

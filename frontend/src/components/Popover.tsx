@@ -1,10 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+export type Point = { x: number; y: number };
+
 // A popover that grows out of the element it opens from (--ox, the anchor's
-// middle) and sinks back toward it as it closes.
-export function Popover({ anchor, open, onClose, children, align = "start", width }: {
+// middle) and sinks back toward it as it closes. Given a point instead, as a
+// context menu is, it opens from there: its corner at the pointer, turned to
+// the left or upward where the window has no room.
+export function Popover({ anchor, point, open, onClose, children, align = "start", width }: {
   anchor: HTMLElement | null;
+  point?: Point | null;
   open: boolean;
   onClose: () => void;
   children: ReactNode;
@@ -27,19 +32,20 @@ export function Popover({ anchor, open, onClose, children, align = "start", widt
   }, [open]);
 
   useLayoutEffect(() => {
-    if (!shown || !anchor || !ref.current) return;
-    const a = anchor.getBoundingClientRect();
+    if (!shown || !(point || anchor) || !ref.current) return;
+    const a = point ? { left: point.x, right: point.x, top: point.y, bottom: point.y, width: 0 } : anchor!.getBoundingClientRect();
+    const gap = point ? 2 : 6;
     // its laid-out size: the pop-in animation scales the box it draws
     const p = { width: ref.current.offsetWidth, height: ref.current.offsetHeight };
     const w = width ?? p.width;
-    let left = align === "end" ? a.right - w : a.left;
+    let left = (point ? a.left + w > window.innerWidth - 8 : align === "end") ? a.right - w : a.left;
     left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
-    const below = a.bottom + 6;
-    const up = below + p.height > window.innerHeight - 8 && a.top - p.height - 6 > 8;
+    const below = a.bottom + gap;
+    const up = below + p.height > window.innerHeight - 8 && a.top - p.height - gap > 8;
     // with room neither below nor above, it is held inside the window
-    const top = up ? a.top - p.height - 6 : Math.max(8, Math.min(below, window.innerHeight - p.height - 8));
+    const top = up ? a.top - p.height - gap : Math.max(8, Math.min(below, window.innerHeight - p.height - 8));
     setPos({ left, top, ox: a.left + a.width / 2 - left, up });
-  }, [shown, anchor, size]);
+  }, [shown, anchor, point, size]);
 
   useEffect(() => {
     if (!shown || !ref.current) return;
