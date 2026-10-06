@@ -6,7 +6,7 @@ import type { Node, RegionNodes } from "../../bindings/github.com/localhost-copi
 import type { Group } from "../api";
 import { useGroups } from "../useGroups";
 import { useStore } from "../store";
-import { delayClass, fmtDelay } from "../format";
+import { delayClass, fmtDelay, nodeLabel } from "../format";
 import { Popover } from "./Popover";
 import { Segmented } from "./Segmented";
 import { Switch } from "./Switch";
@@ -31,6 +31,7 @@ export function Modules({ newAt, onNewClose }: { newAt: HTMLElement | null; onNe
   const [templates, setTemplates] = useState<Template[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const { groups, select, load: loadGroups } = useGroups();
+  const nodes = useNodes();
   const [open, setOpen] = useState("");
   // a new module being written, blank or from a template
   const [draft, setDraft] = useState<Module | null>(null);
@@ -101,7 +102,7 @@ export function Modules({ newAt, onNewClose }: { newAt: HTMLElement | null; onNe
       {draft && (
         <div className="list modules">
           {draft.route
-            ? <RouteEditor module={draft} onCancel={() => setDraft(null)} onSave={add} onYAML={setDraft} />
+            ? <RouteModuleEditor module={draft} onCancel={() => setDraft(null)} onSave={add} />
             : <ModuleEditor module={draft} onCancel={() => setDraft(null)} onSave={add} />}
         </div>
       )}
@@ -129,7 +130,7 @@ export function Modules({ newAt, onNewClose }: { newAt: HTMLElement | null; onNe
       ) : mods.length > 0 && (
         <div className="list modules">
           {mods.map((m, i) => (
-            <ModuleRow key={m.id} m={m} group={ownGroup(m)} onPick={(g, n) => select(g.name, n)} open={open === m.id} flash={flash === m.name} first={i === 0} last={i === mods.length - 1}
+            <ModuleRow key={m.id} m={m} group={ownGroup(m)} nodes={nodes} onPick={(g, n) => select(g.name, n)} open={open === m.id} flash={flash === m.name} first={i === 0} last={i === mods.length - 1}
               onOpen={() => { setDraft(null); setOpen(open === m.id ? "" : m.id); }}
               onToggle={(on) => save(mods.map((o) => (o.id === m.id ? { ...o, enabled: on } : o)))}
               onMove={(d) => move(i, d)}
@@ -142,17 +143,17 @@ export function Modules({ newAt, onNewClose }: { newAt: HTMLElement | null; onNe
   );
 }
 
-function ModuleRow({ m, group, onPick, open, flash, first, last, onOpen, onToggle, onMove, onRemove, onSave }: {
-  m: Module; group?: Group; onPick: (g: Group, name: string) => void; open: boolean; flash: boolean; first: boolean; last: boolean;
+function ModuleRow({ m, group, nodes, onPick, open, flash, first, last, onOpen, onToggle, onMove, onRemove, onSave }: {
+  m: Module; group?: Group; nodes: Node[] | null; onPick: (g: Group, name: string) => void; open: boolean; flash: boolean; first: boolean; last: boolean;
   onOpen: () => void; onToggle: (on: boolean) => Promise<unknown>; onMove: (d: number) => void; onRemove: () => void; onSave: (m: Module) => Promise<void>;
 }) {
   const t = useT();
   const { keys } = useModuleValidation(m.route ? "" : m.body);
   const regions = useRegions(!!m.route);
   const profile = useStore((s) => s.state?.profile ?? "");
-  // a route taken to YAML, not saved until it is
-  const [yaml, setYAML] = useState<Module | null>(null);
-  useEffect(() => { if (!open) setYAML(null); }, [open]);
+  // a front that left the profile refuses the route, as an empty scope does
+  const front = m.route && m.route.policy !== "DIRECT" ? m.route.upstream?.[profile] ?? "" : "";
+  const frontGone = !!front && !!nodes && !nodes.some((n) => n.name === front);
   const [armed, setArmed] = useState(false);
   useEffect(() => { if (!armed) return; const id = setTimeout(() => setArmed(false), 3000); return () => clearTimeout(id); }, [armed]);
   return (
@@ -161,7 +162,9 @@ function ModuleRow({ m, group, onPick, open, flash, first, last, onOpen, onToggl
         <div className="who">
           <div className="name">{m.name}</div>
           {m.route
-            ? <div className="sub">{routeSummary(m.route, profile, regions, t)}</div>
+            ? frontGone
+              ? <div className="sub warn">{t("Upstream {node} is gone; connections are refused", { node: front })}</div>
+              : <div className="sub">{routeSummary(m.route, profile, regions, t)}</div>
             : <div className="sub mono">{keys.length ? keys.join(" · ") : t("Empty")}</div>}
         </div>
         <div className="end" onClick={(e) => e.stopPropagation()}>
@@ -179,9 +182,9 @@ function ModuleRow({ m, group, onPick, open, flash, first, last, onOpen, onToggl
         </div>
       </div>
       <Fold open={open}>
-        {m.route && !yaml
-          ? <RouteEditor module={m} onCancel={onOpen} onSave={onSave} onYAML={setYAML} />
-          : <ModuleEditor key={yaml ? "yaml" : "body"} module={yaml ?? m} converted={!!yaml} onCancel={onOpen} onSave={onSave} />}
+        {m.route
+          ? <RouteModuleEditor module={m} open={open} onCancel={onOpen} onSave={onSave} />
+          : <ModuleEditor module={m} onCancel={onOpen} onSave={onSave} />}
       </Fold>
     </div>
   );
@@ -201,7 +204,24 @@ function useModuleValidation(body: string): { pending: boolean; problem: string;
   return { pending: out?.body !== body, problem: out?.body === body ? out.problem : "", keys: out?.body === body ? out.keys : [] };
 }
 
-function ModuleEditor({ module, converted, onCancel, onSave }: { module: Module; converted?: boolean; onCancel: () => void; onSave: (m: Module) => Promise<void> }) {
+// RouteModuleEditor is a route's form, or the YAML it was taken to. Until
+// that YAML is saved, the form can be gone back to as it was left.
+function RouteModuleEditor({ module, open = true, onCancel, onSave }: {
+  module: Module; open?: boolean; onCancel: () => void; onSave: (m: Module) => Promise<void>;
+}) {
+  const [form, setForm] = useState<RouteForm | undefined>();
+  const [yaml, setYAML] = useState<Module | null>(null);
+  useEffect(() => { if (!open) { setYAML(null); setForm(undefined); } }, [open]);
+  return yaml
+    ? <ModuleEditor key="yaml" module={yaml} converted onCancel={onCancel} onSave={onSave}
+        onBack={(name) => { setForm((f) => f && { ...f, name }); setYAML(null); }} />
+    : <RouteEditor key="form" module={module} form={form} onCancel={onCancel} onSave={onSave}
+        onYAML={(m, f) => { setForm(f); setYAML(m); }} />;
+}
+
+function ModuleEditor({ module, converted, onBack, onCancel, onSave }: {
+  module: Module; converted?: boolean; onBack?: (name: string) => void; onCancel: () => void; onSave: (m: Module) => Promise<void>;
+}) {
   const t = useT();
   const [name, setName] = useState(module.name);
   const [body, setBody] = useState(module.body);
@@ -212,6 +232,10 @@ function ModuleEditor({ module, converted, onCancel, onSave }: { module: Module;
   // a new one starts at its name, or at the example to fill in
   useEffect(() => { if (!module.id) setTimeout(() => (module.name ? bodyRef.current : nameRef.current)?.focus(), 60); }, []);
   const dirty = converted || name.trim() !== module.name || body !== module.body;
+  // going back drops the YAML's own edits, so a changed one asks first
+  const [armed, setArmed] = useState(false);
+  useEffect(() => { if (!armed) return; const id = setTimeout(() => setArmed(false), 3000); return () => clearTimeout(id); }, [armed]);
+  const back = () => (body === module.body || armed ? onBack!(name.trim() || module.name) : setArmed(true));
   const submit = async () => {
     if (busy || pending || !name.trim() || problem) return;
     setBusy(true);
@@ -238,6 +262,9 @@ function ModuleEditor({ module, converted, onCancel, onSave }: { module: Module;
       <div className="foot">
         <span className="hint">{t("Mappings merge; +key puts a list first, key+ last, key! replaces. ⌘S saves.")}</span>
         <div className="grow" />
+        {onBack && (armed
+          ? <button type="button" className="btn small danger armed" onClick={back}>{t("Click again to discard YAML edits")}</button>
+          : <button type="button" className="btn small" onClick={back}>{t("Back to form")}</button>)}
         <button type="button" className="btn small" onClick={onCancel}>{t("Cancel")}</button>
         <button type="submit" className="btn small primary" disabled={busy || pending || !name.trim() || !!problem || (!!module.id && !dirty)}>{busy ? t("Checking…") : module.id ? t("Save") : t("Add")}</button>
       </div>
@@ -260,7 +287,8 @@ function routeSummary(r: Route, profile: string, regions: RegionNodes[], t: T) {
   const reg = regions.find((x) => x.key === r.region);
   const n = picksOf(r, profile).length + (r.keywords?.length ?? 0);
   const scope = reg ? t(reg.name) : r.pick ? (n ? t("{n} picked", { n }) : t("None picked here")) : t("All nodes");
-  return [policyLabel(r.policy, t), r.policy !== "DIRECT" && scope].filter(Boolean).join(" · ");
+  return [policyLabel(r.policy, t), r.policy !== "DIRECT" && scope,
+    r.policy !== "DIRECT" && r.upstream?.[profile] && t("Via {node}", { node: r.upstream[profile] })].filter(Boolean).join(" · ");
 }
 
 // takes is Route.Takes in Go, for the nodes the editor lists
@@ -272,7 +300,14 @@ function takes(picks: string[], keywords: string[], name: string) {
 // useNodes is the running profile's nodes; null with the core stopped.
 function useNodes() {
   const [nodes, setNodes] = useState<Node[] | null>(null);
-  useEffect(() => { P.RouteNodes().then((n) => setNodes(n)).catch(() => setNodes(null)); }, []);
+  const profile = useStore((s) => s.state?.profile);
+  const core = useStore((s) => s.state?.core);
+  useEffect(() => {
+    let active = true;
+    setNodes(null);
+    P.RouteNodes().then((n) => { if (active) setNodes(n); }).catch(() => { if (active) setNodes(null); });
+    return () => { active = false; };
+  }, [profile, core]);
   return nodes;
 }
 
@@ -298,7 +333,7 @@ function NodePicker({ group, onPick }: { group: Group; onPick: (name: string) =>
     <>
       <button className={"node-pick" + (pick ? "" : " fixed") + (at ? " on" : "")} title={pick ? t("Choose a node") : t("Picked by the latency test")}
         onClick={(e) => pick && setAt(at ? null : e.currentTarget)}>
-        <span className="nname">{group.now || "—"}</span>
+        <span className="nname">{nodeLabel(group.now) || "—"}</span>
         {now && now.delay !== 0 && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay, t)}</span>}
         {pick && <Chevron size={10} className="chev" />}
       </button>
@@ -306,7 +341,7 @@ function NodePicker({ group, onPick }: { group: Group; onPick: (name: string) =>
         <div className="menu node-menu">
           {(group.members ?? []).map((x) => (
             <button key={x.name} className={x.name === group.now ? "on" : ""} onClick={() => { setAt(null); if (x.name !== group.now) onPick(x.name); }}>
-              <span className="nname">{x.name}</span>
+              <span className="nname">{nodeLabel(x.name)}</span>
               <span className={"delay " + delayClass(x.delay)}>{fmtDelay(x.delay, t)}</span>
             </button>
           ))}
@@ -316,16 +351,58 @@ function NodePicker({ group, onPick }: { group: Group; onPick: (name: string) =>
   );
 }
 
+// UpstreamPicker is the node a route's exits dial through, chosen like a
+// row's node: from a menu with each node's latency, searched when long.
+function UpstreamPicker({ value, nodes, onChange }: { value: string; nodes: Node[] | null; onChange: (name: string) => void }) {
+  const t = useT();
+  const [at, setAt] = useState<HTMLElement | null>(null);
+  const [query, setQuery] = useState("");
+  const now = nodes?.find((n) => n.name === value);
+  const gone = !!value && !!nodes && !now;
+  const shown = (nodes ?? []).filter((n) => !query || n.name.toLowerCase().includes(query.toLowerCase()));
+  const choose = (name: string) => { setAt(null); setQuery(""); if (name !== value) onChange(name); };
+  return (
+    <>
+      <button type="button" className={"node-pick" + (value ? "" : " unset") + (gone ? " warn" : "") + (at ? " on" : "")} disabled={nodes === null && !value}
+        title={nodes === null ? t("Start the core to list upstream nodes.") : t("Exits dial through this node, for this profile only")}
+        onClick={(e) => setAt(at ? null : e.currentTarget)}>
+        <span className="nname">{value || t("None")}</span>
+        {gone ? <span className="badge muted">{t("Gone")}</span>
+          : now && now.delay !== 0 && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay, t)}</span>}
+        <Chevron size={10} className="chev" />
+      </button>
+      <Popover anchor={at} open={!!at} onClose={() => { setAt(null); setQuery(""); }} width={280}>
+        <div className="menu node-menu upstream-menu">
+          {(nodes?.length ?? 0) > 8 && <label className="search"><Search size={13} /><input autoFocus placeholder={t("Search nodes")} value={query} onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (shown[0]) choose(shown[0].name); } }} /></label>}
+          {!query && <button type="button" className={value ? "" : "on"} onClick={() => choose("")}><span className="nname">{t("No upstream")}</span></button>}
+          {!query && <hr />}
+          {shown.map((n) => (
+            <button type="button" key={n.name} className={n.name === value ? "on" : ""} onClick={() => choose(n.name)}>
+              <span className="nname">{n.name}</span>
+              <span className={"delay " + delayClass(n.delay)}>{fmtDelay(n.delay, t)}</span>
+            </button>
+          ))}
+          {nodes === null && <div className="mnote">{t("Start the core to list upstream nodes.")}</div>}
+        </div>
+      </Popover>
+    </>
+  );
+}
+
 // RouteEditor writes a route as choices, not YAML: how the service goes,
 // and through which nodes: all, a region's, or ones picked by name and by
 // keyword. The YAML it makes can be taken to edit freely.
-function RouteEditor({ module, onCancel, onSave, onYAML }: {
-  module: Module; onCancel: () => void; onSave: (m: Module) => Promise<void>; onYAML: (m: Module) => void;
+// RouteForm is a route editor's state, kept while its YAML is edited
+type RouteForm = { name: string; route: Route; scope: Scope };
+
+function RouteEditor({ module, form, onCancel, onSave, onYAML }: {
+  module: Module; form?: RouteForm; onCancel: () => void; onSave: (m: Module) => Promise<void>; onYAML: (m: Module, form: RouteForm) => void;
 }) {
   const t = useT();
-  const [name, setName] = useState(module.name);
-  const [r, setR] = useState<Route>(module.route!);
-  const [scope, setScope] = useState<Scope>(scopeOf(module.route!));
+  const [name, setName] = useState(form?.name ?? module.name);
+  const [r, setR] = useState<Route>(form?.route ?? module.route!);
+  const [scope, setScope] = useState<Scope>(form?.scope ?? scopeOf(module.route!));
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
   const [keyword, setKeyword] = useState("");
@@ -334,8 +411,14 @@ function RouteEditor({ module, onCancel, onSave, onYAML }: {
   // the nodes are picked for the profile in use; other profiles' stay
   const profile = useStore((s) => s.state?.profile ?? "");
   const picks = picksOf(r, profile);
+  const upstream = r.upstream?.[profile] ?? "";
   const keywords = r.keywords ?? [];
   const setPicks = (next: string[]) => setR({ ...r, nodes: { ...r.nodes, [profile]: next } });
+  const setUpstream = (name: string) => {
+    const next = { ...r.upstream };
+    if (name) next[profile] = name; else delete next[profile];
+    setR({ ...r, upstream: next });
+  };
   // what is saved: only the chosen scope's part
   const pick = scope === "pick";
   const out: Route = {
@@ -344,10 +427,11 @@ function RouteEditor({ module, onCancel, onSave, onYAML }: {
     pick,
     nodes: pick ? Object.fromEntries(Object.entries(r.nodes ?? {}).filter(([, v]) => v?.length)) : {},
     keywords: pick ? keywords : [],
+    upstream: r.upstream ?? {},
   };
   const was = module.route!;
   const dirty = name.trim() !== module.name || JSON.stringify(out) !== JSON.stringify({
-    service: was.service, policy: was.policy, region: was.region ?? "", pick: !!was.pick, nodes: was.nodes ?? {}, keywords: was.keywords ?? [],
+    service: was.service, policy: was.policy, region: was.region ?? "", pick: !!was.pick, nodes: was.nodes ?? {}, keywords: was.keywords ?? [], upstream: was.upstream ?? {},
   });
   const empty = r.policy !== "DIRECT" && pick && !picks.length && !keywords.length;
   const submit = async () => {
@@ -357,16 +441,11 @@ function RouteEditor({ module, onCancel, onSave, onYAML }: {
     setBusy(false);
   };
   const asYAML = async () => {
-    try { onYAML({ ...module, name: name.trim() || module.name, route: null, body: await P.RouteBody(out) }); } catch (e) { toastError(e); }
+    try { onYAML({ ...module, name: name.trim() || module.name, route: null, body: await P.RouteBody(out) }, { name, route: r, scope }); } catch (e) { toastError(e); }
   };
-  // picking from a region starts with its nodes ticked, to untick the
-  // ones that won't do
-  const pickScope = (next: Scope) => {
-    if (next === "pick" && scope === "region" && !picks.length && !keywords.length && nodes) {
-      setPicks(nodes.filter((n) => n.region === out.region).map((n) => n.name));
-    }
-    setScope(next);
-  };
+  // picking starts from none: most routes want one node or a few, and
+  // the search with "Tick shown" takes a whole region when wanted
+  const pickScope = setScope;
   const toggle = (n: string) => setPicks(picks.includes(n) ? picks.filter((x) => x !== n) : [...picks, n]);
   const addKeyword = () => {
     const k = keyword.trim();
@@ -377,8 +456,11 @@ function RouteEditor({ module, onCancel, onSave, onYAML }: {
   const names = new Set(nodes?.map((n) => n.name));
   // picked for this profile, but gone from it since (renamed or dropped)
   const gone = picks.filter((n) => nodes && !names.has(n));
-  const count = scope === "region" ? reg?.count ?? -1 : pick ? (nodes ? nodes.filter((n) => takes(picks, keywords, n.name)).length : -1) : nodes?.length ?? -1;
+  const missing = !!upstream && !!nodes && !names.has(upstream);
+  const exits = nodes?.filter((n) => n.name !== upstream);
+  const count = exits ? exits.filter((n) => scope === "region" ? n.region === reg?.key : !pick || takes(picks, keywords, n.name)).length : -1;
   const shown = (nodes ?? []).filter((n) => !query || n.name.toLowerCase().includes(query.toLowerCase()));
+  const tickable = shown.map((n) => n.name).filter((n) => n !== upstream && !picks.includes(n));
   return (
     <form className="module-editor route-editor stagger" onSubmit={(e) => { e.preventDefault(); submit(); }}
       onKeyDown={(e) => { if (e.key === "s" && e.metaKey) { e.preventDefault(); submit(); } if (e.key === "Escape") onCancel(); }}>
@@ -410,16 +492,23 @@ function RouteEditor({ module, onCancel, onSave, onYAML }: {
                 {nodes === null ? <div className="pick-note">{t("Start the core to list the profile's nodes. Keywords work without it.")}</div> : (
                   <>
                     <div className="pick-note">{t("Ticked for this profile only; each profile has its own. Keywords below hold for all.")}</div>
-                    <label className="search"><Search size={13} /><input placeholder={t("Search nodes")} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} /></label>
+                    <div className="pick-bar">
+                      <label className="search"><Search size={13} /><input placeholder={t("Search nodes")} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} /></label>
+                      <span className="pick-count">{t("{n} picked", { n: picks.length })}</span>
+                      <button type="button" className="link" disabled={!tickable.length} onClick={() => setPicks([...picks, ...tickable])}>{query ? t("Tick shown") : t("Tick all")}</button>
+                      <button type="button" className="link" disabled={!picks.length} onClick={() => setPicks([])}>{t("Clear")}</button>
+                    </div>
                     <div className="pick-list">
                       {shown.map((n) => {
-                        const on = picks.includes(n.name);
-                        const byKeyword = !on && takes([], keywords, n.name);
+                        const isUpstream = n.name === upstream;
+                        const on = !isUpstream && picks.includes(n.name);
+                        const byKeyword = !isUpstream && !on && takes([], keywords, n.name);
                         return (
                           <label key={n.name} className={"pick-row" + (on || byKeyword ? " on" : "")}>
-                            <input type="checkbox" checked={on || byKeyword} disabled={byKeyword} onChange={() => toggle(n.name)} />
+                            <input type="checkbox" checked={on || byKeyword} disabled={byKeyword || isUpstream} onChange={() => toggle(n.name)} />
                             <span className="nname">{n.name}</span>
                             {byKeyword && <span className="badge muted">{t("By keyword")}</span>}
+                            {isUpstream && <span className="badge muted">{t("Upstream")}</span>}
                             <span className={"delay " + delayClass(n.delay)}>{fmtDelay(n.delay, t)}</span>
                           </label>
                         );
@@ -444,6 +533,16 @@ function RouteEditor({ module, onCancel, onSave, onYAML }: {
                 </div>
               </div>
             </Fold>
+          </div>
+        </div>
+        <div className="field">
+          <span className="label">{t("Via")}</span>
+          <div className="scope">
+            <UpstreamPicker value={upstream} nodes={nodes} onChange={setUpstream} />
+            {upstream && <div className={"route-path" + (missing ? " err" : "")}>
+              {missing ? t("The upstream node is gone, so {service} is refused until it returns or you choose another.", { service: r.service })
+                : <>{t("This Mac")}<span className="sep">→</span><b>{upstream}</b><span className="sep">→</span>{t("exit node")}<span className="sep">→</span>{r.service}</>}
+            </div>}
           </div>
         </div>
       </Fold>

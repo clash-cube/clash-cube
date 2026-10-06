@@ -73,6 +73,7 @@ core/runtime.yaml      实际交给 core 的配置（0600）
 - 规则前插，再追加一个 `include-all` 的策略组；同名组已存在时改名为 `名称 (ClashCube)`。
 - 固定名单里在顶层 `proxies` 中存在的节点直接写进 `proxies`；provider 节点和失效名字用精确匹配的 `filter`（转义，反引号写成 `\x60`，因为 mihomo 用反引号分隔多个 filter）。地区和关键词用 `filter`，不分大小写。
 - 组设 `empty-fallback: REJECT`；指定节点却没有任何勾选时生成 `proxies: [REJECT]`。范围为空时拒绝连接，不会悄悄直连。
+- 前置节点按配置 ID 保存在 `route.upstream`，直连策略不使用它。启用时为当前模块生成独立节点和 provider 副本，副本通过隐藏的前置策略组拨号；原节点保持不变。前置节点从出口候选中排除，前置消失时隐藏组回退到 `REJECT`。provider 副本保留原有筛选和重命名，在其后添加私有名称和 `dialer-proxy`，HTTP 副本使用独立缓存并按原更新周期刷新。其他 `include-all` 组排除这些私有节点，节点选择界面也不把副本列为新的原始节点。
 - 模块按列表从上到下合并，每个的规则都前插，所以后面的优先。通用的“AI 服务”应放在 OpenAI、Claude 上方。
 
 ## 4. 运行时行为

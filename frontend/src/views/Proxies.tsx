@@ -6,7 +6,7 @@ import { Fold } from "../components/Fold";
 import { Segmented } from "../components/Segmented";
 import { toast } from "../components/Toast";
 import { Bolt, Chevron, Columns, Refresh, Rows, Search, Sort } from "../components/Icons";
-import { ago, bytes, delayClass, fmtDelay } from "../format";
+import { ago, bytes, delayClass, fmtDelay, nodeLabel } from "../format";
 import type { Group, Member, Provider } from "../api";
 import { startCore } from "../actions";
 
@@ -188,7 +188,7 @@ export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne
         <Chevron className={"chev" + (open ? " open" : "")} />
         <div className="who">
           <div className="name">{g.name}<span className="gtype">{g.type}</span>{g.module && <span className="gtype">{t("Module")}</span>}</div>
-          <div className="sub">{g.now || "—"}</div>
+          <div className="sub">{nodeLabel(g.now) || "—"}</div>
         </div>
         {now && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay, t)}</span>}
         <button className={"icon" + (testing[g.name] ? " zap" : "")} title={t("Test")} onClick={(e) => { e.stopPropagation(); onTest(); }}><Bolt size={14} /></button>
@@ -271,9 +271,9 @@ function NodeGrid({ members: ms, sorted, now, selectable, flashKey, onSelect, on
           style={{ ["--i" as string]: Math.min(i, 24) }}
           // with nothing to select (a provider's nodes), a click tests
           onClick={(e) => (e.altKey || !onSelect ? onTestOne(m.name) : selectable && m.name !== now && onSelect(m.name))}
-          title={m.name + "\n" + (onSelect ? "⌥-click: " + t("test this node only") : t("Click to test this node"))}
+          title={nodeLabel(m.name) + "\n" + (onSelect ? "⌥-click: " + t("test this node only") : t("Click to test this node"))}
         >
-          <span className="nname">{m.name}</span>
+          <span className="nname">{nodeLabel(m.name)}</span>
           <span className="nmeta">
             <span className="ntype">{m.type}{m.udp ? " · UDP" : ""}</span>
             <span

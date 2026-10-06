@@ -13,6 +13,7 @@ import (
 
 	"github.com/localhost-copilot/clashcube/internal/backend"
 	"github.com/localhost-copilot/clashcube/internal/profiles"
+	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
 	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
@@ -198,7 +199,7 @@ func (m *trayMenu) paintLatency() {
 			if pending[r.name] {
 				right = badge("none", "···")
 			}
-			r.item.SetLabel(detail(r.name, right))
+			r.item.SetLabel(detail(runtimecfg.NodeLabel(r.name), right))
 		}
 	}
 	styleTrayMenu()
@@ -523,7 +524,7 @@ func (m *trayMenu) rebuild() {
 			if g.Hidden || (g.Name == "GLOBAL" && st.Mode != "global") {
 				continue
 			}
-			sub := menu.AddSubmenu(detail(g.Name, g.Now))
+			sub := menu.AddSubmenu(detail(g.Name, runtimecfg.NodeLabel(g.Now)))
 			// first, and the menu stays up to show the delays coming in
 			m.tests[g.Name] = sub.Add(testLabel(false)).SetTooltip(tr("⌥-click a node to test it alone", "按住 ⌥ 点击节点单独测速")).
 				OnClick(m.run("test group", func() error { _, err := ps.TestLatency("group", g.Name); return err }))
@@ -532,7 +533,7 @@ func (m *trayMenu) rebuild() {
 			for _, mem := range g.Members {
 				name := mem.Name
 				group := g.Name
-				it := sub.AddCheckbox(detail(mem.Name, delayBadge(mem.Delay)), name == g.Now)
+				it := sub.AddCheckbox(detail(runtimecfg.NodeLabel(mem.Name), delayBadge(mem.Delay)), name == g.Now)
 				m.nodes[g.Name] = append(m.nodes[g.Name], nodeRow{name, mem.Delay, it})
 				// ⌥-click tests just this node, without switching to it
 				it.OnClick(m.run("select", func() error {

@@ -8,7 +8,7 @@ import { address, chainOf, compareConnections, filterConnections, groupConnectio
   type Conn, type ConnectionSnapshot, type ConnectionTab, type HeldOrder } from "../connections";
 import { connectionColumns, defaultColumns, isTextColumn, type ConnectionColumn } from "../connectionColumns";
 import { ConnectionColumnHeader, ConnectionViewMenu } from "../components/ConnectionColumns";
-import { bytes, duration, speed } from "../format";
+import { bytes, duration, nodeLabel, speed } from "../format";
 import { Chevron, Close, Copy, Search } from "../components/Icons";
 import { useConnectionPreferences } from "../useConnectionPreferences";
 import { Segmented } from "../components/Segmented";
@@ -276,7 +276,7 @@ function Rate({ up, down }: { up: number; down: number }) {
 }
 
 function Chain({ c }: { c: Conn }) {
-  const [exit, ...via] = c.chains ?? [];
+  const [exit, ...via] = (c.chains ?? []).map(nodeLabel);
   if (!exit) return <span className="cell zero">—</span>;
   const tone = exit === "DIRECT" ? "direct" : /^REJECT/.test(exit) ? "reject" : "proxy";
   return <span className="cell chain" title={chainOf(c)}>

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"sort"
+	"strings"
 
 	"go.yaml.in/yaml/v3"
 
@@ -34,8 +35,8 @@ func (b *Backend) RouteBody(r modules.Route) (string, error) {
 	if config == nil {
 		config = map[string]any{}
 	}
-	// YAML modules may add nodes. Route modules only add rules/groups, and
-	// omitting them keeps the route being edited from colliding with itself.
+	// Include nodes added by YAML modules. Omit routes so their private chains
+	// do not become inputs and the route being edited cannot collide with itself.
 	for _, mod := range modules.List() {
 		if !mod.Enabled || mod.Route != nil {
 			continue
@@ -85,7 +86,7 @@ func (b *Backend) Nodes() []Node {
 	}
 	out := []Node{}
 	for _, p := range all {
-		if len(p.All) > 0 || builtinPolicy[p.Type] {
+		if len(p.All) > 0 || builtinPolicy[p.Type] || strings.HasPrefix(p.Name, runtimecfg.ChainPrefix) {
 			continue
 		}
 		d := 0

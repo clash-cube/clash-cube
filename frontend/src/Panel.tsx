@@ -11,7 +11,7 @@ import { Arrow, Bolt, Chevron, Gear, Globe, Logo, Power, Refresh, Shield, Wifi, 
 import { Fold } from "./components/Fold";
 import { AppIcon } from "./components/AppIcon";
 import { coreLabel, coreTone, restartCore, setMode, setSystemProxy, setTun, startCore } from "./actions";
-import { speed, delayClass, fmtDelay } from "./format";
+import { speed, delayClass, fmtDelay, nodeLabel } from "./format";
 import { useGroups } from "./useGroups";
 import { matchName } from "./components/NetworkRules";
 import { toast, toastError } from "./components/Toast";
@@ -154,7 +154,7 @@ export function Panel() {
                       <button className="pghead" onClick={() => setOpen(isOpen ? "" : g.name)}>
                         <Chevron className={"chev" + (isOpen ? " open" : "")} />
                         <span className="pgname">{g.name}</span>
-                        <span className="pgnow">{g.now}</span>
+                        <span className="pgnow">{nodeLabel(g.now)}</span>
                         {testing[g.name] || testing["#" + g.now] ? <span className="delay testing">···</span>
                           : <span className={"delay " + (now ? delayClass(now.delay) : "none")}>{now ? fmtDelay(now.delay, t) : "—"}</span>}
                       </button>
@@ -172,7 +172,7 @@ export function Panel() {
                               onClick={(e) => (e.altKey ? testOne(m.name) : g.type === "Selector" && m.name !== g.now && select(g.name, m.name))}
                             >
                               <span className="check">{m.name === g.now ? "✓" : ""}</span>
-                              <span className="nname">{m.name}</span>
+                              <span className="nname">{nodeLabel(m.name)}</span>
                               <span className={"delay " + (testing["#" + m.name] ? "testing" : delayClass(m.delay))}>{testing["#" + m.name] ? "···" : fmtDelay(m.delay, t)}</span>
                             </button>
                           ))}

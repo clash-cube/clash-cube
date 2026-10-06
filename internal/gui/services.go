@@ -21,6 +21,7 @@ import (
 	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 	"github.com/localhost-copilot/clashcube/internal/modules"
 	"github.com/localhost-copilot/clashcube/internal/profiles"
+	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
 	"github.com/localhost-copilot/clashcube/internal/settings"
 	"github.com/localhost-copilot/clashcube/internal/usage"
 	"github.com/localhost-copilot/clashcube/internal/userrules"
@@ -252,11 +253,14 @@ func (s *ProxyService) Groups() ([]Group, error) {
 	var out []Group
 	for _, name := range order {
 		p, ok := all[name]
-		if !ok || len(p.All) == 0 {
+		if !ok || len(p.All) == 0 || strings.HasPrefix(name, runtimecfg.ChainPrefix) {
 			continue
 		}
 		g := Group{Name: p.Name, Type: p.Type, Now: p.Now, Hidden: p.Hidden, Icon: p.Icon, TestURL: p.TestURL, Module: made[p.Name]}
 		for _, m := range p.All {
+			if name == "GLOBAL" && strings.HasPrefix(m, runtimecfg.ChainPrefix) {
+				continue
+			}
 			mp := all[m]
 			selected := all[backend.SelectedProxy(all, m)]
 			g.Members = append(g.Members, Member{Name: m, Type: mp.Type, UDP: mp.UDP, Delay: lastDelay(selected), Group: len(mp.All) > 0})
@@ -292,7 +296,7 @@ func (s *ProxyService) Providers() ([]Provider, error) {
 	}
 	out := []Provider{}
 	for _, p := range all {
-		if p.VehicleType == "Compatible" || p.Name == "default" {
+		if p.VehicleType == "Compatible" || p.Name == "default" || strings.HasPrefix(p.Name, runtimecfg.ChainPrefix) {
 			continue
 		}
 		pv := Provider{Name: p.Name, VehicleType: p.VehicleType, TestURL: p.TestURL, UpdatedAt: p.UpdatedAt, Members: []Member{}}

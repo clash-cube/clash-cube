@@ -52,6 +52,7 @@ func Build(id string, profile []byte, s settings.Settings, ctl Controller, user 
 			return nil, fmt.Errorf("module %s: %w", mod.Name, err)
 		}
 	}
+	hideChainNodes(m)
 	if s.MixedPort > 0 {
 		m["mixed-port"] = s.MixedPort
 	}
@@ -108,6 +109,9 @@ func Build(id string, profile []byte, s settings.Settings, ctl Controller, user 
 // Only concrete top-level nodes can be referenced through proxies; groups and
 // provider nodes must not be mistaken for directly declared nodes.
 func RouteBody(id string, r modules.Route, config map[string]any) (string, error) {
+	if r.Policy != "DIRECT" && r.Upstream[id] != "" {
+		return upstreamBody(id, r, config)
+	}
 	have := policies(config)
 	declared := map[string]bool{}
 	nodes, _ := config["proxies"].([]any)

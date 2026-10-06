@@ -1,3 +1,5 @@
+// .ts: the tests load this file in node directly
+import { nodeLabel } from "./format.ts";
 import type { Connection } from "../bindings/github.com/localhost-copilot/clashcube/internal/mihomoapi/models";
 
 export type Conn = Connection & { up: number; down: number; closedAt?: number };
@@ -11,7 +13,7 @@ export const processName = (c: Connection) => c.metadata.type === "Inner" ? "mih
   : c.metadata.process || c.metadata.processPath.split(/[\\/]/).pop() || "";
 export const processOf = (c: Connection) => processName(c) || c.metadata.sourceIP || "—";
 export const ruleOf = (c: Connection) => c.rulePayload ? `${c.rule}(${c.rulePayload})` : c.rule;
-export const chainOf = (c: Connection) => (c.chains ?? []).slice().reverse().join(" → ");
+export const chainOf = (c: Connection) => (c.chains ?? []).map(nodeLabel).reverse().join(" → ");
 export const address = (host: string, port: string) => host ? `${host.includes(":") ? `[${host}]` : host}${port ? ":" + port : ""}` : "—";
 
 export function groupConnections(conns: Conn[], by: ConnectionGroupBy) {
@@ -41,7 +43,7 @@ export function filterConnections(conns: Conn[], query: string, network: string,
     if (network !== "all" && m.network.toLowerCase() !== network) return false;
     const values = [c.id, m.host, m.sniffHost, m.destinationIP, m.destinationPort, m.remoteDestination,
       m.sourceIP, m.sourcePort, address(m.sourceIP, m.sourcePort), address(hostOf(c), m.destinationPort),
-      labels[m.sourceIP], m.network, m.type, processName(c), m.processPath, c.rule, c.rulePayload, ...(c.chains ?? [])]
+      labels[m.sourceIP], m.network, m.type, processName(c), m.processPath, c.rule, c.rulePayload, ...(c.chains ?? []).map(nodeLabel)]
       .map((v) => (v || "").toLowerCase());
     return words.every((word) => values.some((v) => v.includes(word)));
   });

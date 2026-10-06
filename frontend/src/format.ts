@@ -8,6 +8,9 @@ export function bytes(n: number, digits = 1): string {
 
 export const speed = (n: number) => bytes(n) + "/s";
 
+// Private route copies keep the source name in the UI; actions use the full ID.
+export const nodeLabel = (name: string) => name.replace(/^ClashCube chain\/[^/]+\/nodes\//, "");
+
 export function delayClass(d: number | undefined): string {
   if (d === undefined || d === 0) return "none";
   if (d < 0) return "fail";

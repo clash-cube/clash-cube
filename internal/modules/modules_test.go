@@ -135,7 +135,7 @@ func TestRouteTakes(t *testing.T) {
 
 func TestPicksFollowProfiles(t *testing.T) {
 	t.Setenv("CLASHCUBE_HOME", t.TempDir())
-	r := &Route{Service: "Google", Policy: "select", Pick: true, Nodes: map[string][]string{"a": {"n1"}, "b": {"n2"}}}
+	r := &Route{Service: "Google", Policy: "select", Pick: true, Nodes: map[string][]string{"a": {"n1"}, "b": {"n2"}}, Upstream: map[string]string{"a": "front", "b": "old"}}
 	if err := Save([]Module{{Name: "Google", Route: r}, {Name: "plain", Body: "hosts: {}"}}); err != nil {
 		t.Fatal(err)
 	}
@@ -148,5 +148,8 @@ func TestPicksFollowProfiles(t *testing.T) {
 	got := List()[0].Route.Nodes
 	if !reflect.DeepEqual(got, map[string][]string{"a": {"n1"}, "c": {"n1"}}) {
 		t.Errorf("nodes = %v", got)
+	}
+	if got := List()[0].Route.Upstream; !reflect.DeepEqual(got, map[string]string{"a": "front", "c": "front"}) {
+		t.Errorf("upstreams = %v", got)
 	}
 }

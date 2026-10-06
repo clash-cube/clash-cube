@@ -23,6 +23,7 @@ type Route struct {
 	Pick     bool                `json:"pick,omitempty"`     // only Nodes and Keywords
 	Nodes    map[string][]string `json:"nodes,omitempty"`    // by profile ID: names, matched whole
 	Keywords []string            `json:"keywords,omitempty"` // matched anywhere in a name, any case
+	Upstream map[string]string   `json:"upstream,omitempty"` // front proxy, by profile ID
 }
 
 // Service is what a route matches: the rules that pick out its traffic.
@@ -122,6 +123,12 @@ func (r Route) Check() error {
 		return errors.New("nodes and keywords are for picked nodes")
 	}
 	all := append([]string{}, r.Keywords...)
+	for id, name := range r.Upstream {
+		if id == "" {
+			return errors.New("upstream without a profile")
+		}
+		all = append(all, name)
+	}
 	for id, names := range r.Nodes {
 		if id == "" {
 			return errors.New("picked nodes without a profile")
@@ -142,23 +149,35 @@ const none = "(?!)"
 // filter is the regexp the route's group picks the profile's nodes with,
 // "" for all.
 func (r Route) filter(profile string) string {
+	return r.NodeFilter(profile, "")
+}
+
+// NodeFilter matches effective node names, optionally after a private prefix.
+func (r Route) NodeFilter(profile, prefix string) string {
+	// mihomo splits filters at backticks, including ones inside node names.
+	quote := func(s string) string { return strings.ReplaceAll(regexp2.Escape(s), "`", `\x60`) }
+	start := "^" + quote(prefix)
 	if reg, ok := region(r.Region); ok {
+		if prefix != "" {
+			return start + ".*?(?:" + strings.ReplaceAll(reg.Filter, "(^|", "((?<="+quote(prefix)+")|") + ")"
+		}
 		return reg.Filter
 	}
 	if !r.Pick {
+		if prefix != "" {
+			return start
+		}
 		return ""
 	}
 	nodes := r.Nodes[profile]
 	if len(nodes) == 0 && len(r.Keywords) == 0 {
 		return none
 	}
-	// mihomo splits a filter at backticks, so one in a name is escaped
-	quote := func(s string) string { return strings.ReplaceAll(regexp2.Escape(s), "`", `\x60`) }
 	var alts []string
 	if len(nodes) > 0 {
 		var names []string
 		for _, n := range nodes {
-			names = append(names, quote(n))
+			names = append(names, quote(prefix+n))
 		}
 		alts = append(alts, "^(?:"+strings.Join(names, "|")+")$")
 	}
@@ -167,7 +186,11 @@ func (r Route) filter(profile string) string {
 		for _, k := range r.Keywords {
 			kws = append(kws, quote(k))
 		}
-		alts = append(alts, "(?i:"+strings.Join(kws, "|")+")")
+		keywordFilter := "(?i:" + strings.Join(kws, "|") + ")"
+		if prefix != "" {
+			keywordFilter = start + ".*?" + keywordFilter
+		}
+		alts = append(alts, keywordFilter)
 	}
 	return strings.Join(alts, "|")
 }
@@ -285,29 +308,39 @@ func (r Region) Matches(name string) bool { return Route{Region: r.Key}.Takes(""
 // CopyPicks gives the profile to the nodes picked for the profile from,
 // as a copy of it has the same nodes.
 func CopyPicks(from, to string) error {
-	return editPicks(func(n map[string][]string) { n[to] = n[from] })
+	return editPicks(func(r *Route) bool {
+		changed := false
+		if names, ok := r.Nodes[from]; ok {
+			r.Nodes[to] = append([]string{}, names...)
+			changed = true
+		}
+		if name, ok := r.Upstream[from]; ok {
+			r.Upstream[to] = name
+			changed = true
+		}
+		return changed
+	})
 }
 
 // ForgetPicks drops the nodes picked for a profile that is gone.
 func ForgetPicks(profile string) error {
-	return editPicks(func(n map[string][]string) { delete(n, profile) })
+	return editPicks(func(r *Route) bool {
+		_, nodes := r.Nodes[profile]
+		_, upstream := r.Upstream[profile]
+		delete(r.Nodes, profile)
+		delete(r.Upstream, profile)
+		return nodes || upstream
+	})
 }
 
-func editPicks(edit func(map[string][]string)) error {
+func editPicks(edit func(*Route) bool) error {
 	ms := List()
 	changed := false
 	for _, m := range ms {
-		if m.Route == nil || m.Route.Nodes == nil {
+		if m.Route == nil {
 			continue
 		}
-		before := len(m.Route.Nodes)
-		edit(m.Route.Nodes)
-		for k, v := range m.Route.Nodes {
-			if len(v) == 0 {
-				delete(m.Route.Nodes, k)
-			}
-		}
-		changed = changed || len(m.Route.Nodes) != before
+		changed = edit(m.Route) || changed
 	}
 	if !changed {
 		return nil

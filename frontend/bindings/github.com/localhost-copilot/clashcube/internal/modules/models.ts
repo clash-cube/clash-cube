@@ -57,6 +57,11 @@ export interface Route {
      * matched anywhere in a name, any case
      */
     "keywords"?: string[] | null;
+
+    /**
+     * front proxy, by profile ID
+     */
+    "upstream"?: { [_ in string]?: string } | null;
 }
 
 /**
