@@ -92,9 +92,10 @@ function LogicLeaf({ c }: { c: Cond }) {
 
 const PAGE = 300;
 
-// A list's entries, searched in the backend, so a GeoSite list with tens of
-// thousands of names doesn't reach the window whole.
-function EntryList({ kind, name }: { kind: string; name: string }) {
+// A list's entries, searched in the backend (read again when version, the
+// time it was fetched, changes), so a GeoSite list with tens of thousands
+// of names doesn't reach the window whole.
+export function EntryList({ kind, name, version }: { kind: string; name: string; version?: string }) {
   const t = useT();
   const [q, setQ] = useState("");
   const [limit, setLimit] = useState(PAGE);
@@ -109,7 +110,7 @@ function EntryList({ kind, name }: { kind: string; name: string }) {
         .catch((e) => { if (n === seq.current) setErr(errText(e)); });
     }, res ? 150 : 0);
     return () => clearTimeout(timer);
-  }, [kind, name, q, limit]);
+  }, [kind, name, q, limit, version]);
 
   if (err) return <div className="entries"><div className="err">{err}</div></div>;
   if (!res) return <div className="entries"><div className="muted">{t("Loading…")}</div></div>;

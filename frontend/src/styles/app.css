@@ -758,9 +758,10 @@ select.input { padding-right: 6px; }
 .hotkey-clear { width: 20px; height: 20px; }
 .hotkey-problem { font-size: 11.5px; color: var(--red); white-space: nowrap; animation: pop-fade .15s ease-out; }
 .row .sub.err { color: var(--red); }
-.rules .trow.click { cursor: default; transition: background .12s; }
-.rules .trow.click:hover { background: var(--card-2); }
-.rules .trow.open { background: var(--sel); }
+.rules .trow.click, .rule-providers .trow.click { cursor: default; transition: background .12s; }
+.rules .trow.click:hover, .rule-providers .trow.click:hover { background: var(--card-2); }
+.rules .trow.open, .rule-providers .trow.open { background: var(--sel); }
+.rule-detail.provider-detail { padding-left: 14px; }
 .rules .idx { display: flex; align-items: center; gap: 3px; }
 .rules .idx .chev { flex: none; color: var(--faint); transition: transform .2s var(--ease); }
 .rules .trow.open .idx .chev { transform: rotate(90deg); }

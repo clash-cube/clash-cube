@@ -4,7 +4,7 @@ import { useStore } from "../store";
 import { Proxy, type Rule, type RuleProvider, type UserRule } from "../api";
 import { usePoll } from "../usePoll";
 import { Arrow, Chevron, Close, Plus, Refresh, Search } from "../components/Icons";
-import { RuleDetail } from "../components/RuleDetail";
+import { EntryList, RuleDetail } from "../components/RuleDetail";
 import { RuleEditor } from "../components/RuleEditor";
 import { AppIcon } from "../components/AppIcon";
 import { ruleProgram } from "../components/AppPicker";
@@ -178,6 +178,7 @@ function RulePayload({ r }: { r: UserRule }) {
 function RuleProviders({ providers, rules, q, reload }: { providers: RuleProvider[]; rules: Rule[]; q: string; reload: () => void }) {
   const t = useT();
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
+  const [open, setOpen] = useState("");
   const policies = useMemo(() => {
     const m: Record<string, Set<string>> = {};
     for (const r of rules) if (r.type === "RuleSet") (m[r.payload] ??= new Set()).add(r.proxy);
@@ -211,7 +212,8 @@ function RuleProviders({ providers, rules, q, reload }: { providers: RuleProvide
           const fetched = p.vehicleType !== "Inline" && new Date(p.updatedAt).getFullYear() > 2000;
           const used = [...(policies[p.name] ?? [])];
           return (
-            <div className="trow" key={p.name}>
+            <Fragment key={p.name}>
+            <div className={"trow click" + (open === p.name ? " open" : "")} title={t("Click for details")} onClick={() => setOpen(open === p.name ? "" : p.name)}>
               <span className="cell host">
                 <span className="name">{p.name}</span>
                 <span className="sub">{[behaviorLabel(t, p.behavior), formatLabel(p.format), t("{n} rules", { n: p.ruleCount })].filter(Boolean).join(" · ")}</span>
@@ -219,12 +221,14 @@ function RuleProviders({ providers, rules, q, reload }: { providers: RuleProvide
               <span className="cell"><span className="rtype">{vehicleLabel(t, p.vehicleType)}</span></span>
               <span className="cell policy" title={used.join(", ")}>{used.length ? used.join(", ") : <span className="muted">{t("Not used")}</span>}</span>
               <span className="cell muted">{fetched ? t("Updated {t}", { t: ago(p.updatedAt, t) }) : p.vehicleType === "Inline" ? t("In the profile") : ""}</span>
-              <span className="cell r">
+              <span className="cell r" onClick={(e) => e.stopPropagation()}>
                 {p.vehicleType !== "Inline" && (
                   <button className={"icon" + (updating[p.name] ? " spin" : "")} disabled={updating[p.name]} title={t("Update")} onClick={() => update([p.name])}><Refresh size={13} /></button>
                 )}
               </span>
             </div>
+            {open === p.name && <div className="rule-detail provider-detail"><EntryList kind="ruleset" name={p.name} version={String(p.updatedAt)} /></div>}
+            </Fragment>
           );
         })}
       </div>
