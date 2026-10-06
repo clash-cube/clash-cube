@@ -17,7 +17,7 @@ export type Earth = {
   setData: (g: Globe, routes: GlobeRoute[]) => void;
   setHighlight: (key: string | null) => void;
   focus: (cc: string) => void;
-  dispose: () => void;
+  detach: () => void;
 };
 
 type Opts = {
@@ -167,7 +167,6 @@ class Dots {
     for (const k of ["position", "size", "alpha", "tint"]) (this.geo.getAttribute(k) as THREE.BufferAttribute).needsUpdate = true;
     this.geo.setDrawRange(0, this.n);
   }
-  dispose() { this.geo.dispose(); this.mat.dispose(); }
 }
 
 // A pulse runs once along its route, from where it was sent to where the
@@ -180,16 +179,24 @@ type Drawn = {
   trip: number; tail: number; pulses: Pulse[]; due: number; rate: number; fade: number; gone: boolean;
 };
 
-export async function createEarth(host: HTMLElement, opts: Opts): Promise<Earth> {
+// One Earth is made per window and kept between showings: the web view
+// frees a WebGL context's memory late or never, so one made for each
+// showing grew it by some 40 MB a time. Leaving the page parks it.
+let shared: Promise<{ attach: (host: HTMLElement, opts: Opts) => Earth }> | null = null;
+
+export function attachEarth(host: HTMLElement, opts: Opts): Promise<Earth> {
+  shared ??= build().catch((e) => { shared = null; throw e; });
+  return shared.then((s) => s.attach(host, opts));
+}
+
+async function build() {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setClearColor(0x000000, 0);
   renderer.domElement.className = "globe-canvas";
-  host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
-  camera.position.set(0, 0.6, DISTANCE);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enablePan = false;
   controls.enableDamping = true;
@@ -205,11 +212,14 @@ export async function createEarth(host: HTMLElement, opts: Opts): Promise<Earth>
   const [day, night] = await Promise.all([loader.loadAsync(dayURL), loader.loadAsync(nightURL)]);
   for (const t of [day, night]) { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); }
 
-  let colors = { proxy: new THREE.Color(), direct: new THREE.Color(), atmo: new THREE.Color(), white: new THREE.Color(1, 1, 1) };
+  // set in place, as the shaders hold them; read once the canvas is in a page
+  const colors = { proxy: new THREE.Color(), direct: new THREE.Color(), atmo: new THREE.Color(), white: new THREE.Color(1, 1, 1) };
   const readColors = () => {
-    colors = { ...colors, proxy: cssColor(host, "--up", "#0ea5e9"), direct: cssColor(host, "--amber", "#b45309"), atmo: cssColor(host, "--up", "#0ea5e9") };
+    const el = renderer.domElement;
+    colors.proxy.copy(cssColor(el, "--up", "#0ea5e9"));
+    colors.direct.copy(cssColor(el, "--amber", "#b45309"));
+    colors.atmo.copy(cssColor(el, "--up", "#0ea5e9"));
   };
-  readColors();
 
   const sphere = new THREE.SphereGeometry(1, 96, 96);
   const earthMat = new THREE.ShaderMaterial({
@@ -234,7 +244,6 @@ export async function createEarth(host: HTMLElement, opts: Opts): Promise<Earth>
   // labels for the busiest places, kept over their spots
   const labels = document.createElement("div");
   labels.className = "globe-labels";
-  host.appendChild(labels);
   const labelEls = new Map<string, HTMLElement>();
 
   let data: Globe | null = null;
@@ -247,9 +256,13 @@ export async function createEarth(host: HTMLElement, opts: Opts): Promise<Earth>
   let resumeAt = 0;
   let focusAnim: { from: THREE.Vector3; to: THREE.Vector3; t: number } | null = null;
   let width = 1, height = 1;
-  let disposed = false;
+  // the page showing it, and which showing; none while parked
+  let host: HTMLElement | null = null;
+  let owner = 0;
+  let opts: Opts = { onHover: () => {}, label: (cc) => cc };
 
   const resize = () => {
+    if (!host) return;
     width = Math.max(1, host.clientWidth); height = Math.max(1, host.clientHeight);
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
@@ -261,8 +274,6 @@ export async function createEarth(host: HTMLElement, opts: Opts): Promise<Earth>
     for (const d of drawn.values()) d.mat.resolution.set(width, height);
   };
   const ro = new ResizeObserver(resize);
-  ro.observe(host);
-  resize();
 
   const pause = () => { controls.autoRotate = false; resumeAt = performance.now() + RESUME_MS; };
   controls.addEventListener("start", () => { focusAnim = null; pause(); resumeAt = Infinity; });
@@ -437,7 +448,6 @@ export async function createEarth(host: HTMLElement, opts: Opts): Promise<Earth>
 
   const clock = new THREE.Clock();
   const loop = () => {
-    if (disposed) return;
     const now = performance.now();
     const dt = Math.min(0.1, clock.getDelta());
     if (focusAnim) {
@@ -455,31 +465,54 @@ export async function createEarth(host: HTMLElement, opts: Opts): Promise<Earth>
     placeLabels();
     renderer.render(scene, camera);
   };
-  const run = () => renderer.setAnimationLoop(document.hidden ? null : loop);
-  document.addEventListener("visibilitychange", run);
-  run();
+  const run = () => renderer.setAnimationLoop(document.hidden || !host ? null : loop);
 
-  return {
-    setData,
-    setHighlight(key) { highlight = key; },
-    focus(cc) {
-      const p = at[cc];
-      if (!p) return;
-      pause();
-      focusAnim = { from: camera.position.clone(), to: vec({ lat: Math.max(-50, Math.min(50, p.lat)), lon: p.lon }, Math.min(camera.position.length(), DISTANCE)), t: 0 };
-    },
-    dispose() {
-      disposed = true;
-      renderer.setAnimationLoop(null);
-      document.removeEventListener("visibilitychange", run);
-      ro.disconnect();
-      controls.dispose();
-      for (const d of [...drawn.values()]) drop(d);
-      for (const d of [marks, rings, pulses]) d.dispose();
-      sphere.dispose(); earthMat.dispose(); haloMat.dispose(); day.dispose(); night.dispose();
-      renderer.dispose();
-      renderer.domElement.remove();
-      labels.remove();
-    },
+  const focus = (cc: string) => {
+    const p = at[cc];
+    if (!p) return;
+    pause();
+    focusAnim = { from: camera.position.clone(), to: vec({ lat: Math.max(-50, Math.min(50, p.lat)), lon: p.lon }, Math.min(camera.position.length(), DISTANCE)), t: 0 };
   };
+
+  // parking keeps the context, the textures and the shapes, and lets go of
+  // what was drawn for the page
+  const detach = () => {
+    if (!host) return;
+    host = null;
+    run();
+    document.removeEventListener("visibilitychange", run);
+    ro.disconnect();
+    renderer.domElement.remove();
+    labels.remove();
+    for (const d of [...drawn.values()]) drop(d);
+    for (const el of labelEls.values()) el.remove();
+    labelEls.clear();
+    data = null; cur = []; at = {}; places = []; highlight = null; focusAnim = null;
+  };
+
+  // attach shows it in host, as it was first shown; a showing's handle
+  // does nothing once another has taken it
+  const attach = (el: HTMLElement, o: Opts): Earth => {
+    detach();
+    const me = ++owner;
+    host = el; opts = o;
+    el.append(renderer.domElement, labels);
+    camera.position.set(0, 0.6, DISTANCE);
+    controls.autoRotate = !still; resumeAt = 0;
+    readColors();
+    ro.observe(el);
+    resize();
+    clock.getDelta();
+    document.addEventListener("visibilitychange", run);
+    run();
+    const mine = () => me === owner;
+    return {
+      setData: (g, routes) => { if (mine()) setData(g, routes); },
+      setHighlight: (key) => { if (mine()) highlight = key; },
+      focus: (cc) => { if (mine()) focus(cc); },
+      detach: () => { if (mine()) detach(); },
+    };
+  };
+
+  return { attach };
 }

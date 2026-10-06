@@ -7,7 +7,7 @@ import { bytes, flag, speed } from "../format";
 import { startCore } from "../actions";
 import { errText } from "../components/Toast";
 import { Segmented } from "../components/Segmented";
-import { createEarth, routeKey, type Earth } from "../components/globe/earth";
+import { attachEarth, routeKey, type Earth } from "../components/globe/earth";
 import { Eye } from "../components/Icons";
 import { OverviewTabs } from "./Usage";
 
@@ -58,12 +58,12 @@ export function GlobeView() {
   useEffect(() => {
     if (!running || !host.current) return;
     let gone = false;
-    createEarth(host.current, {
+    attachEarth(host.current, {
       onHover: (cc, x, y) => setHover(cc ? { cc, x, y } : null),
       label: (cc) => placeRef.current(cc),
-    }).then((e) => { if (gone) e.dispose(); else earth.current = e; setBroken(""); })
+    }).then((e) => { if (gone) e.detach(); else earth.current = e; setBroken(""); })
       .catch((e) => !gone && setBroken(errText(e)));
-    return () => { gone = true; earth.current?.dispose(); earth.current = null; };
+    return () => { gone = true; earth.current?.detach(); earth.current = null; };
   }, [running]);
 
   useEffect(() => { if (globe) earth.current?.setData(globe, routes); }, [globe, routes, lang]);
