@@ -44,6 +44,9 @@ export function useGroups({ providers: withProviders = false, testOnOpen = false
   // mihomo's background health checks have no proxy-latency event. Read their
   // results while visible, including when the persistent tray panel reopens.
   usePoll(() => { if (!busy) void load(); }, 5000, [core, profile, busy, load]);
+  // The tray panel stays hidden until first opened. Load once anyway, so the
+  // groups' first layout (slow with many emoji names) happens out of sight.
+  useEffect(() => { if (document.hidden && core === "running" && !busy) void load(); }, [core, profile, busy, load]);
   useEffect(() => { setRuns({}); }, [core, profile]);
 
   const select = async (group: string, name: string) => {
