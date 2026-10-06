@@ -45,6 +45,7 @@ export interface Settings {
     "mixedPort": number;
     "allowLan": boolean;
     "ipv6": boolean;
+    "unifiedDelay": boolean;
     "logLevel": string;
 
     /**

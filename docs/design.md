@@ -58,7 +58,7 @@ core/runtime.yaml      实际交给 core 的配置（0600）
 1. 把当前配置解析成 `map[string]any`，未知字段原样保留。
 2. 按顺序合并启用的模块。写法与 Clash Verge 的扩展配置一致：映射逐键深度合并，其他值替换；`+key` 前插列表，`key+` 追加，`key!` 整体替换；`prepend-/append-rules`、`-proxies`、`-proxy-groups` 作用于规则、节点和策略组。
 3. 插入用户规则（在配置自带规则之前）。策略在当前配置里不存在的规则跳过，不让整个配置校验失败。规则类型限定为单值类型，值和策略里不允许逗号和换行。
-4. 用应用设置覆盖：`mixed-port`、`allow-lan`、`ipv6`、`log-level`、`mode`、`find-process-mode`、`tun`、`external-controller`、`secret`；删除其他控制接口（含 `external-controller-unix`）。模块写了这些键也会被覆盖。
+4. 用应用设置覆盖：`mixed-port`、`allow-lan`、`ipv6`、`unified-delay`、`log-level`、`mode`、`find-process-mode`、`tun`、`external-controller`、`secret`；删除其他控制接口（含 `external-controller-unix`）。模块写了这些键也会被覆盖。「设置 → 网络」的统一延迟默认开启，尽可能复用连接测量第二次请求；关闭后计入首次建连和握手。切换会重载内核，失败则回滚设置。
 5. 防泄露开关（默认都关）：
    - **IPv6 流量进入 TUN**：TUN 开、IPv6 关时写 `ipv6: true`、`dns.ipv6: false`。mihomo 在 `ipv6: false` 时去掉 TUN 的 IPv6 地址，auto-route 就不加 IPv6 路由，IPv6 流量会绕过 TUN。core 还设 `SKIP_SYSTEM_IPV6_CHECK=1`。
    - **接管 DNS**：强制 `dns.enable`（没有就补一个 fake-ip 段），TUN 下 `dns-hijack` 改为 `any:53`、`tcp://any:53`。

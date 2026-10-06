@@ -84,6 +84,7 @@ export interface Patch {
     "guardDNS"?: boolean | null;
     "blockSTUN"?: boolean | null;
     "dnsRespectRules"?: boolean | null;
+    "unifiedDelay"?: boolean | null;
     "bypass"?: string[] | null;
     "autoStart"?: boolean | null;
     "launchAtLogin"?: boolean | null;

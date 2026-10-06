@@ -592,6 +592,7 @@ type Patch struct {
 	GuardDNS        *bool     `json:"guardDNS,omitempty"`
 	BlockSTUN       *bool     `json:"blockSTUN,omitempty"`
 	DNSRespectRules *bool     `json:"dnsRespectRules,omitempty"`
+	UnifiedDelay    *bool     `json:"unifiedDelay,omitempty"`
 	Bypass          *[]string `json:"bypass,omitempty"`
 	AutoStart       *bool     `json:"autoStart,omitempty"`
 	LaunchAtLogin   *bool     `json:"launchAtLogin,omitempty"`
@@ -629,6 +630,7 @@ func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
 		set(&st.GuardDNS, p.GuardDNS)
 		set(&st.BlockSTUN, p.BlockSTUN)
 		set(&st.DNSRespectRules, p.DNSRespectRules)
+		set(&st.UnifiedDelay, p.UnifiedDelay)
 		set(&st.Bypass, p.Bypass)
 		set(&st.AutoStart, p.AutoStart)
 		set(&st.LaunchAtLogin, p.LaunchAtLogin)

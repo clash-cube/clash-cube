@@ -488,6 +488,7 @@ func (b *Backend) PatchSettings(fn func(*settings.Settings)) (settings.Settings,
 // coreFields is the settings runtimecfg lays over the profile, which a
 // change of has the core reload.
 type coreFields struct {
+	UnifiedDelay                                    bool
 	MixedPort                                       int
 	AllowLan, IPv6, ICMPForwarding, FindProcess     bool
 	GuardIPv6, GuardDNS, BlockSTUN, DNSRespectRules bool
@@ -496,13 +497,15 @@ type coreFields struct {
 
 func coreSettings(s settings.Settings) coreFields {
 	return coreFields{
-		MixedPort: s.MixedPort, AllowLan: s.AllowLan, IPv6: s.IPv6, ICMPForwarding: s.ICMPForwarding, FindProcess: s.FindProcess,
+		UnifiedDelay: s.UnifiedDelay,
+		MixedPort:    s.MixedPort, AllowLan: s.AllowLan, IPv6: s.IPv6, ICMPForwarding: s.ICMPForwarding, FindProcess: s.FindProcess,
 		GuardIPv6: s.GuardIPv6, GuardDNS: s.GuardDNS, BlockSTUN: s.BlockSTUN, DNSRespectRules: s.DNSRespectRules,
 		LogLevel: s.LogLevel, TunStack: s.TunStack,
 	}
 }
 
 func setCoreSettings(s *settings.Settings, f coreFields) {
+	s.UnifiedDelay = f.UnifiedDelay
 	s.MixedPort, s.AllowLan, s.IPv6, s.ICMPForwarding, s.FindProcess = f.MixedPort, f.AllowLan, f.IPv6, f.ICMPForwarding, f.FindProcess
 	s.GuardIPv6, s.GuardDNS, s.BlockSTUN, s.DNSRespectRules = f.GuardIPv6, f.GuardDNS, f.BlockSTUN, f.DNSRespectRules
 	s.LogLevel, s.TunStack = f.LogLevel, f.TunStack

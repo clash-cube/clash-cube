@@ -58,6 +58,7 @@ func Build(id string, profile []byte, s settings.Settings, ctl Controller, user 
 	}
 	m["allow-lan"] = s.AllowLan
 	m["ipv6"] = s.IPv6
+	m["unified-delay"] = s.UnifiedDelay
 	if s.Mode != "" {
 		m["mode"] = s.Mode
 	}

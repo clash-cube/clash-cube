@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -328,6 +329,36 @@ func TestCoreLifecycle(t *testing.T) {
 		t.Errorf("mixed-port = %d, want 17899", cfg.MixedPort)
 	}
 
+	// Changing the setting must reach the running core: unified delay
+	// performs a second request on the connection established by the first.
+	var requests atomic.Int32
+	probe := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		// The delay endpoint rejects results rounded down to zero milliseconds.
+		time.Sleep(2 * time.Millisecond)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer probe.Close()
+	for _, enabled := range []bool{false, true} {
+		if _, err := b.PatchSettings(func(s *settings.Settings) { s.UnifiedDelay = enabled }); err != nil {
+			t.Fatal(err)
+		}
+		requests.Store(0)
+		if _, err := c.Delay(ctx, "DIRECT", probe.URL, 5*time.Second); err != nil {
+			t.Fatal(err)
+		}
+		want := int32(1)
+		if enabled {
+			want = 2
+		}
+		if got := requests.Load(); got != want {
+			t.Errorf("unified delay %v: %d requests, want %d", enabled, got, want)
+		}
+		if settings.Load().UnifiedDelay != enabled {
+			t.Fatal("unified delay was not saved")
+		}
+	}
+
 	if err := b.SetMode("global"); err != nil {
 		t.Fatal(err)
 	}
@@ -389,11 +420,14 @@ func TestCoreLifecycle(t *testing.T) {
 	// broke on disk, so the reload it needs fails
 	os.WriteFile(p.Path(), []byte("proxies: []\nrules:\n  - MATCH,Nowhere\n"), 0o600)
 	level := settings.Load().LogLevel
-	if _, err := b.PatchSettings(func(s *settings.Settings) { s.LogLevel = "debug"; s.Theme = "dark" }); err == nil {
+	if _, err := b.PatchSettings(func(s *settings.Settings) { s.LogLevel = "debug"; s.Theme = "dark"; s.UnifiedDelay = false }); err == nil {
 		t.Error("a setting the core refused was taken")
 	}
 	if s := settings.Load(); s.LogLevel != level || s.Theme != "dark" {
 		t.Errorf("after a refused reload: logLevel = %q (want %q), theme = %q (want dark)", s.LogLevel, level, s.Theme)
+	}
+	if !settings.Load().UnifiedDelay {
+		t.Error("a refused reload did not restore unified delay")
 	}
 	if b.State().Core != "running" {
 		t.Error("the core stopped after a refused setting")

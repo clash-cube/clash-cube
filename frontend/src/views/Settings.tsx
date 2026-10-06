@@ -15,7 +15,7 @@ const TABS = ["general", "network", "rules", "tun", "core"] as const;
 type Tab = (typeof TABS)[number];
 
 // the settings the core runs with: changing one reloads it (PatchSettings)
-const CORE_KEYS = new Set<string>(["mixedPort", "allowLan", "ipv6", "logLevel", "tunStack", "icmpForwarding", "findProcess", "guardIPv6", "guardDNS", "blockSTUN", "dnsRespectRules"]);
+const CORE_KEYS = new Set<string>(["mixedPort", "allowLan", "ipv6", "unifiedDelay", "logLevel", "tunStack", "icmpForwarding", "findProcess", "guardIPv6", "guardDNS", "blockSTUN", "dnsRespectRules"]);
 // the core settings being applied now, for their rows to say so
 const Applying = createContext<ReadonlySet<string>>(new Set());
 
@@ -124,6 +124,9 @@ export function Settings() {
           <Row field="ipv6" label={t("IPv6")}><Switch on={s.ipv6} onChange={(v) => patch({ ipv6: v })} /></Row>
           <Row field="findProcess" label={t("Identify processes")} sub={t("Show which app made each connection")}><Switch on={s.findProcess} onChange={(v) => patch({ findProcess: v })} /></Row>
           <Row label={t("Latency test URL")}><TextInput value={s.testUrl} onCommit={(v) => patch({ testUrl: v })} /></Row>
+          <Row field="unifiedDelay" label={t("Unified delay")} sub={t("Measure a second request over the same connection when possible, reducing handshake overhead in latency results. This does not make connections faster.")} wrap>
+            <Switch on={s.unifiedDelay} onChange={(v) => patch({ unifiedDelay: v })} />
+          </Row>
           <Row label={t("Save data on metered networks")} sub={t("On a personal hotspot or in Low Data Mode, subscriptions aren't updated and connectivity isn't measured in the background.")} wrap>
             {state?.network.savingData && <span className="badge">{t("Saving data")}</span>}
             <Switch on={s.saveData} onChange={(v) => patch({ saveData: v })} />

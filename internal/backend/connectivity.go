@@ -215,7 +215,7 @@ func (b *Backend) probe(ctx context.Context, key string, out *Connectivity) erro
 		out.Internet = orFail(d, err)
 	case "proxy":
 		// timed as the core times its own, so the figure matches the
-		// proxies page (and keeps the profile's unified-delay)
+		// proxies page (including the app's unified-delay setting)
 		_, out.Chain = throughCore(ctx, c, http.MethodHead, testURL)
 		if len(out.Chain) == 0 {
 			out.Proxy = -1

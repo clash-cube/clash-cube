@@ -88,6 +88,8 @@ const zh: Record<string, string> = {
   "Always": "始终", "While the window is open": "窗口打开时", "Show speed in the menu bar": "在菜单栏显示速率",
   "Theme": "主题", "System": "跟随系统", "Light": "浅色", "Dark": "深色", "Language": "语言",
   "Mixed port": "混合端口", "Allow LAN": "允许局域网连接", "IPv6": "IPv6", "Log level": "日志级别", "Latency test URL": "测速链接",
+  "Unified delay": "统一延迟",
+  "Measure a second request over the same connection when possible, reducing handshake overhead in latency results. This does not make connections faster.": "尽可能复用连接测量第二次请求，减少握手开销对测速结果的影响。不会提高实际连接速度。",
   "Bypass": "绕过代理", "One host or network per line": "每行一个主机或网段", "Save": "保存", "Saved": "已保存",
   "TUN stack": "TUN 协议栈", "ICMP forwarding": "ICMP 转发",
   "MIPS": "MIPS",

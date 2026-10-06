@@ -15,12 +15,13 @@ type Settings struct {
 	Profile string `json:"profile"`
 
 	// What the app lays over every profile (runtimecfg).
-	Mode      string `json:"mode"` // rule | global | direct
-	MixedPort int    `json:"mixedPort"`
-	AllowLan  bool   `json:"allowLan"`
-	IPv6      bool   `json:"ipv6"`
-	LogLevel  string `json:"logLevel"`
-	TunStack  string `json:"tunStack"` // system | gvisor | mixed | mips
+	Mode         string `json:"mode"` // rule | global | direct
+	MixedPort    int    `json:"mixedPort"`
+	AllowLan     bool   `json:"allowLan"`
+	IPv6         bool   `json:"ipv6"`
+	UnifiedDelay bool   `json:"unifiedDelay"`
+	LogLevel     string `json:"logLevel"`
+	TunStack     string `json:"tunStack"` // system | gvisor | mixed | mips
 	// ICMPForwarding sends pings under TUN out directly; off, the core
 	// answers them itself. ICMP is never proxied either way.
 	ICMPForwarding bool `json:"icmpForwarding"`
@@ -89,6 +90,7 @@ func Defaults() Settings {
 		LogLevel:       "info",
 		TunStack:       "mixed",
 		ICMPForwarding: true,
+		UnifiedDelay:   true,
 		Bypass: []string{
 			"127.0.0.1", "192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12",
 			"localhost", "*.local", "*.crashlytics.com", "<local>",
