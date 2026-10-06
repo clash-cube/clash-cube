@@ -78,6 +78,14 @@ export function Providers(): $CancellablePromise<$models.Provider[] | null> {
 }
 
 /**
+ * RuleEntries lists what a rule set (kind ruleset), GeoSite or GeoIP list
+ * holds: the entries containing query, at most limit of them.
+ */
+export function RuleEntries(kind: string, name: string, query: string, limit: number): $CancellablePromise<backend$0.RuleEntries> {
+    return $Call.ByID(2414992664, kind, name, query, limit);
+}
+
+/**
  * RuleProviders is the profile's rule providers, by name.
  */
 export function RuleProviders(): $CancellablePromise<mihomoapi$0.RuleProvider[] | null> {

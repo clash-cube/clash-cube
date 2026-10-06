@@ -405,6 +405,12 @@ func (s *ProxyService) GeoInfo() backend.GeoInfo { return s.h.b.GeoInfo() }
 // address, host:port or a URL).
 func (s *ProxyService) LookupHost(host string) (backend.Lookup, error) { return s.h.b.LookupHost(host) }
 
+// RuleEntries lists what a rule set (kind ruleset), GeoSite or GeoIP list
+// holds: the entries containing query, at most limit of them.
+func (s *ProxyService) RuleEntries(kind, name, query string, limit int) (backend.RuleEntries, error) {
+	return s.h.b.RuleEntries(kind, name, query, limit)
+}
+
 // RuleProviders is the profile's rule providers, by name.
 func (s *ProxyService) RuleProviders() ([]mihomoapi.RuleProvider, error) {
 	c, err := s.client()

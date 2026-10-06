@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import { Proxy, type Rule, type RuleProvider, type UserRule } from "../api";
 import { usePoll } from "../usePoll";
-import { Arrow, Close, Plus, Refresh, Search } from "../components/Icons";
+import { Arrow, Chevron, Close, Plus, Refresh, Search } from "../components/Icons";
+import { RuleDetail } from "../components/RuleDetail";
 import { RuleEditor } from "../components/RuleEditor";
 import { AppIcon } from "../components/AppIcon";
 import { ruleProgram } from "../components/AppPicker";
 import { HostLookup } from "../components/HostLookup";
 import { toast, toastError } from "../components/Toast";
 import { Segmented } from "../components/Segmented";
-import { ago } from "../format";
+import { ago, nodeLabel } from "../format";
+import { useGroups } from "../useGroups";
 
 type Tab = "rules" | "providers" | "lookup";
 
@@ -26,6 +28,9 @@ export function Rules() {
   const [q, setQ] = useState("");
   const [order, setOrder] = useState<"profile" | "hits">("profile");
   const [limit, setLimit] = useState(300);
+  const [open, setOpen] = useState<Set<number>>(new Set());
+  const toggle = (i: number) => setOpen((o) => { const n = new Set(o); if (n.has(i)) n.delete(i); else n.add(i); return n; });
+  useEffect(() => setOpen(new Set()), [profile]);
   const [tab, setTab] = useState<Tab>(location.hash === "#providers" ? "providers" : location.hash === "#lookup" ? "lookup" : "rules");
   const [providers, setProviders] = useState<RuleProvider[]>([]);
   const loadProviders = () => { if (running && !busy) Proxy.RuleProviders().then((p) => setProviders(p ?? [])).catch(() => {}); };
@@ -51,6 +56,9 @@ export function Rules() {
     [next[i], next[i + d]] = [next[i + d], next[i]];
     saveMine(next);
   };
+
+  const { groups } = useGroups();
+  const nowOf = useMemo(() => new Map((groups ?? []).map((g) => [g.name, g.now])), [groups]);
 
   const load = () => { if (running && !busy) Proxy.Rules().then((r) => setRules(r ?? [])).catch(() => {}); };
   useEffect(load, [running, profile, busy]);
@@ -94,7 +102,7 @@ export function Rules() {
               <span className="cell idx num">{i + 1}</span>
               <span className="cell"><span className="rtype">{r.type}</span></span>
               <RulePayload r={r} />
-              <span className="cell policy">{r.policy}</span>
+              <PolicyRoute policy={r.policy} nowOf={nowOf} />
               <span className="cell r actions" onClick={(e) => e.stopPropagation()}>
                 <button className="icon" disabled={i === 0} title={t("Move up")} onClick={() => move(i, -1)}><Arrow dir="up" size={12} /></button>
                 <button className="icon" disabled={i === mine.length - 1} title={t("Move down")} onClick={() => move(i, 1)}><Arrow dir="down" size={12} /></button>
@@ -116,16 +124,19 @@ export function Rules() {
             const hits = r.extra?.hitCount ?? 0;
             const at = r.extra?.hitAt as unknown as string | undefined;
             return (
-              <div className="trow" key={r.index}>
-                <span className="cell idx num">{r.index + 1}</span>
+              <Fragment key={r.index}>
+              <div className={"trow click" + (open.has(r.index) ? " open" : "")} title={t("Click for details")} onClick={() => toggle(r.index)}>
+                <span className="cell idx num"><Chevron size={9} className="chev" />{r.index + 1}</span>
                 <span className="cell"><span className="rtype">{r.type}</span></span>
                 <span className="cell mono payload" title={r.payload}>{r.payload || "—"}{r.size > 0 && <span className="sub"> ({r.size})</span>}</span>
-                <span className="cell policy">{r.proxy}</span>
+                <PolicyRoute policy={r.proxy} nowOf={nowOf} />
                 <span className="cell hits" title={hits && at ? t("Last hit {t}", { t: ago(at, t) }) : undefined}>
                   <span className="hitbar"><i style={{ width: (hits / maxHits) * 100 + "%" }} /></span>
                   <span className="num">{hits || ""}</span>
                 </span>
               </div>
+              {open.has(r.index) && <RuleDetail r={r} route={routeOf(r.proxy, nowOf)} />}
+              </Fragment>
             );
           })}
         </div>
@@ -133,6 +144,26 @@ export function Rules() {
       </>}
     </div>
   );
+}
+
+// The policy and the node it ends at, following each group's selection, as
+// the connections page shows a chain: groups muted, the exit as a tag.
+function PolicyRoute({ policy, nowOf }: { policy: string; nowOf: Map<string, string> }) {
+  const path = routeOf(policy, nowOf);
+  const exit = nodeLabel(path[path.length - 1]);
+  const via = path.slice(0, -1);
+  const tone = exit === "DIRECT" ? "direct" : /^REJECT/.test(exit) ? "reject" : "proxy";
+  return <span className="cell chain" title={path.map(nodeLabel).join(" → ")}>
+    {via.length > 0 && <span className="via">{via.join(" → ")} →</span>}
+    <span className={"exit " + tone}>{exit}</span>
+  </span>;
+}
+
+// a policy, then each group's selection down to a node
+function routeOf(policy: string, nowOf: Map<string, string>) {
+  const path = [policy];
+  for (let now = nowOf.get(policy); now && !path.includes(now); now = nowOf.get(now)) path.push(now);
+  return path;
 }
 
 // a rule's value; a process rule shows the program's icon and name

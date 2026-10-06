@@ -18,5 +18,6 @@ export type {
     ProxyEgress,
     Record,
     RegionNodes,
+    RuleEntries,
     State
 } from "./models.js";

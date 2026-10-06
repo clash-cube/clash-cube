@@ -357,6 +357,37 @@ export interface RegionNodes {
 }
 
 /**
+ * RuleEntries is what a rule set, GeoSite list or GeoIP list holds, read
+ * from the files the core uses. Entries are those matching the query, at
+ * most the limit asked for.
+ */
+export interface RuleEntries {
+    /**
+     * the file, relative to the core's home; "inline" for one in the profile
+     */
+    "source": string;
+
+    /**
+     * domain | ipcidr | classical, for rule sets
+     */
+    "behavior": string;
+    "total": number;
+    "matched": number;
+    "entries": string[] | null;
+
+    /**
+     * Note is why there is nothing to list: not fetched yet, or a database
+     * that can't be listed. English, translated by the window.
+     */
+    "note"?: string;
+
+    /**
+     * Not means the rule matches everything except these (GEOSITE,!cn).
+     */
+    "not"?: boolean;
+}
+
+/**
  * State is what the GUI shows of the app at a glance.
  */
 export interface State {
