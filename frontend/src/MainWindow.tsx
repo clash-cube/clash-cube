@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { useStore, type View } from "./store";
 import { useT } from "./i18n";
 import { Segmented } from "./components/Segmented";
@@ -18,8 +18,11 @@ import { Settings } from "./views/Settings";
 import { Prewarm } from "./components/Prewarm";
 import { useConnectionFeed } from "./connectionStore";
 
-const VIEWS: Record<View, () => JSX.Element> = {
-  overview: Overview, usage: Usage, proxies: Proxies, profiles: Profiles, connections: Connections, rules: Rules, logs: Logs, events: Events, settings: Settings,
+// three.js is loaded only when the globe first shows
+const GlobeView = lazy(() => import("./views/Globe").then((m) => ({ default: m.GlobeView })));
+
+const VIEWS: Record<View, ComponentType> = {
+  overview: Overview, usage: Usage, globe: GlobeView, proxies: Proxies, profiles: Profiles, connections: Connections, rules: Rules, logs: Logs, events: Events, settings: Settings,
 };
 
 export function MainWindow() {
@@ -98,7 +101,7 @@ export function MainWindow() {
           <span>{t("ClashCube")}</span>
         </div>
         <Segmented
-          value={view === "settings" ? ("" as View) : view === "events" ? "logs" : view === "usage" ? "overview" : view}
+          value={view === "settings" ? ("" as View) : view === "events" ? "logs" : view === "usage" || view === "globe" ? "overview" : view}
           onChange={setView}
           options={[
             { value: "overview", label: t("Overview") },
@@ -132,7 +135,7 @@ export function MainWindow() {
           <Menu close={close} items={menuItems()} />
         </Popover>
       </header>
-      <Page key={view} />
+      <Suspense fallback={<div className="view" />}><Page key={view} /></Suspense>
       <Prewarm />
     </div>
   );

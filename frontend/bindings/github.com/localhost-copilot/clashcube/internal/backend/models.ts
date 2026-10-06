@@ -164,6 +164,69 @@ export interface GeoInfo {
 }
 
 /**
+ * Globe is where the connections go now, by country, for the overview's
+ * globe: from this Mac's country, through the country a node's name gives,
+ * to the destination's.
+ */
+export interface Globe {
+    /**
+     * this Mac's country; "" while unknown
+     */
+    "origin": string;
+
+    /**
+     * the public address it was found from
+     */
+    "originIp": string;
+
+    /**
+     * the centre of every country named here
+     */
+    "places": { [_ in string]?: Place } | null;
+
+    /**
+     * the busiest first
+     */
+    "routes": GlobeRoute[] | null;
+}
+
+export interface GlobeHost {
+    "host": string;
+    "total": number;
+}
+
+/**
+ * GlobeRoute is the connections to one country by one way: directly, or
+ * through nodes in one country.
+ */
+export interface GlobeRoute {
+    "to": string;
+
+    /**
+     * the nodes' country; "" for DIRECT, or nodes whose names don't say
+     */
+    "via": string;
+    "direct": boolean;
+    "conns": number;
+
+    /**
+     * bytes a second
+     */
+    "up": number;
+    "down": number;
+
+    /**
+     * what its connections have moved
+     */
+    "total": number;
+
+    /**
+     * the busiest, at most globeHosts
+     */
+    "hosts": GlobeHost[] | null;
+}
+
+/**
  * HelperStatus is what Settings shows of service mode.
  */
 export interface HelperStatus {
@@ -329,6 +392,11 @@ export interface Node {
      * the first modules.Regions key that takes it
      */
     "region"?: string;
+}
+
+export interface Place {
+    "lat": number;
+    "lon": number;
 }
 
 /**

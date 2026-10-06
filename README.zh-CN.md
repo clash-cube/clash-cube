@@ -159,6 +159,8 @@ ClashCube.app/Contents/MacOS/clashcube
 - [Wails](https://wails.io)：Go + Web 界面的桌面应用框架
 - [Surge for Mac](https://nssurge.com)：ClashCube 交互的参照
 - [Clash Verge Rev](https://github.com/clash-verge-rev/clash-verge-rev) 与 [zashboard](https://github.com/Zephyruso/zashboard)：模块语法与测速行为的参照
+- [three.js](https://threejs.org)：绘制地球
+- [Solar System Scope](https://www.solarsystemscope.com/textures/)：地球的昼夜贴图（CC BY 4.0，已缩小）
 
 ## 许可证
 

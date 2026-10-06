@@ -44,4 +44,5 @@ export const Route = ({ size }: P) => (<svg {...s(size)}><path d="M8 14V9.5L4 5.
 export const Wifi = ({ size }: P) => (<svg {...s(size)}><path d="M2 6.6a9 9 0 0 1 12 0M4.2 9.1a5.8 5.8 0 0 1 7.6 0M6.4 11.5a2.6 2.6 0 0 1 3.2 0" /><circle cx="8" cy="13.4" r=".5" /></svg>);
 export const Columns = ({ size }: P) => (<svg {...s(size)}><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M8 3v10" /></svg>);
 export const Rows = ({ size }: P) => (<svg {...s(size)}><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M2 8h12" /></svg>);
+export const Eye = ({ size, off }: P & { off?: boolean }) => (<svg {...s(size)}><path d="M1.8 8S4 3.8 8 3.8 14.2 8 14.2 8 12 12.2 8 12.2 1.8 8 1.8 8z" /><circle cx="8" cy="8" r="2" />{off && <path d="m2.5 13.5 11-11" />}</svg>);
 export const Sort = ({ size }: P) => (<svg {...s(size)}><path d="M4 3v10M2 11l2 2 2-2M10 4h4M10 8h3M10 12h2" /></svg>);

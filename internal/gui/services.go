@@ -368,6 +368,10 @@ func (s *ProxyService) TopClients(n int) ([]backend.ClientRate, error) {
 	return rates[:min(n, len(rates))], nil
 }
 
+// Globe is the connections by the country they go to, and the way they
+// take there, with speeds since the last call.
+func (s *ProxyService) Globe() (backend.Globe, error) { return s.h.b.Globe() }
+
 func (s *ProxyService) CloseConnection(id string) error {
 	c, err := s.client()
 	if err != nil {

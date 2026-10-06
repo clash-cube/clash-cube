@@ -193,8 +193,8 @@ const label = (date: string) => parse(date).toLocaleDateString(locale(), { month
 const short = (date: string) => parse(date).toLocaleDateString(locale(), { month: "numeric", day: "numeric" });
 const hourLabel = (h: number) => `${String(h).padStart(2, "0")}:00–${String(h + 1).padStart(2, "0")}:00`;
 
-// The overview and the statistics share a tab; the page's head switches them.
-export function OverviewTabs({ value }: { value: "overview" | "usage" }) {
+// The overview, the statistics and the globe share a tab; the page's head switches them.
+export function OverviewTabs({ value }: { value: "overview" | "usage" | "globe" }) {
   const t = useT();
   const setView = useStore((s) => s.setView);
   return (
@@ -202,7 +202,7 @@ export function OverviewTabs({ value }: { value: "overview" | "usage" }) {
       className="track small"
       value={value}
       onChange={setView}
-      options={[{ value: "overview", label: t("Overview") }, { value: "usage", label: t("Traffic statistics") }]}
+      options={[{ value: "overview", label: t("Overview") }, { value: "usage", label: t("Traffic statistics") }, { value: "globe", label: t("Global connections") }]}
     />
   );
 }

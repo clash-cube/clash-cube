@@ -55,6 +55,14 @@ export function GeoInfo(): $CancellablePromise<backend$0.GeoInfo> {
 }
 
 /**
+ * Globe is the connections by the country they go to, and the way they
+ * take there, with speeds since the last call.
+ */
+export function Globe(): $CancellablePromise<backend$0.Globe> {
+    return $Call.ByID(1821532211);
+}
+
+/**
  * Groups is every proxy group, GLOBAL last.
  */
 export function Groups(): $CancellablePromise<$models.Group[] | null> {

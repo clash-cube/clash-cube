@@ -86,6 +86,8 @@ type Backend struct {
 	// next one follows a network change
 	connHist  map[string][]LatencySample
 	connBreak map[string]bool
+	// globe.go
+	globe globeState
 
 	// watch.go
 	events       []Event

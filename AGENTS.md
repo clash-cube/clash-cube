@@ -53,7 +53,8 @@ cd frontend && npx tsc    # type check
   real data directory: `CLASHCUBE_HOME=/tmp/mbhome ./bin/clashcube`. Set
   `mixedPort` in that home to something other than 7890.
 - Debug switches: `CLASHCUBE_SHOW=main|panel|menu` opens a window or the tray
-  menu at start. `CLASHCUBE_VIEW=proxies` (or `settings#tun`) picks the page.
+  menu at start. `CLASHCUBE_VIEW=proxies` (or `settings#tun`, or `globe` for global
+  connections) picks the page.
 - Tests that need a core re-exec the test binary as `core` (see `TestMain` in
   `internal/backend` and `internal/helper`).
 

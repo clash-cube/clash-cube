@@ -182,6 +182,8 @@ rather than a workaround here.
 - [Wails](https://wails.io), Go + web UI for desktop apps
 - [Surge for Mac](https://nssurge.com), whose interaction model ClashCube follows
 - [Clash Verge Rev](https://github.com/clash-verge-rev/clash-verge-rev) and [zashboard](https://github.com/Zephyruso/zashboard), for the module syntax and latency testing behaviour
+- [three.js](https://threejs.org), which draws the globe
+- [Solar System Scope](https://www.solarsystemscope.com/textures/), whose Earth day and night textures (CC BY 4.0, resized) the globe uses
 
 ## License
 
