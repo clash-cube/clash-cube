@@ -37,8 +37,8 @@ func (b *Backend) RouteBody(r modules.Route) (string, error) {
 	}
 	// Include nodes added by YAML modules. Omit routes so their private chains
 	// do not become inputs and the route being edited cannot collide with itself.
-	for _, mod := range modules.List() {
-		if !mod.Enabled || mod.Route != nil {
+	for _, mod := range modules.For(id, modules.List()) {
+		if mod.Route != nil {
 			continue
 		}
 		v, err := modules.Parse(mod.Body)

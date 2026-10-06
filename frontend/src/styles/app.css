@@ -651,8 +651,22 @@ select.input { padding-right: 6px; }
 @media (max-width: 720px) { .usage-cell.up, .usage-cell.down { display: none; } }
 
 /* modules: a row with its switch, unrolling into its editor */
+/* a profile's name is shown as written */
+.modules-title { text-transform: none; letter-spacing: 0; }
 .modules .module + .module { border-top: 1px solid var(--line-2); }
 .modules .module.off .name { color: var(--muted); }
+/* dragged by its grip: the held row lifts and follows the pointer, the
+   others slide aside; nothing animates once it lands */
+.modules .row .grip { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 28px; margin: 0 -6px 0 -6px; padding: 0; border: 0; background: none; color: var(--faint); cursor: grab; touch-action: none; border-radius: 6px; }
+.modules .row .grip:hover { color: var(--muted); }
+.modules .row .grip:focus-visible { outline: 2px solid var(--accent); }
+.modules.sorting { overflow: visible; }
+.modules.sorting .module { position: relative; transition: transform .2s var(--ease); background: var(--card); }
+.modules.sorting .module.held { z-index: 2; transition: none; box-shadow: var(--shadow); border-radius: 12px; cursor: grabbing; }
+.modules.sorting .module.held + .module, .modules.sorting .module.held { border-top-color: transparent; }
+.modules.sorting, .modules.sorting * { cursor: grabbing; user-select: none; }
+/* an empty section it would be dropped in */
+.user-rules-empty.drop-target { box-shadow: 0 0 0 2px var(--accent); }
 .modules .row .sub.mono { font-size: 11px; }
 .module-editor { display: flex; flex-direction: column; gap: 8px; padding: 2px 14px 14px; }
 .modules > .module-editor { padding-top: 14px; }

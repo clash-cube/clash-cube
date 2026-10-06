@@ -19,7 +19,6 @@ export function Profiles() {
   const [activeImport, setActiveImport] = useState<ImportRequest | null>(null);
   const [updatingAll, setUpdatingAll] = useState(false);
   const [flash, setFlash] = useState("");
-  const [newAt, setNewAt] = useState<HTMLElement | null>(null);
   const [tab, setTab] = useState<"profiles" | "modules">(location.hash === "#modules" ? "modules" : "profiles");
 
   useEffect(() => {
@@ -55,7 +54,6 @@ export function Profiles() {
           { value: "modules", label: t("Modules") },
         ]} />
         <div className="view-tools">
-          {tab === "modules" && <button className="btn small primary" onClick={(e) => setNewAt(newAt ? null : e.currentTarget)}><Plus size={13} />{t("New module")}</button>}
           {tab === "profiles" && <>
           <button className="btn small" disabled={updatingAll} onClick={updateAll}><Refresh size={13} />{updatingAll ? t("Updating…") : t("Update all")}</button>
           <button ref={importButton} className="btn small primary" onClick={(e) => { if (!importAt) setImportAt(e.currentTarget); }}><Plus size={13} />{t("Import")}</button>
@@ -63,7 +61,7 @@ export function Profiles() {
         </div>
       </div>
       <ImportPopover key={activeImport ? JSON.stringify(activeImport) : "manual"} request={activeImport} anchor={importAt} onClose={closeImport} onDone={(p) => { closeImport(); flashRow(p.id); }} />
-      {tab === "modules" ? <Modules newAt={newAt} onNewClose={() => setNewAt(null)} /> : <div className="list">
+      {tab === "modules" ? <Modules /> : <div className="list">
         {profiles.map((p) => <ProfileRow key={p.id} p={p} current={p.id === current} flash={flash === p.id} onFlash={() => flashRow(p.id)} onCopied={flashRow} />)}
       </div>}
     </div>
@@ -75,6 +73,8 @@ function ProfileRow({ p, current, flash, onFlash, onCopied }: { p: Profile; curr
   const [menuAt, setMenuAt] = useState<HTMLElement | null>(null);
   const [updating, setUpdating] = useState(false);
   const [armed, setArmed] = useState(false);
+  // the profile's own modules, which go with it
+  const [mods, setMods] = useState(0);
   const [renaming, setRenaming] = useState(false);
   const busy = useStore((s) => s.state?.busy);
 
@@ -110,7 +110,11 @@ function ProfileRow({ p, current, flash, onFlash, onCopied }: { p: Profile; curr
     } catch (e) { toastError(e); }
   };
   const remove = async () => {
-    if (!armed) { setArmed(true); return; }
+    if (!armed) {
+      setArmed(true);
+      P.Modules().then((ms) => setMods((ms ?? []).filter((m) => m.profile === p.id).length)).catch(() => setMods(0));
+      return;
+    }
     try { await P.Remove(p.id); toast(t("Removed")); } catch (e) { toastError(e); }
   };
 
@@ -145,7 +149,7 @@ function ProfileRow({ p, current, flash, onFlash, onCopied }: { p: Profile; curr
         {current && busy === "reloading" && <span className="sub">{t("Reloading…")}</span>}
         {p.url && <button className={"icon" + (updating ? " spin" : "")} title={t("Update")} onClick={update} disabled={updating}><Refresh size={14} /></button>}
         <button className={"icon" + (menuAt ? " on" : "")} onClick={(e) => setMenuAt(menuAt ? null : e.currentTarget)}><More size={14} /></button>
-        {armed && <button className="btn small danger armed" onClick={remove}>{t("Click again to remove")}</button>}
+        {armed && <button className="btn small danger armed" onClick={remove}>{mods ? t("Click again to remove, with its {n} modules", { n: mods }) : t("Click again to remove")}</button>}
       </div>
       <Popover anchor={menuAt} open={!!menuAt} onClose={() => setMenuAt(null)} align="end">
         <Menu close={() => setMenuAt(null)} items={[

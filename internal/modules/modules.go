@@ -1,7 +1,8 @@
-// Package modules keeps the user's modules: YAML snippets laid over every
-// profile, as Surge's modules are. Like the user's rules they live apart
+// Package modules keeps the user's modules: YAML snippets laid over the
+// profiles, as Surge's modules are. Like the user's rules they live apart
 // from the profiles, which are replaced on every update, and runtimecfg
-// merges the enabled ones in order.
+// merges the enabled ones in order: the global ones over every profile,
+// then a profile's own over it alone.
 package modules
 
 import (
@@ -26,6 +27,8 @@ type Module struct {
 	Name    string `json:"name"`
 	Enabled bool   `json:"enabled"`
 	Body    string `json:"body"` // YAML, a mapping
+	// the ID of the profile it is laid over alone; empty, over every one
+	Profile string `json:"profile,omitempty"`
 	// a service sent through a policy: the body is made from it, again
 	// for each profile (runtimecfg), so its group's name never clashes
 	Route *Route `json:"route,omitempty"`
@@ -84,6 +87,21 @@ func (m Module) Keys() []string {
 		}
 	}
 	sort.Strings(out)
+	return out
+}
+
+// For is the enabled modules of ms laid over profile id, in the order
+// they merge: the global ones, then the profile's own, so its rules,
+// put first, go ahead of the global ones'.
+func For(id string, ms []Module) []Module {
+	var out []Module
+	for _, own := range []bool{false, true} {
+		for _, m := range ms {
+			if m.Enabled && (m.Profile != "") == own && (!own || m.Profile == id) {
+				out = append(out, m)
+			}
+		}
+	}
 	return out
 }
 

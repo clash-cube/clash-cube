@@ -21,9 +21,9 @@ type Controller struct {
 	Secret string
 }
 
-// Build is profile (of that ID) with the enabled modules merged over it in
-// order, then s and ctl, which win over both, and the user's rules ahead
-// of all others.
+// Build is profile (of that ID) with the enabled modules merged over it,
+// the global ones then its own (modules.For), then s and ctl, which win
+// over both, and the user's rules ahead of all others.
 func Build(id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module) ([]byte, error) {
 	var m map[string]any
 	if err := yaml.Unmarshal(profile, &m); err != nil {
@@ -32,10 +32,7 @@ func Build(id string, profile []byte, s settings.Settings, ctl Controller, user 
 	if m == nil {
 		m = map[string]any{}
 	}
-	for _, mod := range mods {
-		if !mod.Enabled {
-			continue
-		}
+	for _, mod := range modules.For(id, mods) {
 		body := mod.Body
 		if mod.Route != nil {
 			b, err := RouteBody(id, *mod.Route, m)

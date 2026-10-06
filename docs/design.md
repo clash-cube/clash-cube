@@ -44,7 +44,7 @@ GUI 用 `os.Executable()` 加 `core` 参数拉起自己。GUI 进程也会执行
 ```
 settings.json          应用设置，含网络规则
 profiles/index.json    订阅元数据；profiles/<id>.yaml 每个配置一个文件
-modules.json           模块，按顺序叠加到每个配置上
+modules.json           模块：全局的叠加到每个配置上，带 profile 的只叠加到那个配置
 rules.json             用户规则
 usage/<日期>.json      流量统计，一天一个文件，保留 90 天
 core/                  mihomo 的 home（geo、cache.db、providers）
@@ -56,7 +56,7 @@ core/runtime.yaml      实际交给 core 的配置（0600）
 配置文件从不原地修改。每次启动或重载前把覆盖项合并好再交给内核（ClashBar 是先启动再 `PATCH /configs`，中间有状态不一致的窗口期）：
 
 1. 把当前配置解析成 `map[string]any`，未知字段原样保留。
-2. 按顺序合并启用的模块。写法与 Clash Verge 的扩展配置一致：映射逐键深度合并，其他值替换；`+key` 前插列表，`key+` 追加，`key!` 整体替换；`prepend-/append-rules`、`-proxies`、`-proxy-groups` 作用于规则、节点和策略组。
+2. 按顺序合并启用的模块：先全局模块，再当前配置自己的模块（`profile` 为其 ID），所以配置模块的规则排在前面。复制配置时连同它的模块一起复制，删除配置时一起删除。写法与 Clash Verge 的扩展配置一致：映射逐键深度合并，其他值替换；`+key` 前插列表，`key+` 追加，`key!` 整体替换；`prepend-/append-rules`、`-proxies`、`-proxy-groups` 作用于规则、节点和策略组。
 3. 插入用户规则（在配置自带规则之前）。策略在当前配置里不存在的规则跳过，不让整个配置校验失败。规则类型限定为单值类型，值和策略里不允许逗号和换行。
 4. 用应用设置覆盖：`mixed-port`、`allow-lan`、`ipv6`、`unified-delay`、`log-level`、`mode`、`find-process-mode`、`tun`、`external-controller`、`secret`；删除其他控制接口（含 `external-controller-unix`）。模块写了这些键也会被覆盖。「设置 → 网络」的统一延迟默认开启，尽可能复用连接测量第二次请求；关闭后计入首次建连和握手。切换会重载内核，失败则回滚设置。
 5. 防泄露开关（默认都关）：

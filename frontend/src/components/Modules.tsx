@@ -7,11 +7,11 @@ import type { Group } from "../api";
 import { useGroups } from "../useGroups";
 import { useStore } from "../store";
 import { delayClass, fmtDelay, nodeLabel } from "../format";
-import { Popover } from "./Popover";
+import { Popover, Menu } from "./Popover";
 import { Segmented } from "./Segmented";
 import { Switch } from "./Switch";
 import { Fold } from "./Fold";
-import { Arrow, Chevron, Close, Search } from "./Icons";
+import { Chevron, Close, Grip, More, Plus, Search } from "./Icons";
 import { toast, toastError, errText } from "./Toast";
 
 const EXAMPLE = `dns:
@@ -22,26 +22,39 @@ hosts:
 prepend-rules:
   - DOMAIN-SUFFIX,example.com,DIRECT`;
 
-// Modules are YAML laid over every profile in order, as Surge's are: each
-// one a row with its switch, unrolling into its editor when clicked. A
-// route sends a service through a group of its own; its row picks the node.
-export function Modules({ newAt, onNewClose }: { newAt: HTMLElement | null; onNewClose: () => void }) {
+// Modules are YAML laid over the profiles in order, as Surge's are: the
+// global ones over every profile, then the profile in use's own over it
+// alone. Each is a row with its switch, unrolling into its editor when
+// clicked. A route sends a service through a group of its own; its row
+// picks the node.
+export function Modules() {
   const t = useT();
+  const profile = useStore((s) => s.state?.profile ?? "");
+  const profileName = useStore((s) => s.profiles.find((p) => p.id === profile)?.name ?? "");
   const [mods, setMods] = useState<Module[] | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const { groups, select, load: loadGroups } = useGroups();
   const nodes = useNodes();
   const [open, setOpen] = useState("");
-  // a new module being written, blank or from a template
+  // a new module being written, blank or from a template; its profile says
+  // which section it goes in
   const [draft, setDraft] = useState<Module | null>(null);
   const [flash, setFlash] = useState("");
+  // the add menu, and the section it adds to: "" for global
+  const [newAt, setNewAt] = useState<{ at: HTMLElement; profile: string } | null>(null);
   const load = () => P.Modules().then((m) => setMods(m ?? [])).catch(toastError);
   useEffect(() => {
     load();
     P.ModuleTemplates().then((ts) => setTemplates(ts ?? [])).catch(() => {});
     P.RouteServices().then((ss) => setServices(ss ?? [])).catch(() => {});
   }, []);
+  useEffect(() => { setDraft(null); setOpen(""); }, [profile]);
+  const global = mods?.filter((m) => !m.profile) ?? [];
+  const own = profile ? mods?.filter((m) => m.profile === profile) ?? [] : [];
+  // the sections, each a list the rows are dragged in and between
+  const sections = profile ? [global, own] : [global];
+  const sort = useSort(sections.map((x) => x.length), (from, to) => drop(from, to));
 
   // the core checks every change; one it refuses leaves the list as it was
   const save = async (next: Module[]) => {
@@ -50,25 +63,37 @@ export function Modules({ newAt, onNewClose }: { newAt: HTMLElement | null; onNe
     try { await P.SetModules(next); await load(); loadGroups(); return true; } catch (e) { setMods(before); toastError(e); return false; }
   };
   // a template opens in the editor, and is added only once saved there
-  const use = (tpl: Template | null) => {
-    onNewClose();
+  const use = (tpl: Template | null, to: string) => {
+    setNewAt(null);
     setOpen("");
-    setDraft({ id: "", name: tpl ? t(tpl.name) : "", enabled: true, body: tpl?.body ?? "" });
+    setDraft({ id: "", name: tpl ? t(tpl.name) : "", enabled: true, body: tpl?.body ?? "", profile: to });
   };
-  const route = (svc: Service) => {
-    onNewClose();
+  const route = (svc: Service, to: string) => {
+    setNewAt(null);
     setOpen("");
-    setDraft({ id: "", name: t(svc.name), enabled: true, body: "", route: { service: svc.name, policy: "select", region: svc.region ?? "" } });
-  };
-  const added = new Set(mods?.map((m) => m.name) ?? []);
-  const routed = new Set(mods?.flatMap((m) => (m.route ? [m.route.service] : [])) ?? []);
-  const move = (i: number, d: number) => {
-    const next = mods!.slice();
-    [next[i], next[i + d]] = [next[i + d], next[i]];
-    save(next);
+    setDraft({ id: "", name: t(svc.name), enabled: true, body: "", profile: to, route: { service: svc.name, policy: "select", region: svc.region ?? "" } });
   };
 
   if (!mods) return null;
+  const shown = [...global, ...own];
+  const added = new Set(shown.map((m) => m.name));
+  const routed = new Set(shown.flatMap((m) => (m.route ? [m.route.service] : [])));
+  // puts a module at a place in a section, taking it to that section's
+  // scope. To global keeps a route's picks, which are by profile already.
+  function drop(from: Spot, to: Spot) {
+    if (!mods) return;
+    const m = sections[from.s][from.i];
+    const scope = to.s === 0 ? "" : profile;
+    const rest = mods.filter((o) => o.id !== m.id);
+    const target = sections[to.s].filter((o) => o.id !== m.id);
+    const at = to.i < target.length ? rest.indexOf(target[to.i])
+      : target.length ? rest.indexOf(target[target.length - 1]) + 1 : rest.length;
+    rest.splice(at, 0, { ...m, profile: scope });
+    save(rest).then((ok) => ok && from.s !== to.s && toast(scope
+      ? t("{name} is now laid over {profile} alone", { name: m.name, profile: profileName })
+      : t("{name} is now laid over every profile", { name: m.name })));
+  }
+  const setScope = (m: Module, s: number) => drop({ s: m.profile ? 1 : 0, i: sections[m.profile ? 1 : 0].indexOf(m) }, { s, i: sections[s].length });
   const add = async (m: Module) => {
     if (!(await save([...mods, m]))) return;
     setDraft(null);
@@ -76,13 +101,43 @@ export function Modules({ newAt, onNewClose }: { newAt: HTMLElement | null; onNe
     setFlash(m.name); setTimeout(() => setFlash(""), 900);
   };
   const ownGroup = (m: Module) => groups?.find((g) => g.module === m.id);
+  const draftIn = (to: string) => draft && (draft.profile ?? "") === to && (
+    <div className="list modules">
+      {draft.route
+        ? <RouteModuleEditor module={draft} onCancel={() => setDraft(null)} onSave={add} />
+        : <ModuleEditor module={draft} onCancel={() => setDraft(null)} onSave={add} />}
+    </div>
+  );
+  // a section's rows, or what it says empty, which a row can be dropped on
+  const rows = (s: number, empty: string) => sections[s].length === 0
+    ? <div ref={sort.zone(s)} className={"list user-rules-empty" + sort.zoneClass(s)}>{empty}</div>
+    : (
+    <div ref={sort.zone(s)} style={sort.zoneStyle(s)} className={"list modules" + (sort.dragging ? " sorting" : "")}>
+      {sections[s].map((m, i) => (
+        <ModuleRow key={m.id} m={m} group={ownGroup(m)} nodes={nodes} onPick={(g, n) => select(g.name, n)} open={open === m.id} flash={flash === m.name}
+          sort={sort} s={s} i={i} profileName={profile ? profileName : ""}
+          onOpen={() => { setDraft(null); setOpen(open === m.id ? "" : m.id); }}
+          onToggle={(on) => save(mods.map((o) => (o.id === m.id ? { ...o, enabled: on } : o)))}
+          onScope={() => setScope(m, m.profile ? 0 : 1)}
+          onRemove={() => save(mods.filter((o) => o.id !== m.id))}
+          onSave={async (n) => { if (await save(mods.map((o) => (o.id === m.id ? n : o)))) { setOpen(""); toast(t("Saved")); } }} />
+      ))}
+    </div>
+  );
+  const head = (title: string, to: string) => (
+    <div className="section-title user-rules-title modules-title">
+      <span>{title}</span>
+      <button className="btn small" onClick={(e) => setNewAt(newAt ? null : { at: e.currentTarget, profile: to })}><Plus size={12} />{t("New module")}</button>
+    </div>
+  );
+  const to = newAt?.profile ?? "";
   return (
     <>
-      <Popover anchor={newAt} open={!!newAt} onClose={onNewClose} align="end" width={340}>
+      <Popover anchor={newAt?.at ?? null} open={!!newAt} onClose={() => setNewAt(null)} align="end" width={340}>
         <div className="menu templates">
           <div className="mhead">{t("Common")}</div>
           {templates.map((tpl) => (
-            <button key={tpl.name} onClick={() => use(tpl)}>
+            <button key={tpl.name} onClick={() => use(tpl, to)}>
               <span className="tname">{t(tpl.name)}{added.has(t(tpl.name)) && <span className="badge muted">{t("Added")}</span>}</span>
               <span className="thint">{t(tpl.hint)}</span>
             </button>
@@ -90,62 +145,139 @@ export function Modules({ newAt, onNewClose }: { newAt: HTMLElement | null; onNe
           <hr />
           <div className="mhead">{t("Route a service")}</div>
           {services.map((svc) => (
-            <button key={svc.name} onClick={() => route(svc)}>
+            <button key={svc.name} onClick={() => route(svc, to)}>
               <span className="tname">{t(svc.name)}{routed.has(svc.name) && <span className="badge muted">{t("Added")}</span>}</span>
               <span className="thint">{t(svc.hint)}</span>
             </button>
           ))}
           <hr />
-          <button onClick={() => use(null)}><span className="tname">{t("Blank module…")}</span></button>
+          <button onClick={() => use(null, to)}><span className="tname">{t("Blank module…")}</span></button>
         </div>
       </Popover>
-      {draft && (
-        <div className="list modules">
-          {draft.route
-            ? <RouteModuleEditor module={draft} onCancel={() => setDraft(null)} onSave={add} />
-            : <ModuleEditor module={draft} onCancel={() => setDraft(null)} onSave={add} />}
-        </div>
-      )}
-      {mods.length === 0 && !draft ? (
+      {head(t("Global modules"), "")}
+      {draftIn("")}
+      {shown.length === 0 && !draft ? (
         <div className="list modules-empty">
           <div className="lead">
             <b>{t("Change every profile, and keep it across updates")}</b>
-            {t("Modules add DNS, hosts, rules and more over the profile in use. The app's ports, mode and TUN still win. Start with one of these:")}
+            {t("Global modules add DNS, hosts, rules and more over every profile. The app's ports, mode and TUN still win. Start with one of these:")}
           </div>
           {templates.map((tpl, i) => (
-            <button className="row click" key={tpl.name} style={{ ["--i" as string]: i }} onClick={() => use(tpl)}>
+            <button className="row click" key={tpl.name} style={{ ["--i" as string]: i }} onClick={() => use(tpl, "")}>
               <div className="who"><div className="name">{t(tpl.name)}</div><div className="sub">{t(tpl.hint)}</div></div>
               <span className="btn small">{t("Add…")}</span>
             </button>
           ))}
           <div className="sect" style={{ ["--i" as string]: templates.length }}>{t("Route a service")}</div>
           {services.map((svc, i) => (
-            <button className="row click" key={svc.name} style={{ ["--i" as string]: templates.length + 1 + i }} onClick={() => route(svc)}>
+            <button className="row click" key={svc.name} style={{ ["--i" as string]: templates.length + 1 + i }} onClick={() => route(svc, "")}>
               <div className="who"><div className="name">{t(svc.name)}</div><div className="sub">{t(svc.hint)}</div></div>
               <span className="btn small">{t("Add…")}</span>
             </button>
           ))}
-          <button className="row click blank" onClick={() => use(null)}>{t("Blank module…")}</button>
+          <button className="row click blank" onClick={() => use(null, "")}>{t("Blank module…")}</button>
         </div>
-      ) : mods.length > 0 && (
-        <div className="list modules">
-          {mods.map((m, i) => (
-            <ModuleRow key={m.id} m={m} group={ownGroup(m)} nodes={nodes} onPick={(g, n) => select(g.name, n)} open={open === m.id} flash={flash === m.name} first={i === 0} last={i === mods.length - 1}
-              onOpen={() => { setDraft(null); setOpen(open === m.id ? "" : m.id); }}
-              onToggle={(on) => save(mods.map((o) => (o.id === m.id ? { ...o, enabled: on } : o)))}
-              onMove={(d) => move(i, d)}
-              onRemove={() => save(mods.filter((o) => o.id !== m.id))}
-              onSave={async (n) => { if (await save(mods.map((o) => (o.id === m.id ? n : o)))) { setOpen(""); toast(t("Saved")); } }} />
-          ))}
-        </div>
-      )}
+      ) : (global.length > 0 || draft?.profile !== "") && rows(0, t("Global modules are laid over every profile."))}
+      {profile && <>
+        {head(t("Modules of {profile}", { profile: profileName }), profile)}
+        {draftIn(profile)}
+        {(own.length > 0 || draft?.profile !== profile) && rows(1, t("Modules here are laid over this profile alone, after the global ones, so their rules go first. Each profile has its own."))}
+      </>}
     </>
   );
 }
 
-function ModuleRow({ m, group, nodes, onPick, open, flash, first, last, onOpen, onToggle, onMove, onRemove, onSave }: {
-  m: Module; group?: Group; nodes: Node[] | null; onPick: (g: Group, name: string) => void; open: boolean; flash: boolean; first: boolean; last: boolean;
-  onOpen: () => void; onToggle: (on: boolean) => Promise<unknown>; onMove: (d: number) => void; onRemove: () => void; onSave: (m: Module) => Promise<void>;
+type Sort = ReturnType<typeof useSort>;
+// a row's place: its section, and where in it
+type Spot = { s: number; i: number };
+
+// useSort moves rows by their handles, within a section or into another.
+// Within one, the held row follows the pointer and the others make room;
+// over another, a line shows where it lands. It lands on release. The
+// arrow keys move it a place at a time, past a section's ends into the
+// next.
+function useSort(counts: number[], onDrop: (from: Spot, to: Spot) => void) {
+  const rows = useRef<(HTMLElement | null)[][]>([]);
+  const zones = useRef<(HTMLElement | null)[]>([]);
+  type Box = { top: number; height: number };
+  const start = useRef<{ y: number; rows: Box[][]; zones: ({ top: number; bottom: number } | null)[] } | null>(null);
+  const [drag, setDrag] = useState<{ from: Spot; to: Spot; dy: number } | null>(null);
+  const end = (drop: boolean) => {
+    const d = drag;
+    start.current = null;
+    setDrag(null);
+    if (drop && d && (d.from.s !== d.to.s || d.from.i !== d.to.i)) onDrop(d.from, d.to);
+  };
+  const box = (el: HTMLElement | null) => { const r = el!.getBoundingClientRect(); return { top: r.top, height: r.height }; };
+  const handle = (s: number, i: number) => ({
+    onClick: (e: React.MouseEvent) => e.stopPropagation(),
+    onPointerDown: (e: React.PointerEvent) => {
+      if (e.button !== 0) return;
+      const sole = counts.length < 2 && counts[s] < 2;
+      if (sole) return;
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      start.current = {
+        y: e.clientY,
+        rows: counts.map((n, k) => (rows.current[k] ?? []).slice(0, n).map(box)),
+        // a section that isn't shown, as while a module is added to it, takes none
+        zones: counts.map((_, k) => { const r = zones.current[k]?.getBoundingClientRect(); return r ? { top: r.top, bottom: r.bottom } : null; }),
+      };
+      setDrag({ from: { s, i }, to: { s, i }, dy: 0 });
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      const st = start.current;
+      if (!st) return;
+      const dy = e.clientY - st.y;
+      const held = st.rows[s][i];
+      const mid = held.top + dy + held.height / 2;
+      // the section nearest to it
+      const far = (k: number) => { const z = st.zones[k]; return z ? Math.max(0, z.top - mid, mid - z.bottom) : Infinity; };
+      const to = counts.reduce((best, _, k) => (far(k) < far(best) ? k : best), s);
+      // its place is after every other row there whose middle it has passed
+      const at = st.rows[to].filter((r, j) => !(to === s && j === i) && r.top + r.height / 2 < mid).length;
+      setDrag({ from: { s, i }, to: { s: to, i: at }, dy });
+    },
+    onPointerUp: () => end(true),
+    onLostPointerCapture: () => start.current && end(false),
+    onKeyDown: (e: React.KeyboardEvent) => {
+      const d = e.key === "ArrowUp" ? -1 : e.key === "ArrowDown" ? 1 : 0;
+      if (!d) return;
+      const to = i + d >= 0 && i + d < counts[s] ? { s, i: i + d }
+        : d > 0 && s + 1 < counts.length ? { s: s + 1, i: 0 }
+        : d < 0 && s > 0 ? { s: s - 1, i: counts[s - 1] } : null;
+      if (!to) return;
+      e.preventDefault();
+      onDrop({ s, i }, to);
+    },
+  });
+  const across = !!drag && drag.from.s !== drag.to.s;
+  // the held row where the pointer has it; in its own section, the ones
+  // it passed a row's height the other way; leaving it, the ones after it
+  // close up and those after its place in the other open a gap for it
+  const style = (s: number, j: number): React.CSSProperties | undefined => {
+    if (!drag || !start.current) return;
+    const { from, to, dy } = drag, h = start.current.rows[from.s][from.i].height;
+    if (s !== from.s) return across && s === to.s && j >= to.i ? { transform: `translateY(${h}px)` } : undefined;
+    // a section above that opened for it pushed this one down
+    if (j === from.i) return { transform: `translateY(${across && to.s < from.s ? dy - h : dy}px)` };
+    if (across) return j > from.i ? { transform: `translateY(${-h}px)` } : undefined;
+    if (from.i < j && j <= to.i) return { transform: `translateY(${-h}px)` };
+    if (to.i <= j && j < from.i) return { transform: `translateY(${h}px)` };
+  };
+  const rowClass = (s: number, j: number) => (drag && drag.from.s === s && drag.from.i === j ? " held" : "");
+  // the section it is over, a row's height taller to make room for it
+  const zoneStyle = (s: number): React.CSSProperties | undefined =>
+    across && drag!.to.s === s && counts[s] > 0 ? { paddingBottom: start.current!.rows[drag!.from.s][drag!.from.i].height } : undefined;
+  const zoneClass = (s: number) => (across && drag!.to.s === s && counts[s] === 0 ? " drop-target" : "");
+  const row = (s: number, i: number) => (el: HTMLElement | null) => { (rows.current[s] ??= [])[i] = el; };
+  const zone = (s: number) => (el: HTMLElement | null) => { zones.current[s] = el; };
+  return { row, zone, handle, style, rowClass, zoneStyle, zoneClass, dragging: !!drag };
+}
+
+function ModuleRow({ m, group, nodes, onPick, open, flash, sort, s, i, profileName, onOpen, onToggle, onScope, onRemove, onSave }: {
+  m: Module; group?: Group; nodes: Node[] | null; onPick: (g: Group, name: string) => void; open: boolean; flash: boolean; sort: Sort; s: number; i: number;
+  profileName: string; onOpen: () => void; onToggle: (on: boolean) => Promise<unknown>; onScope: () => void; onRemove: () => void; onSave: (m: Module) => Promise<void>;
 }) {
   const t = useT();
   const { keys } = useModuleValidation(m.route ? "" : m.body);
@@ -156,9 +288,12 @@ function ModuleRow({ m, group, nodes, onPick, open, flash, first, last, onOpen, 
   const frontGone = !!front && !!nodes && !nodes.some((n) => n.name === front);
   const [armed, setArmed] = useState(false);
   useEffect(() => { if (!armed) return; const id = setTimeout(() => setArmed(false), 3000); return () => clearTimeout(id); }, [armed]);
+  const [menuAt, setMenuAt] = useState<HTMLElement | null>(null);
   return (
-    <div className={"module" + (open ? " open" : "") + (m.enabled ? "" : " off")}>
+    <div ref={sort.row(s, i)} style={sort.style(s, i)}
+      className={"module" + (open ? " open" : "") + (m.enabled ? "" : " off") + sort.rowClass(s, i)}>
       <div className={"row click" + (flash ? " flash" : "")} onClick={onOpen}>
+        <button className="grip" title={t("Drag to reorder")} aria-label={t("Drag to reorder")} {...sort.handle(s, i)}><Grip size={14} /></button>
         <div className="who">
           <div className="name">{m.name}</div>
           {m.route
@@ -173,8 +308,12 @@ function ModuleRow({ m, group, nodes, onPick, open, flash, first, last, onOpen, 
                 {m.route?.pick && !picksOf(m.route, profile).length ? t("Pick nodes for this profile") : t("No node")}
               </button>
             : <NodePicker group={group} onPick={(n) => onPick(group, n)} />)}
-          <button className="icon" disabled={first} title={t("Move up")} onClick={() => onMove(-1)}><Arrow dir="up" size={12} /></button>
-          <button className="icon" disabled={last} title={t("Move down")} onClick={() => onMove(1)}><Arrow dir="down" size={12} /></button>
+          {(m.profile || profileName) && <button className="icon" title={t("More")} onClick={(e) => setMenuAt(menuAt ? null : e.currentTarget)}><More size={12} /></button>}
+          <Popover anchor={menuAt} open={!!menuAt} onClose={() => setMenuAt(null)} align="end">
+            <Menu close={() => setMenuAt(null)} items={[m.profile
+              ? { label: t("Make global"), onClick: onScope }
+              : { label: t("Move to {profile}", { profile: profileName }), onClick: onScope }]} />
+          </Popover>
           {armed
             ? <button className="btn small danger armed" onClick={onRemove}>{t("Click again to remove")}</button>
             : <button className="icon" title={t("Delete")} onClick={() => setArmed(true)}><Close size={12} /></button>}
