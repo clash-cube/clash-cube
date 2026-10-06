@@ -21,6 +21,13 @@ import * as modules$0 from "../modules/models.js";
 import * as profiles$0 from "../profiles/models.js";
 
 /**
+ * DismissRefusal forgets the last configuration the core refused.
+ */
+export function DismissRefusal(): $CancellablePromise<void> {
+    return $Call.ByID(2552236115);
+}
+
+/**
  * Duplicate copies a profile as a local one the user can edit; name is
  * the copy's.
  */
@@ -115,6 +122,14 @@ export function RouteRegions(): $CancellablePromise<backend$0.RegionNodes[] | nu
  */
 export function RouteServices(): $CancellablePromise<modules$0.Service[] | null> {
     return $Call.ByID(2733889704);
+}
+
+/**
+ * RuntimeConfig is the configuration the core was last given, and the
+ * last one it refused, with the controller's secret masked.
+ */
+export function RuntimeConfig(): $CancellablePromise<backend$0.RuntimeView> {
+    return $Call.ByID(1594899807);
 }
 
 /**

@@ -762,6 +762,15 @@ select.input { padding-right: 6px; }
 .rules .trow.click:hover, .rule-providers .trow.click:hover { background: var(--card-2); }
 .rules .trow.open, .rule-providers .trow.open { background: var(--sel); }
 .rule-detail.provider-detail { padding-left: 14px; }
+.runtime-config { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.runtime-config .err { color: var(--red); }
+.runtime-yaml { position: relative; flex: 1; min-height: 160px; margin: 0; overflow: auto; padding: 8px 0; border-radius: 12px; background: var(--card); border: 1px solid var(--line); user-select: text; line-height: 18px; color: var(--fg); }
+.runtime-yaml > .bad { background: var(--red-soft); }
+.runtime-yaml > .bad .ln { color: var(--red); }
+.runtime-yaml > div { white-space: pre; padding-right: 12px; width: max-content; min-width: 100%; }
+.runtime-yaml .ln { display: inline-block; width: 44px; padding-right: 12px; text-align: right; color: var(--faint); user-select: none; }
+.runtime-yaml .key { color: var(--accent); }
+.runtime-yaml .cm { color: var(--muted); }
 .rules .idx { display: flex; align-items: center; gap: 3px; }
 .rules .idx .chev { flex: none; color: var(--faint); transition: transform .2s var(--ease); }
 .rules .trow.open .idx .chev { transform: rotate(90deg); }

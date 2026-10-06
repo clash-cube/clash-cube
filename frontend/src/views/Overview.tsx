@@ -42,7 +42,9 @@ export function Overview() {
             <b>{t("Core stopped with an error")}</b>
             <div className="mono">{state.coreError}</div>
           </div>
-          <button className="btn small" onClick={() => setView("logs")}>{t("Show logs")}</button>
+          {state.refusal
+            ? <button className="btn small" onClick={() => { location.hash = "merged"; setView("profiles"); }}>{t("Show")}</button>
+            : <button className="btn small" onClick={() => setView("logs")}>{t("Show logs")}</button>}
           <button className="btn small primary" onClick={restartCore}>{t("Restart")}</button>
         </div>
       )}

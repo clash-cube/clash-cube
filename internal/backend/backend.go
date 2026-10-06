@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -44,6 +45,8 @@ type State struct {
 	ProfileName string  `json:"profileName"`
 	Busy        string  `json:"busy,omitempty"` // what is being done, e.g. "restarting"
 	Network     Network `json:"network"`
+	// the last configuration refused, until one is taken
+	Refusal *Refusal `json:"refusal,omitempty"`
 }
 
 // Sink is told what changes; the GUI turns these into events.
@@ -98,6 +101,8 @@ type Backend struct {
 	// the profile file the running configuration was written from, so an
 	// edit to it is noticed (watch.go)
 	profileRead profileStamp
+	// the last configuration refused, until one is taken (runtimeview.go)
+	refusal *Refusal
 
 	// usage.go
 	usage     *usage.Store
@@ -171,7 +176,7 @@ func (b *Backend) State() State {
 	s := settings.Load()
 	st, errText := b.core.Status()
 	b.mu.Lock()
-	busy, lost := b.busy, b.proxyLost
+	busy, lost, refusal := b.busy, b.proxyLost, b.refusal
 	b.mu.Unlock()
 	name := ""
 	if p, ok := profiles.Get(s.Profile); ok {
@@ -182,6 +187,7 @@ func (b *Backend) State() State {
 		Mode: s.Mode, SystemProxy: s.SystemProxy, ProxyLost: lost && s.SystemProxy, Tun: s.Tun, TunStack: s.TunStack,
 		ServiceMode: s.ServiceMode, MixedPort: s.MixedPort,
 		Profile: s.Profile, ProfileName: name, Busy: busy, Network: b.network(s),
+		Refusal: refusal,
 	}
 }
 
@@ -236,7 +242,11 @@ func (b *Backend) writeRuntime(fresh bool) error {
 			return err
 		}
 	}
-	return runtimecfg.Write(appdir.RuntimeConfig(), p.ID, body, s, ctl, userrules.List(), modules.List())
+	err = runtimecfg.Write(appdir.RuntimeConfig(), p.ID, body, s, ctl, userrules.List(), modules.List())
+	if err != nil && strings.HasPrefix(err.Error(), "profile: ") {
+		b.refuseProfile(p.Path(), err)
+	}
+	return err
 }
 
 // Start runs the core.
@@ -257,7 +267,7 @@ func (b *Backend) start() error {
 	if err := b.writeRuntime(true); err != nil {
 		return err
 	}
-	if err := b.core.Test(); err != nil {
+	if err := b.test(); err != nil {
 		b.reportCrash(err)
 		return err
 	}
@@ -329,7 +339,7 @@ func (b *Backend) reload() error {
 	if err := b.writeRuntime(false); err != nil {
 		return err
 	}
-	if err := b.core.Test(); err != nil {
+	if err := b.test(); err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -664,7 +674,7 @@ func (b *Backend) check() error {
 	if err := b.writeRuntime(false); err != nil {
 		return err
 	}
-	return b.core.Test()
+	return b.test()
 }
 
 // AddRule puts r first among the user's rules.

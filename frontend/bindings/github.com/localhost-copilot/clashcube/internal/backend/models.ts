@@ -343,6 +343,18 @@ export interface Record {
 }
 
 /**
+ * Refusal is the last configuration the core, or the merge before it,
+ * refused: the error, and the line of Source it points to (0 when it
+ * names none). Source is "runtime" for the merged configuration and
+ * "profile" for the profile in use, which was not YAML.
+ */
+export interface Refusal {
+    "error": string;
+    "line": number;
+    "source": string;
+}
+
+/**
  * RegionNodes is a region and how many of the running profile's nodes it
  * takes; Count is -1 with the core stopped.
  */
@@ -388,6 +400,17 @@ export interface RuleEntries {
 }
 
 /**
+ * RuntimeView is the configuration the core was last given, and the last
+ * one refused since, each with the controller's secret masked as the text
+ * is shown and may be copied.
+ */
+export interface RuntimeView {
+    "body": string;
+    "refusal"?: Refusal | null;
+    "refused"?: string;
+}
+
+/**
  * State is what the GUI shows of the app at a glance.
  */
 export interface State {
@@ -417,4 +440,9 @@ export interface State {
      */
     "busy"?: string;
     "network": Network;
+
+    /**
+     * the last configuration refused, until one is taken
+     */
+    "refusal"?: Refusal | null;
 }

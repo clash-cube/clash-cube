@@ -8,6 +8,10 @@ import { Globe, File, More, Plus, Refresh } from "../components/Icons";
 import { ago, bytes } from "../format";
 import { Segmented } from "../components/Segmented";
 import { Modules } from "../components/Modules";
+import { RefusalBanner, RuntimeConfig } from "../components/RuntimeConfig";
+
+const TABS = ["profiles", "modules", "merged"] as const;
+type Tab = typeof TABS[number];
 
 export function Profiles() {
   const t = useT();
@@ -19,7 +23,9 @@ export function Profiles() {
   const [activeImport, setActiveImport] = useState<ImportRequest | null>(null);
   const [updatingAll, setUpdatingAll] = useState(false);
   const [flash, setFlash] = useState("");
-  const [tab, setTab] = useState<"profiles" | "modules">(location.hash === "#modules" ? "modules" : "profiles");
+  const [tab, setTab] = useState<Tab>(TABS.find((x) => "#" + x === location.hash) ?? "profiles");
+  // bumped by the banner's Show, to open the refusal again
+  const [focus, setFocus] = useState(0);
 
   useEffect(() => {
     if (pendingImport && !importAt) {
@@ -52,6 +58,7 @@ export function Profiles() {
         <Segmented className="track small" value={tab} onChange={setTab} options={[
           { value: "profiles", label: `${t("Profiles")} ${profiles.length}` },
           { value: "modules", label: t("Modules") },
+          { value: "merged", label: t("Merged") },
         ]} />
         <div className="view-tools">
           {tab === "profiles" && <>
@@ -60,8 +67,9 @@ export function Profiles() {
           </>}
         </div>
       </div>
+      <RefusalBanner onShow={tab === "merged" ? undefined : () => { setTab("merged"); setFocus((n) => n + 1); }} />
       <ImportPopover key={activeImport ? JSON.stringify(activeImport) : "manual"} request={activeImport} anchor={importAt} onClose={closeImport} onDone={(p) => { closeImport(); flashRow(p.id); }} />
-      {tab === "modules" ? <Modules /> : <div className="list">
+      {tab === "merged" ? <RuntimeConfig focus={focus} /> : tab === "modules" ? <Modules /> : <div className="list">
         {profiles.map((p) => <ProfileRow key={p.id} p={p} current={p.id === current} flash={flash === p.id} onFlash={() => flashRow(p.id)} onCopied={flashRow} />)}
       </div>}
     </div>

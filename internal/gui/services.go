@@ -551,6 +551,13 @@ func (s *ProfileService) Reveal(id string) error {
 	return exec.Command("open", "-R", p.Path()).Run()
 }
 
+// RuntimeConfig is the configuration the core was last given, and the
+// last one it refused, with the controller's secret masked.
+func (s *ProfileService) RuntimeConfig() (backend.RuntimeView, error) { return s.h.b.RuntimeConfig() }
+
+// DismissRefusal forgets the last configuration the core refused.
+func (s *ProfileService) DismissRefusal() { s.h.b.DismissRefusal() }
+
 // Edit opens a profile's file in the default editor.
 func (s *ProfileService) OpenInEditor(id string) error {
 	p, ok := profiles.Get(id)

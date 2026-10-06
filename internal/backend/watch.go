@@ -284,8 +284,14 @@ type profileStamp struct {
 // checkProfileFile has the running core take the profile in use again when
 // its file changed since it was read: saved from an editor, say. A file the
 // core refuses leaves the running configuration as it was, and says so.
+// With the core stopped, an edit is only checked, for one that fixes what
+// was refused to clear it.
 func (b *Backend) checkProfileFile() {
-	if b.core.Client() == nil {
+	live := b.core.Client() != nil
+	b.mu.Lock()
+	refused := b.refusal != nil
+	b.mu.Unlock()
+	if !live && !refused {
 		return
 	}
 	p, ok := profiles.Get(settings.Load().Profile)
@@ -307,6 +313,10 @@ func (b *Backend) checkProfileFile() {
 	b.mu.Lock()
 	b.profileRead = now
 	b.mu.Unlock()
+	if !live {
+		_ = b.check()
+		return
+	}
 	// the configuration the core runs, for a crash restart to read again
 	// if this edit is refused: the profile's old text is gone
 	running, _ := os.ReadFile(appdir.RuntimeConfig())

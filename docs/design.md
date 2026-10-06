@@ -66,6 +66,8 @@ core/runtime.yaml      实际交给 core 的配置（0600）
    - **DNS 查询遵循规则**：`dns.respect-rules: true`，缺 `proxy-server-nameserver` 时用 `nameserver` 补。
 6. 写 `core/runtime.yaml`，执行 `core -t` 校验，再启动或热重载（`PUT /configs?force=true`）。校验失败就保留原来的配置；模块、用户规则、设置被拒绝时都回滚到原值并提示内核的错误。
 
+被拒绝的配置连同出错行一起记下（`State.Refusal`），直到下一次通过校验。行号由内核的报错换算：YAML 语法错误取解析器停下的那一行（它报的行是所在块的开头，可能差很远）；`rules[i]`、`proxy i`、策略组名、`proxy-providers`、`sub-rules`、`listeners`、`dns.fake-ip-filter` 等按路径在 `runtime.yaml` 里找到对应节点。「配置 → 合并配置」只读显示 `runtime.yaml`（`secret` 打码），有拒绝时可切到被拒绝的版本并定位到出错行。内核停止时，有拒绝的配置文件被修改也会重新校验，修好后提示自动消失。
+
 运行中切换模式、端口等先 `PATCH /configs` 立即生效，同时写回 settings.json。正在使用的配置文件在外部被修改时（3 秒轮询修改时间和大小）热重载；被拒绝的同一份内容不重试。
 
 ### 3.1 服务分流模块
