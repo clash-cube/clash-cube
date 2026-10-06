@@ -55,6 +55,12 @@ code, .mono { font-family: var(--code); font-size: 11.5px; }
 /* the core's state, a quiet pill in the header */
 .pill-status { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px 0 9px; border-radius: 999px; font-size: 12px; color: var(--fg-2); background: var(--pill); transition: background .15s, color .15s; }
 .pill-status:hover { background: var(--pill-hover); color: var(--fg); }
+/* System Proxy and Enhanced Mode, each a pill that opens its menu; where
+   the header is short of room (.fit-2), only the icon is left */
+.pill-status .pill-ic { display: none; }
+.top.fit-2 .pill-status .pill-ic { display: inline-flex; }
+.top.fit-2 .pill-status .pill-label { display: none; }
+.pill-status.mode .cdot { margin-right: 1px; }
 @keyframes blink { 50% { opacity: .35; } }
 
 /* ---- segmented controls: one thumb glides to the chosen option -------- */

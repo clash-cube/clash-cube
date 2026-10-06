@@ -68,6 +68,7 @@
 .is-panel .row .ic.on { background: var(--accent); color: var(--accent-fg); }
 
 /* ---- the window's header speed ----------------------------------------- */
-.hdr-speed { font-size: 11.5px; color: var(--muted); white-space: pre; margin-right: 4px; }
+/* wide enough for most speeds, so the header doesn't refit as they change */
+.hdr-speed { font-size: 11.5px; color: var(--muted); white-space: pre; margin-right: 4px; min-width: 150px; text-align: right; }
 @media (max-width: 860px) { .hdr-speed { display: none; } .top .brand > span:not(.logo) { display: none; } }
 @media (max-width: 760px) { .top .seg > button { padding: 0 8px; } }

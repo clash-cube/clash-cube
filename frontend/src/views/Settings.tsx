@@ -1,13 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Hotkeys } from "../components/Hotkeys";
-import { translate, useT } from "../i18n";
+import { useT } from "../i18n";
 import { applyTheme, useStore } from "../store";
 import { App, Proxy, Settings as S, type Patch, type HelperStatus, type GeoInfo } from "../api";
 import { Switch } from "../components/Switch";
 import { Segmented } from "../components/Segmented";
 import { Refresh } from "../components/Icons";
 import { errText, toast, toastError } from "../components/Toast";
-import { coreLabel, coreTone, restartCore, run, setTun, startCore, stopCore } from "../actions";
+import { copyCommand, coreLabel, coreTone, restartCore, run, setTun, startCore, stopCore } from "../actions";
 import { ago } from "../format";
 import { NetworkRules } from "../components/NetworkRules";
 
@@ -37,6 +37,11 @@ export function Settings() {
     setTab(v);
     try { localStorage.setItem("settings.tab", v); } catch {}
   };
+  useEffect(() => {
+    const on = (e: Event) => { const v = (e as CustomEvent).detail as Tab; if (TABS.includes(v)) setTab(v); };
+    window.addEventListener("settings-tab", on);
+    return () => window.removeEventListener("settings-tab", on);
+  }, []);
   if (!s) return <div className="view" />;
 
   const tunStacks = [
@@ -178,7 +183,7 @@ export function Settings() {
           </Row>
           <GeoRow running={state?.core === "running"} />
           <Row label={t("Copy shell export command")} sub={t("⌥-click: use this Mac's LAN address")}>
-            <button className="btn small" onClick={(e) => copyCommand(e.altKey, s.allowLan)}>{t("Copy")}</button>
+            <button className="btn small" onClick={(e) => copyCommand(e.altKey)}>{t("Copy")}</button>
           </Row>
           <Row label={t("Open data folder")}><button className="btn small" onClick={() => run(App.RevealData())}>Finder</button></Row>
         </Section>
@@ -186,19 +191,6 @@ export function Settings() {
     </div>
     </Applying.Provider>
   );
-}
-
-// copyCommand copies the shell export line, for this Mac's LAN address when
-// lan, saying when that address isn't there or isn't reachable yet.
-async function copyCommand(lan: boolean, allowLan: boolean) {
-  const t = translate;
-  let cmd = lan ? await App.LANProxyCommand() : "";
-  const fellBack = lan && !cmd;
-  if (!cmd) cmd = await App.ProxyCommand();
-  if (!await App.CopyText(cmd)) return toastError(t("Could not copy to clipboard"));
-  if (fellBack) toast(t("No LAN address; copied the local one"), "", 3500);
-  else if (lan && !allowLan) toast(t("Copied. Other devices need Allow LAN on"), "", 3500);
-  else toast(t("Copied"));
 }
 
 // CoreStatus is the core at a glance, with what to do about it.

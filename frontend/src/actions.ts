@@ -57,3 +57,22 @@ export function coreLabel(): string {
     default: return t("Stopped");
   }
 }
+
+// copyCommand copies the shell export line, for this Mac's LAN address when
+// lan, saying when that address isn't there or isn't reachable yet.
+export async function copyCommand(lan: boolean) {
+  let cmd = lan ? await App.LANProxyCommand() : "";
+  const fellBack = lan && !cmd;
+  if (!cmd) cmd = await App.ProxyCommand();
+  if (!await App.CopyText(cmd)) return toastError(t("Could not copy to clipboard"));
+  if (fellBack) toast(t("No LAN address; copied the local one"), "", 3500);
+  else if (lan && !useStore.getState().settings?.allowLan) toast(t("Copied. Other devices need Allow LAN on"), "", 3500);
+  else toast(t("Copied"));
+}
+
+// openSettings shows the settings on one tab, also when they are open.
+export function openSettings(tab: string) {
+  try { localStorage.setItem("settings.tab", tab); } catch {}
+  window.dispatchEvent(new CustomEvent("settings-tab", { detail: tab }));
+  useStore.getState().setView("settings");
+}
