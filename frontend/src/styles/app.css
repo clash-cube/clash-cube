@@ -173,6 +173,8 @@ select.input { padding-right: 6px; }
 .menu { padding: 5px; display: flex; flex-direction: column; }
 .menu button { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 9px; border-radius: 6px; text-align: left; font-size: 12.5px; transition: background .1s; }
 .menu button:hover { background: var(--accent); color: var(--accent-fg); }
+.menu button .mcheck { width: 12px; margin-right: -2px; flex: none; font-size: 11px; font-weight: 700; text-align: center; }
+.menu button .mlabel { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .menu button.danger { color: var(--red); }
 .menu button.danger:hover { background: var(--red); color: #fff; }
 .menu hr { border: 0; border-top: 1px solid var(--line-2); margin: 4px 6px; }

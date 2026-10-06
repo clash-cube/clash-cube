@@ -75,14 +75,19 @@ export function Popover({ anchor, open, onClose, children, align = "start", widt
   );
 }
 
-export type MenuItem = { label: string; onClick: () => void; danger?: boolean } | "sep";
+export type MenuItem = { label: string; onClick: () => void; danger?: boolean; checked?: boolean } | "sep";
 
 export function Menu({ items, close }: { items: MenuItem[]; close: () => void }) {
+  // a menu with any checkable item gives every item the check's column
+  const checks = items.some((it) => it !== "sep" && it.checked !== undefined);
   return (
     <div className="menu">
       {items.map((it, i) =>
         it === "sep" ? <hr key={i} /> : (
-          <button key={i} className={it.danger ? "danger" : ""} onClick={() => { close(); it.onClick(); }}>{it.label}</button>
+          <button key={i} className={it.danger ? "danger" : ""} onClick={() => { close(); it.onClick(); }}>
+            {checks && <span className="mcheck">{it.checked ? "✓" : ""}</span>}
+            <span className="mlabel">{it.label}</span>
+          </button>
         ),
       )}
     </div>

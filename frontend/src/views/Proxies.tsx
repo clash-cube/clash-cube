@@ -190,7 +190,7 @@ export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne
           <div className="name">{g.name}<span className="gtype">{g.type}</span>{g.module && <span className="gtype">{t("Module")}</span>}</div>
           <div className="sub">{g.now || "—"}</div>
         </div>
-        {now && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay)}</span>}
+        {now && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay, t)}</span>}
         <button className={"icon" + (testing[g.name] ? " zap" : "")} title={t("Test")} onClick={(e) => { e.stopPropagation(); onTest(); }}><Bolt size={14} /></button>
       </div>
       <Fold open={open}>
@@ -280,7 +280,7 @@ function NodeGrid({ members: ms, sorted, now, selectable, flashKey, onSelect, on
               className={"delay " + (testing["#" + m.name] ? "testing" : delayClass(m.delay))}
               onClick={(e) => { e.stopPropagation(); onTestOne(m.name); }}
             >
-              {testing["#" + m.name] ? "···" : fmtDelay(m.delay)}
+              {testing["#" + m.name] ? "···" : fmtDelay(m.delay, t)}
             </span>
           </span>
         </button>

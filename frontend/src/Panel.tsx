@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useStore, type Sample } from "./store";
 import { useT } from "./i18n";
-import { App, Proxy, Settings, type ClientRate } from "./api";
+import { App, Profiles, Proxy, Settings, type ClientRate } from "./api";
 import { usePoll } from "./usePoll";
 import { Segmented } from "./components/Segmented";
+import { Popover, Menu, type MenuItem } from "./components/Popover";
 import { Switch } from "./components/Switch";
 import { Sparkline, clock } from "./components/Sparkline";
 import { Arrow, Bolt, Chevron, Gear, Globe, Logo, Power, Refresh, Shield, Wifi, Window } from "./components/Icons";
@@ -13,7 +14,7 @@ import { coreLabel, coreTone, restartCore, setMode, setSystemProxy, setTun, star
 import { speed, delayClass, fmtDelay } from "./format";
 import { useGroups } from "./useGroups";
 import { matchName } from "./components/NetworkRules";
-import { toastError } from "./components/Toast";
+import { toast, toastError } from "./components/Toast";
 
 // The tray panel: the switches one reaches for most, the groups to pick a
 // proxy in, and the way to the window. It grows and shrinks with what it
@@ -32,6 +33,28 @@ export function Panel() {
   const foot = useRef<HTMLDivElement>(null);
   const core = state?.core ?? "stopped";
   const running = core === "running";
+  // the apps under the traffic, folded away until asked for; their icons
+  // stand in for the list meanwhile
+  const [apps, setApps] = useState(false);
+  const [clients, setClients] = useState<ClientRate[] | null>(null);
+  usePoll(async () => {
+    if (!running) return setClients(null);
+    try { setClients((await Proxy.TopClients(3)) ?? []); } catch { setClients([]); }
+  }, 1000, [running]);
+  // the profile's name opens the profiles to switch between
+  const [profAt, setProfAt] = useState<HTMLButtonElement | null>(null);
+  const [profOpen, setProfOpen] = useState(false);
+  const profiles = useStore((s) => s.profiles);
+  const current = state?.profile;
+  const use = async (id: string, name: string) => {
+    if (id === current) return;
+    try { await Profiles.Use(id); toast(t("Switched to {name}", { name })); } catch (e) { toastError(e); }
+  };
+  const profileItems: MenuItem[] = [
+    ...profiles.map((p) => ({ label: p.name, checked: p.id === current, onClick: () => use(p.id, p.name) })),
+    ...(profiles.length ? ["sep" as const] : []),
+    { label: t("Manage Profiles…"), onClick: () => App.ShowMain("profiles") },
+  ];
 
   useFit([top, body, foot]);
 
@@ -39,7 +62,7 @@ export function Panel() {
   // light going round once
   const [opened, setOpened] = useState(0);
   useEffect(() => {
-    const onVis = () => { if (document.hidden) setOpen(""); else setOpened((n) => n + 1); };
+    const onVis = () => { if (document.hidden) { setOpen(""); setProfOpen(false); } else setOpened((n) => n + 1); };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
@@ -51,15 +74,18 @@ export function Panel() {
       <div className="ptop" ref={top}>
         <span className={"plogo logo" + (opened ? " spin" : "")} key={opened}><Logo size={20} /></span>
         <div className="pstatus">
-          <div className="pname">{state?.profileName || t("ClashCube")}</div>
+          <button ref={setProfAt} className={"pname" + (profOpen ? " on" : "")} title={t("Switch profile")} onClick={() => setProfOpen((o) => !o)}>
+            <span className="pname-text">{state?.profileName || t("ClashCube")}</span>
+            <Chevron size={10} className="chev" />
+          </button>
+          <Popover anchor={profAt} open={profOpen} onClose={() => setProfOpen(false)} width={240}>
+            <Menu close={() => setProfOpen(false)} items={profileItems} />
+          </Popover>
           <div className="pspeed">
             <span className={"cdot " + coreTone()} />
             <span className="ptext">{running ? <>{coreLabel()} · <span className="num">127.0.0.1:{state?.mixedPort}</span></> : state?.coreError || coreLabel()}</span>
           </div>
         </div>
-        {running && shown.length > 0 && (
-          <button className={"icon" + (progress ? " zap" : "")} disabled={!!testing["all/"]} title={progress || t("Test all")} onClick={testAll}><Bolt /></button>
-        )}
         <button className="icon" title={t("Open Dashboard")} onClick={() => App.ShowMain("")}><Window /></button>
         <button className="icon" title={t("Settings")} onClick={() => App.ShowMain("settings")}><Gear /></button>
       </div>
@@ -104,10 +130,21 @@ export function Panel() {
                   <span className="rate up"><Arrow dir="up" size={11} />{speed((scrub ?? traffic).up)}</span>
                   <span className="rate down"><Arrow dir="down" size={11} />{speed((scrub ?? traffic).down)}</span>
                   {scrub && <span className="pat">{clock(scrub.at)}</span>}
+                  <button className="papps" title={t("Top Clients")} aria-expanded={apps} onClick={() => setApps((a) => !a)}>
+                    {!apps && clients?.map((c) => <AppIcon key={c.path + "\0" + c.name} path={c.path} />)}
+                    <Chevron className={"chev" + (apps ? " open" : "")} />
+                  </button>
                 </div>
                 <Sparkline data={history} height={34} tooltip={false} onHover={setScrub} />
-                <TopClients />
+                <Fold open={apps}><TopClients clients={clients} /></Fold>
               </div>
+              {shown.length > 0 && (
+                <div className="psect">
+                  <span>{t("Proxy groups")}</span>
+                  {progress && <span className="psect-note num">{progress}</span>}
+                  <button className={"icon" + (progress ? " zap" : "")} disabled={!!testing["all/"]} title={t("Test all")} onClick={testAll}><Bolt size={13} /></button>
+                </div>
+              )}
               <div className="pgroups">
                 {shown.map((g) => {
                   const isOpen = open === g.name;
@@ -118,7 +155,8 @@ export function Panel() {
                         <Chevron className={"chev" + (isOpen ? " open" : "")} />
                         <span className="pgname">{g.name}</span>
                         <span className="pgnow">{g.now}</span>
-                        {now && delayClass(now.delay) !== "none" && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay)}</span>}
+                        {testing[g.name] || testing["#" + g.now] ? <span className="delay testing">···</span>
+                          : <span className={"delay " + (now ? delayClass(now.delay) : "none")}>{now ? fmtDelay(now.delay, t) : "—"}</span>}
                       </button>
                       <Fold open={isOpen}>
                         <div className="pnodes">
@@ -135,7 +173,7 @@ export function Panel() {
                             >
                               <span className="check">{m.name === g.now ? "✓" : ""}</span>
                               <span className="nname">{m.name}</span>
-                              <span className={"delay " + (testing["#" + m.name] ? "testing" : delayClass(m.delay))}>{testing["#" + m.name] ? "···" : fmtDelay(m.delay)}</span>
+                              <span className={"delay " + (testing["#" + m.name] ? "testing" : delayClass(m.delay))}>{testing["#" + m.name] ? "···" : fmtDelay(m.delay, t)}</span>
                             </button>
                           ))}
                         </div>
@@ -168,12 +206,8 @@ export function Panel() {
 
 // TopClients lists, under the traffic chart, the apps the traffic comes
 // from, as Surge's menu does: each one's icon, name and speed now.
-function TopClients() {
+function TopClients({ clients }: { clients: ClientRate[] | null }) {
   const t = useT();
-  const [clients, setClients] = useState<ClientRate[] | null>(null);
-  usePoll(async () => {
-    try { setClients((await Proxy.TopClients(3)) ?? []); } catch { setClients([]); }
-  }, 1000);
   if (!clients) return null;
   return (
     <div className="pclients">

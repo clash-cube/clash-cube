@@ -299,7 +299,7 @@ function NodePicker({ group, onPick }: { group: Group; onPick: (name: string) =>
       <button className={"node-pick" + (pick ? "" : " fixed") + (at ? " on" : "")} title={pick ? t("Choose a node") : t("Picked by the latency test")}
         onClick={(e) => pick && setAt(at ? null : e.currentTarget)}>
         <span className="nname">{group.now || "—"}</span>
-        {now && now.delay !== 0 && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay)}</span>}
+        {now && now.delay !== 0 && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay, t)}</span>}
         {pick && <Chevron size={10} className="chev" />}
       </button>
       <Popover anchor={at} open={!!at} onClose={() => setAt(null)} align="end" width={280}>
@@ -307,7 +307,7 @@ function NodePicker({ group, onPick }: { group: Group; onPick: (name: string) =>
           {(group.members ?? []).map((x) => (
             <button key={x.name} className={x.name === group.now ? "on" : ""} onClick={() => { setAt(null); if (x.name !== group.now) onPick(x.name); }}>
               <span className="nname">{x.name}</span>
-              <span className={"delay " + delayClass(x.delay)}>{fmtDelay(x.delay)}</span>
+              <span className={"delay " + delayClass(x.delay)}>{fmtDelay(x.delay, t)}</span>
             </button>
           ))}
         </div>
@@ -420,7 +420,7 @@ function RouteEditor({ module, onCancel, onSave, onYAML }: {
                             <input type="checkbox" checked={on || byKeyword} disabled={byKeyword} onChange={() => toggle(n.name)} />
                             <span className="nname">{n.name}</span>
                             {byKeyword && <span className="badge muted">{t("By keyword")}</span>}
-                            <span className={"delay " + delayClass(n.delay)}>{fmtDelay(n.delay)}</span>
+                            <span className={"delay " + delayClass(n.delay)}>{fmtDelay(n.delay, t)}</span>
                           </label>
                         );
                       })}

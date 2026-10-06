@@ -123,7 +123,7 @@ const zh: Record<string, string> = {
   "Events": "事件", "Problems": "问题", "No events": "暂无事件", "Network changes, automatic group switches and errors appear here.": "网络变化、自动策略组切换和错误会显示在这里。",
   "Proxy groups": "策略组", "Notifications": "通知", "Core errors, failed updates, the system proxy taken by another app, and network rules applied": "内核出错、订阅更新失败、系统代理被其他应用改写、应用网络规则时通知",
   "Another app changed the system proxy": "其他应用修改了系统代理", "Apps that follow the system proxy no longer go through ClashCube.": "遵循系统代理的应用已不再经过 ClashCube。",
-  "Take it back": "重新接管", "Taken by another app": "已被其他应用改写",
+  "Take it back": "重新接管", "timeout": "超时", "Manage Profiles…": "管理配置…", "Switch profile": "切换配置", "Taken by another app": "已被其他应用改写",
   "The core stopped: {error}": "内核已停止：{error}", "The privileged helper is from another version; update it in Settings": "特权助手来自其他版本，请在设置中更新", "Couldn't update {name}: {error}": "无法更新 {name}：{error}",
   "The updated profile was refused, the previous one stays: {error}": "更新后的配置未通过校验，继续使用之前的配置：{error}",
   "This run": "本次运行", "Proxied": "代理占比", "All direct today": "今天全部直连", "Today's traffic through a proxy rather than DIRECT": "今天经代理而非直连的流量占比",
