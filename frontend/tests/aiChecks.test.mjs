@@ -9,21 +9,18 @@ import ts from "typescript";
 
 const require = createRequire(import.meta.url);
 
-async function mount(settings, savingData = false, settingProps = null, state = {}) {
-  let store = { settings, state: { core: "running", network: { savingData }, ...state } };
+async function mount(settings, savingData = false, state = {}) {
+  let store = { settings, state: { core: "running", mode: "rule", network: { savingData }, ...state } };
   const navigation = [];
   const useStore = (select) => select(store);
   useStore.setState = (patch) => { store = { ...store, ...patch }; };
   const calls = [];
-  const request = (kind) => (service, force) => new Promise((resolve) => calls.push({ kind, service, force, resolve }));
   const mocks = {
     "../actions": { openSettings: (...args) => navigation.push(args) },
-    "../api": { App: { AIRoutes: request("routes"), AIEgress: request("egress") } },
+    "../api": { App: { AICheck: (service, force) => new Promise((resolve, reject) => calls.push({ service, force, resolve, reject })) } },
     "../store": { useStore },
-    "../i18n": { useT: () => (text) => text },
-    "../format": { flagged: (ip) => ip },
-    "./Icons": { Refresh: () => null, Chevron: () => null, Eye: () => null, Close: () => null, ExternalLink: () => null },
-    "./Switch": { Switch: ({ onChange }) => React.createElement("button", { role: "switch", onClick: () => onChange(false) }) },
+    "../i18n": { useT: () => (text, vars) => text.replace(/\{(\w+)\}/g, (m, k) => vars?.[k] ?? m) },
+    "./Icons": { Refresh: () => null, Eye: () => null, Close: () => null, ExternalLink: () => null, Shield: () => null },
     "./Fold": { Fold: ({ open, children }) => open ? children : null },
     "./ConnectivityCards": { route: (chain) => chain.join(" → ") },
   };
@@ -39,152 +36,145 @@ async function mount(settings, savingData = false, settingProps = null, state = 
   mocks["../aiServices"] = load("aiServices.ts");
   mocks["../format"] = load("format.ts");
   mocks["./AIServiceName"] = load("components/AIServiceName.tsx");
-  mocks["./AIChecks"] = load("components/AIChecks.tsx");
-  const Component = settingProps ? load("components/AIServiceSetting.tsx").AIServiceSetting : mocks["./AIChecks"].AIChecks;
+  // one module per mount: its result cache lives as long as a window
+  const { AIChecks } = load("components/AIChecks.tsx");
   let root;
-  await act(async () => { root = create(React.createElement(Component, settingProps)); });
+  const render = () => React.createElement(AIChecks);
+  await act(async () => { root = create(render()); });
   return {
-    root, calls, navigation,
-    async update(settings) {
-      store = { ...store, settings };
-      await act(async () => root.update(React.createElement(Component, settingProps)));
+    get root() { return root; }, calls, navigation,
+    text: () => JSON.stringify(root.toJSON()),
+    find: (props) => root.root.findAllByProps(props),
+    async update(patch) {
+      store = { ...store, ...patch };
+      await act(async () => root.update(render()));
     },
-    async close() { await act(async () => root.unmount()); },
+    async updateState(patch) {
+      store = { ...store, state: { ...store.state, ...patch } };
+      await act(async () => root.update(render()));
+    },
     async remount() {
       await act(async () => root.unmount());
-      await act(async () => { root = create(React.createElement(Component, settingProps)); });
-      this.root = root;
+      await act(async () => { root = create(render()); });
     },
-    async updateState(state) {
-      store = { ...store, state: { ...store.state, ...state } };
-      await act(async () => root.update(React.createElement(Component, settingProps)));
-    },
+    async close() { await act(async () => root.unmount()); },
   };
 }
 
-test("AI services warning links to leak protection only with system proxy and no TUN", async () => {
-  const view = await mount({ aiChecks: true, aiServices: ["Claude"] }, false, null, { systemProxy: true, tun: false });
-  const hint = view.root.root.findByProps({ "aria-label": "Leak Protection" });
-  await act(async () => hint.props.onClick());
+const host = (name, ...chain) => ({ host: name, chain, rule: "DomainSuffix", rulePayload: name });
+const check = (over = {}) => ({
+  route: { node: "us1", verdict: "consistent", auto: [], hosts: [host("claude.ai", "us1", "AI"), host("api.anthropic.com", "us1", "AI")] },
+  egress: [{ node: "us1", names: 2, ip: "203.0.113.9", loc: "US", chain: ["us1", "AI"], details: null }],
+  status: "consistent", level: "good", ...over,
+});
+
+test("the leak warning links to leak protection only with the system proxy and no TUN", async () => {
+  const view = await mount({ aiServices: ["Claude"] }, false, { systemProxy: true, tun: false });
+  const banner = view.root.root.findByProps({ className: "banner warn ai-leak" });
+  await act(async () => banner.findByProps({ className: "btn small" }).props.onClick());
   assert.deepEqual(view.navigation, [["tun", "leak-protection"]]);
   await view.updateState({ tun: true });
-  assert.equal(view.root.root.findAllByProps({ className: "ai-leak-hint" }).length, 0);
+  assert.equal(view.find({ className: "banner warn ai-leak" }).length, 0);
   await view.updateState({ tun: false, systemProxy: false });
-  assert.equal(view.root.root.findAllByProps({ className: "ai-leak-hint" }).length, 0);
+  assert.equal(view.find({ className: "banner warn ai-leak" }).length, 0);
   await view.close();
 });
 
-test("dismissing the header hint lasts across page visits but not a fresh session", async () => {
-  const settings = { aiChecks: true, aiServices: ["Claude"] };
-  const state = { systemProxy: true, tun: false };
-  const view = await mount(settings, false, null, state);
+test("dismissing the leak warning lasts across page visits", async () => {
+  const view = await mount({ aiServices: ["Claude"] }, false, { systemProxy: true, tun: false });
   await act(async () => view.root.root.findByProps({ "aria-label": "Dismiss until next launch" }).props.onClick());
   await view.remount();
-  assert.equal(view.root.root.findAllByProps({ className: "ai-leak-hint" }).length, 0);
-  assert.equal(view.navigation.length, 0);
+  assert.equal(view.find({ className: "banner warn ai-leak" }).length, 0);
   await view.close();
-  const fresh = await mount(settings, false, null, state);
-  assert.equal(fresh.root.root.findAllByProps({ className: "ai-leak-hint" }).length, 1);
-  await fresh.close();
 });
 
-test("AI checks stay off until enabled and only request selected services", async () => {
-  const view = await mount({ aiChecks: false, aiServices: ["Claude"] });
+test("only selected services are checked, and none hides the section", async () => {
+  const view = await mount({ aiServices: [] });
   assert.equal(view.root.toJSON(), null);
-  assert.equal(view.calls.length, 0);
-  await view.update({ aiChecks: true, aiServices: ["Claude", "unknown"] });
-  assert.deepEqual(view.calls.map(({ kind, service }) => [kind, service]), [["routes", "Claude"], ["egress", "Claude"]]);
-  await view.update({ aiChecks: true, aiServices: [] });
+  await view.update({ settings: { aiServices: ["Claude", "unknown"] } });
+  assert.deepEqual(view.calls.map(({ service, force }) => [service, force]), [["Claude", false]]);
+  await view.update({ settings: { aiServices: [] } });
   assert.equal(view.root.toJSON(), null);
-  assert.equal(view.calls.length, 2);
+  assert.equal(view.calls.length, 1);
   await view.close();
 });
 
-test("settings expansion checks domains without changing selection and ignores collapsed requests", async () => {
-  let toggles = 0;
-  const view = await mount({ aiChecks: true, aiServices: ["Claude"] }, false,
-    { service: "Claude", on: true, disabled: false, onChange: async () => { toggles++; } });
-  const disclosure = () => view.root.root.findByProps({ "aria-controls": "ai-details-Claude" });
-  assert.equal(view.calls.length, 0);
-  await act(async () => view.root.root.findByProps({ role: "switch" }).props.onClick());
-  assert.equal(toggles, 1);
-  assert.equal(disclosure().props["aria-expanded"], false);
-  await act(async () => disclosure().props.onClick());
-  assert.deepEqual(view.calls.map(({ kind, service }) => [kind, service]), [["routes", "Claude"]]);
-  await act(async () => disclosure().props.onClick());
-  await act(async () => disclosure().props.onClick());
+test("changing the selection drops replies for the previous one", async () => {
+  const view = await mount({ aiServices: ["OpenAI"] });
+  await view.update({ settings: { aiServices: ["Claude"] } });
   await act(async () => {
-    view.calls[1].resolve({ node: "proxy", hosts: [{ host: "api.anthropic.com", chain: ["proxy", "AI"], rule: "DomainSuffix", rulePayload: "anthropic.com" }] });
-    view.calls[0].resolve({ node: "old", hosts: [{ host: "stale.test", chain: ["old"] }] });
+    view.calls[0].resolve(check({ egress: [{ node: "old", ip: "198.51.100.1" }] }));
+    view.calls[1].resolve(check());
   });
-  const rendered = JSON.stringify(view.root.toJSON());
-  assert.ok(rendered.includes("api.anthropic.com"));
-  assert.ok(rendered.includes("DomainSuffix"));
-  assert.ok(rendered.includes("proxy → AI"));
-  assert.ok(!rendered.includes("stale.test"));
-  assert.equal(toggles, 1);
-  await view.close();
-});
-
-test("changing selection or disabling discards pending results", async () => {
-  const view = await mount({ aiChecks: true, aiServices: ["OpenAI"] });
-  const old = [...view.calls];
-  await view.update({ aiChecks: true, aiServices: ["Claude"] });
-  await act(async () => {
-    old[0].resolve({ hosts: [], verdict: "failed" });
-    old[1].resolve({ ip: "old-egress" });
-    view.calls[2].resolve({ hosts: [], verdict: "failed" });
-    view.calls[3].resolve({ ip: "new-egress" });
-  });
-  const rendered = JSON.stringify(view.root.toJSON());
-  assert.ok(rendered.includes("new-egress"));
-  assert.ok(!rendered.includes("old-egress"));
+  assert.ok(view.text().includes("203.0.113.9"));
+  assert.ok(!view.text().includes("198.51.100.1"));
   assert.equal(view.root.root.findByProps({ title: "Refresh routes, egress IP and IP attributes" }).props.className, "icon");
-  await view.update({ aiChecks: false, aiServices: ["Claude"] });
-  assert.equal(view.root.toJSON(), null);
-  assert.equal(view.calls.length, 4);
   await view.close();
 });
 
-test("metered networks wait for manual refresh and refresh only the selection", async () => {
-  const view = await mount({ aiChecks: true, aiServices: ["OpenAI"] }, true);
-  assert.equal(view.calls.length, 0);
-  assert.ok(JSON.stringify(view.root.toJSON()).includes("Not checked"));
-  await act(async () => view.root.root.findByType("button").props.onClick());
-  assert.deepEqual(view.calls.map(({ service }) => service), ["OpenAI", "OpenAI"]);
+test("results outlive the page for their scope, and refresh forces a new check", async () => {
+  const view = await mount({ aiServices: ["Claude"] });
+  await act(async () => view.calls[0].resolve(check()));
+  await view.remount();
+  assert.equal(view.calls.length, 1, "returning to Overview checked again");
+  assert.ok(view.text().includes("203.0.113.9"));
+  await act(async () => view.root.root.findByProps({ title: "Refresh routes, egress IP and IP attributes" }).props.onClick());
+  assert.equal(view.calls.length, 2);
   assert.equal(view.calls[1].force, true);
+  await view.updateState({ mode: "global" });
+  assert.equal(view.calls.length, 3, "another mode wasn't checked");
   await view.close();
 });
 
-test("IP attributes enrich the observed egress and remain optional", async () => {
-  const view = await mount({ aiChecks: true, aiServices: ["OpenAI", "Claude"] });
-  await act(async () => {
-    view.calls.find((c) => c.service === "OpenAI" && c.kind === "egress").resolve({
-      ip: "72.234.229.123", details: { city: "Aiea", region: "Hawaii", operator: "Hawaiian Telcom", asn: 36149, kind: "Residential", network: "72.234.229.0/24" },
-    });
-    view.calls.find((c) => c.service === "Claude" && c.kind === "egress").resolve({ ip: "203.0.113.9", details: null });
-  });
-  const rendered = JSON.stringify(view.root.toJSON());
-  for (const value of ["72.234.229.123", "Aiea", "Hawaiian Telcom", "AS36149", "Residential", "203.0.113.9", "IP attributes unavailable"]) {
-    assert.ok(rendered.includes(value), `missing ${value}`);
-  }
+test("metered networks wait to be asked, per service or for all", async () => {
+  const view = await mount({ aiServices: ["OpenAI", "Claude"] }, true);
+  assert.equal(view.calls.length, 0);
+  assert.ok(view.text().includes("Not checked"));
+  const now = view.find({ children: "Check now" }).filter((n) => n.type === "button");
+  assert.equal(now.length, 2);
+  await act(async () => now[0].props.onClick());
+  assert.deepEqual(view.calls.map(({ service, force }) => [service, force]), [["OpenAI", true]]);
+  // a second service asked while the first is pending doesn't strand it
+  await act(async () => view.find({ children: "Check now" }).filter((n) => n.type === "button")[0].props.onClick());
+  await act(async () => { view.calls[0].resolve(check()); view.calls[1].resolve(check()); });
+  assert.ok(!view.text().includes("Checking routes…"));
   await view.close();
 });
 
-test("automatic checks reuse cache and hiding masks both IPs and network data", async () => {
-  const view = await mount({ aiChecks: true, aiServices: ["Claude"] });
-  assert.equal(view.calls[1].force, false);
+test("the badge weighs the region and shared addresses, not only the routes", async () => {
+  const view = await mount({ aiServices: ["OpenAI", "Claude"] });
   await act(async () => {
-    view.calls[1].resolve({ ip: "72.234.229.123", details: { kind: "Residential", network: "72.234.229.0/24" } });
+    view.calls[0].resolve(check({
+      status: "unsupported", level: "bad",
+      egress: [{ node: "hk1", names: 2, ip: "203.0.113.9", loc: "HK", unsupported: true }],
+    }));
+    view.calls[1].resolve(check({
+      route: { node: "us1", verdict: "split", auto: [], hosts: [host("claude.ai", "us1"), host("sentry.io", "us2")] },
+      egress: [{ node: "us1", names: 1, ip: "192.0.2.1" }, { node: "us2", names: 1, ip: "192.0.2.1" }],
+    }));
   });
-  let stopped = false;
-  await act(async () => view.root.root.findByProps({ "aria-label": "Hide IP address" }).props.onClick({ stopPropagation() { stopped = true; } }));
-  assert.ok(stopped);
-  const rendered = JSON.stringify(view.root.toJSON());
-  assert.ok(rendered.includes("72.234.*.*"));
-  assert.ok(!rendered.includes("72.234.229.123"));
-  assert.ok(!rendered.includes("72.234.229.0"));
-  await act(async () => view.root.root.findByProps({ "aria-label": "Show IP address" }).props.onClick({ stopPropagation() {} }));
-  assert.ok(JSON.stringify(view.root.toJSON()).includes("72.234.229.123"));
+  const badges = view.root.root.findAll((n) => typeof n.props.className === "string" && n.props.className.startsWith("badge "));
+  assert.deepEqual(badges.map((b) => [b.props.className, b.props.children]), [["badge bad", "Unsupported region"], ["badge good", "Consistent"]]);
+  assert.ok(view.text().includes("OpenAI doesn't serve this region"));
+  assert.ok(view.text().includes("2 names leave by 2 nodes that share one egress IP"));
+  // several nodes are named on their addresses
+  assert.equal(view.find({ className: "ai-ip-node" }).length, 2);
+  await view.close();
+});
+
+test("IP attributes show as a tag and in the details; hiding masks addresses", async () => {
+  const view = await mount({ aiServices: ["Claude"] });
+  await act(async () => view.calls[0].resolve(check({
+    egress: [{ node: "us1", names: 2, ip: "72.234.229.123", loc: "US", details: { city: "Aiea", region: "Hawaii", operator: "Hawaiian Telcom", asn: 36149, kind: "Datacenter", network: "72.234.229.0/24" } }],
+  })));
+  assert.equal(view.find({ className: "ai-kind warn" }).length, 1);
+  await act(async () => view.root.root.findByProps({ className: "row click" }).props.onClick());
+  for (const value of ["Aiea", "Hawaiian Telcom", "AS36149", "claude.ai"]) assert.ok(view.text().includes(value), `missing ${value}`);
+  await act(async () => view.root.root.findByProps({ "aria-label": "Hide IP address" }).props.onClick());
+  assert.ok(view.text().includes("72.234.*.*"));
+  assert.ok(!view.text().includes("72.234.229.123"));
+  assert.ok(!view.text().includes("72.234.229.0"));
+  await act(async () => view.root.root.findByProps({ "aria-label": "Show IP address" }).props.onClick());
+  assert.ok(view.text().includes("72.234.229.123"));
   await view.close();
 });

@@ -11,7 +11,7 @@ import { copyCommand, coreLabel, coreTone, restartCore, run, setTun, startCore, 
 import { ago } from "../format";
 import { NetworkRules } from "../components/NetworkRules";
 import { AI_SERVICES } from "../aiServices";
-import { AIServiceSetting } from "../components/AIServiceSetting";
+import { AIServiceName } from "../components/AIServiceName";
 
 const TABS = ["general", "network", "rules", "tun", "core"] as const;
 type Tab = (typeof TABS)[number];
@@ -109,12 +109,11 @@ export function Settings() {
         </Section>
 
         <Section title={t("AI services")}>
-          <Row label={t("Check AI services on Overview")} sub={t("Automatically check routes and egress IP for the selected services.")} wrap>
-            <Switch on={s.aiChecks} onChange={(v) => patch({ aiChecks: v })} />
-          </Row>
           {AI_SERVICES.map((service) => (
-            <AIServiceSetting key={service} service={service} on={s.aiServices?.includes(service) ?? false} disabled={!s.aiChecks}
-              onChange={(on) => patch({ aiServices: on ? [...(s.aiServices ?? []), service] : (s.aiServices ?? []).filter((name) => name !== service) })} />
+            <Row key={service} label={<AIServiceName service={service} />} sub={t("Check routes and egress IP on Overview")}>
+              <Switch label={t(service)} on={s.aiServices?.includes(service) ?? false}
+                onChange={(on) => patch({ aiServices: on ? [...(s.aiServices ?? []), service] : (s.aiServices ?? []).filter((name) => name !== service) })} />
+            </Row>
           ))}
         </Section>
 

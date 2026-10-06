@@ -529,7 +529,19 @@ select.input { padding-right: 6px; }
 
 /* ---- AI services: whether all of a service's names leave alike ---------- */
 .ai-service-name { display: inline-flex; align-items: center; gap: 7px; vertical-align: middle; }
-.ai-ip { display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px; border-radius: 999px; background: var(--pill); vertical-align: middle; }
+.ai-head-actions { display: flex; align-items: center; gap: 2px; }
+.ai-egress { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 5px; font-size: 11.5px; color: var(--fg-2); }
+.ai-ip { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 0 8px; border-radius: 999px; line-height: 19px; background: var(--pill); }
+.ai-ip:has(.ai-kind) { padding-right: 2px; }
+.ai-ip.bad { color: var(--red); background: var(--red-soft); }
+.ai-ip.muted { color: var(--muted); }
+.ai-ip-node { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.ai-ip.bad .ai-ip-node { color: inherit; }
+.ai-kind { font-size: 10.5px; font-weight: 600; padding: 0 6px; border-radius: 999px; line-height: 15px; color: var(--muted); background: var(--card); }
+.ai-kind.good { color: var(--green); background: var(--green-soft); }
+.ai-kind.warn { color: var(--amber); background: var(--amber-soft); }
+.ai-egress-details > div { font-size: 11.5px; line-height: 1.5; color: var(--fg-2); padding: 1px 0; }
+.ai-egress-node { font-weight: 600; color: var(--fg); margin-right: 6px; }
 .ai-leak { gap: 9px; padding: 8px 6px 8px 12px; border-radius: 10px; }
 .ai-leak > svg { flex: none; }
 .ai-leak .grow { min-width: 0; color: var(--fg-2); font-size: 12px; line-height: 1.45; text-wrap: pretty; }
@@ -539,9 +551,6 @@ select.input { padding-right: 6px; }
 .ai-leak .icon:hover { color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); }
 .ai-service-icon { width: 16px; height: 16px; flex: none; background: currentColor; mask: no-repeat center / contain; -webkit-mask: no-repeat center / contain; }
 .ai-service + .ai-service { border-top: 1px solid var(--line-2); }
-.ai-service-disclosure { display: flex; align-items: center; gap: 7px; flex: 1; align-self: stretch; text-align: left; font-weight: 500; }
-.ai-details-status { display: flex; align-items: center; justify-content: space-between; padding: 2px 14px 8px; }
-.ai-checks .row .sub + .sub { margin-top: 0; }
 .ai-checks .err { color: var(--red); }
 .badge.good { color: var(--green); background: var(--green-soft); }
 .badge.warn { color: var(--amber); background: var(--amber-soft); }

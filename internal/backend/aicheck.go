@@ -44,13 +44,31 @@ type AIRoute struct {
 	Auto []string `json:"auto"`
 }
 
-// AIEgress is the address a service sees, asked of it once.
+// AIEgress is the address a service sees through one node, asked of it
+// once by a name that leaves by that node.
 type AIEgress struct {
+	Node        string       `json:"node"`
+	Names       int          `json:"names"` // how many of the service's names leave by Node
 	IP          string       `json:"ip"`
 	Loc         string       `json:"loc"`
 	Chain       []string     `json:"chain"`
 	Unsupported bool         `json:"unsupported"` // the service doesn't serve Loc
 	Details     *AIIPDetails `json:"details"`     // optional Net.Coffee metadata
+	Error       string       `json:"error,omitempty"`
+}
+
+// AICheck is a service's routes, the address each of their nodes shows
+// it, and what the two say together.
+type AICheck struct {
+	Route AIRoute `json:"route"`
+	// one per node the names leave by, the one most leave by first
+	Egress []AIEgress `json:"egress"`
+	// the worst finding: consistent (one node, or nodes sharing one
+	// address), direct (every name leaves from this Mac), partlyDirect,
+	// split, unsupported (an address in a region the service doesn't
+	// serve), refused or failed
+	Status string `json:"status"`
+	Level  string `json:"level"` // good | warn | bad | muted
 }
 
 type aiService struct {
@@ -107,36 +125,161 @@ func aiServiceNamed(name string) (aiService, error) {
 	return aiService{}, fmt.Errorf("unknown service %q", name)
 }
 
-// AIRoutes reads where the rules send each of the service's names.
-func (b *Backend) AIRoutes(service string) (AIRoute, error) {
+// AICheck reads where the rules send each of the service's names and asks
+// the service, through every node they leave by, the address it sees.
+// force bypasses the IP attribute cache.
+func (b *Backend) AICheck(service string, force bool) (AICheck, error) {
 	s, err := aiServiceNamed(service)
 	if err != nil {
-		return AIRoute{}, err
+		return AICheck{}, err
 	}
 	c, err := b.Client()
 	if err != nil {
-		return AIRoute{}, err
+		return AICheck{}, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	return aiRoutes(ctx, c, s.name, s.hosts, 443), nil
+	out := aiCheck(ctx, c, s, 443)
+	// Enrichment is optional: an unavailable database must not hide the
+	// service's observed address or replace it with a cached subnet address.
+	var wg sync.WaitGroup
+	for i := range out.Egress {
+		if e := &out.Egress[i]; e.IP != "" {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				e.Details, _ = b.aiIPs.get(ctx, e.IP, force, time.Now(), lookupAIIP)
+			}()
+		}
+	}
+	wg.Wait()
+	return out, nil
 }
 
-func aiRoutes(ctx context.Context, c *mihomoapi.Client, service string, hosts []string, port int) AIRoute {
-	out := AIRoute{Service: service, Hosts: make([]AIHost, len(hosts)), Auto: []string{}}
+// aiCheck routes the service's names on port, then asks for the egress
+// address through each node they leave by: the first name's trace runs
+// alongside the routes, the other nodes' after them.
+func aiCheck(ctx context.Context, c *mihomoapi.Client, s aiService, port int) AICheck {
+	trace := func(host string) string {
+		if port == 443 {
+			return "https://" + host + "/cdn-cgi/trace"
+		}
+		return "http://" + net.JoinHostPort(host, fmt.Sprint(port)) + "/cdn-cgi/trace"
+	}
+	var first AIEgress
+	var firstErr error
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		first, firstErr = aiEgress(ctx, c, s, trace(s.hosts[0]))
+	}()
+	route := aiRoutes(ctx, c, s.name, s.hosts, port)
+	<-done
+
+	egress := egressNodes(route.Hosts)
 	var wg sync.WaitGroup
-	for i, h := range hosts {
+	for i := range egress {
+		e := &egress[i]
+		if firstErr == nil && len(first.Chain) > 0 && first.Chain[0] == e.Node {
+			first.Node, first.Names = e.Node, e.Names
+			*e = first
+			continue
+		}
+		// any name of the node's will do; a few, as not every host answers
+		// Cloudflare's trace
+		var tries []string
+		for _, h := range route.Hosts {
+			if h.Error == "" && len(h.Chain) > 0 && h.Chain[0] == e.Node && h.Host != s.hosts[0] && len(tries) < 3 {
+				tries = append(tries, h.Host)
+			}
+		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			r, err := routeOf(ctx, c, net.JoinHostPort(h, fmt.Sprint(port)))
-			out.Hosts[i] = AIHost{Host: h, Rule: r.Rule, RulePayload: r.RulePayload, Chain: r.Chains}
-			if err != nil {
-				out.Hosts[i].Error = err.Error()
+			e.Error = "no name that leaves by this node answered"
+			for _, h := range tries {
+				if got, err := aiEgress(ctx, c, s, trace(h)); err == nil {
+					got.Node, got.Names = e.Node, e.Names
+					*e = got
+					return
+				}
 			}
 		}()
 	}
 	wg.Wait()
+	status, level := judgeCheck(route, egress)
+	return AICheck{Route: route, Egress: egress, Status: status, Level: level}
+}
+
+// egressNodes lists the nodes routed names leave by, most names first and
+// the first name's on a tie, as judgeRoutes picks the main node.
+func egressNodes(hosts []AIHost) []AIEgress {
+	var out []AIEgress
+	for _, h := range hosts {
+		if h.Error != "" || len(h.Chain) == 0 || refused(h.Chain[0]) {
+			continue
+		}
+		i := slices.IndexFunc(out, func(e AIEgress) bool { return e.Node == h.Chain[0] })
+		if i < 0 {
+			out = append(out, AIEgress{Node: h.Chain[0]})
+			i = len(out) - 1
+		}
+		out[i].Names++
+	}
+	slices.SortStableFunc(out, func(a, b AIEgress) int { return b.Names - a.Names })
+	return out
+}
+
+// judgeCheck weighs the routes with the addresses the service saw. Names
+// on several nodes are fine if those nodes share one address, and every
+// name going DIRECT is fine where the service serves this Mac's region.
+func judgeCheck(r AIRoute, egress []AIEgress) (status, level string) {
+	switch r.Verdict {
+	case "failed":
+		return "failed", "muted"
+	case "refused":
+		return "refused", "warn"
+	}
+	for _, e := range egress {
+		if e.Unsupported {
+			return "unsupported", "bad"
+		}
+	}
+	if len(egress) == 1 {
+		if egress[0].Node == "DIRECT" {
+			return "direct", "good"
+		}
+		return "consistent", "good"
+	}
+	ips := map[string]bool{}
+	for _, e := range egress {
+		if e.IP == "" {
+			ips = nil
+			break
+		}
+		ips[e.IP] = true
+	}
+	switch {
+	case len(ips) == 1:
+		return "consistent", "good"
+	case r.Verdict == "direct":
+		return "partlyDirect", "bad"
+	}
+	return "split", "warn"
+}
+
+func aiRoutes(ctx context.Context, c *mihomoapi.Client, service string, hosts []string, port int) AIRoute {
+	out := AIRoute{Service: service, Hosts: make([]AIHost, len(hosts)), Auto: []string{}}
+	targets := make([]string, len(hosts))
+	for i, h := range hosts {
+		targets[i] = net.JoinHostPort(h, fmt.Sprint(port))
+	}
+	for i, r := range routesOf(ctx, c, targets) {
+		out.Hosts[i] = AIHost{Host: hosts[i], Rule: r.conn.Rule, RulePayload: r.conn.RulePayload, Chain: r.conn.Chains}
+		if r.err != nil {
+			out.Hosts[i].Error = r.err.Error()
+		}
+	}
 	out.Node, out.Verdict = judgeRoutes(out.Hosts)
 	if ps, err := c.Proxies(ctx); err == nil {
 		for _, h := range out.Hosts {
@@ -192,30 +335,9 @@ func judgeRoutes(hosts []AIHost) (node, verdict string) {
 	return node, "consistent"
 }
 
-// AIEgress asks the service's first name, through the core, the address
+// aiEgress asks one of the service's names, through the core, the address
 // it sees: one plain request for Cloudflare's trace, which its edge
 // answers.
-func (b *Backend) AIEgress(service string, force bool) (AIEgress, error) {
-	s, err := aiServiceNamed(service)
-	if err != nil {
-		return AIEgress{}, err
-	}
-	c, err := b.Client()
-	if err != nil {
-		return AIEgress{}, err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	e, err := aiEgress(ctx, c, s, "https://"+s.hosts[0]+"/cdn-cgi/trace")
-	if err != nil {
-		return e, err
-	}
-	// Enrichment is optional: an unavailable database must not hide the
-	// service's observed address or replace it with a cached subnet address.
-	e.Details, _ = b.aiIPs.get(ctx, e.IP, force, time.Now(), lookupAIIP)
-	return e, nil
-}
-
 func aiEgress(ctx context.Context, c *mihomoapi.Client, s aiService, traceURL string) (AIEgress, error) {
 	body, chain := throughCore(ctx, c, http.MethodGet, traceURL)
 	if chain == nil {

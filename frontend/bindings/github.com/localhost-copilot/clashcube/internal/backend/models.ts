@@ -6,9 +6,42 @@
 import * as wifi$0 from "../wifi/models.js";
 
 /**
- * AIEgress is the address a service sees, asked of it once.
+ * AICheck is a service's routes, the address each of their nodes shows
+ * it, and what the two say together.
+ */
+export interface AICheck {
+    "route": AIRoute;
+
+    /**
+     * one per node the names leave by, the one most leave by first
+     */
+    "egress": AIEgress[] | null;
+
+    /**
+     * the worst finding: consistent (one node, or nodes sharing one
+     * address), direct (every name leaves from this Mac), partlyDirect,
+     * split, unsupported (an address in a region the service doesn't
+     * serve), refused or failed
+     */
+    "status": string;
+
+    /**
+     * good | warn | bad | muted
+     */
+    "level": string;
+}
+
+/**
+ * AIEgress is the address a service sees through one node, asked of it
+ * once by a name that leaves by that node.
  */
 export interface AIEgress {
+    "node": string;
+
+    /**
+     * how many of the service's names leave by Node
+     */
+    "names": number;
     "ip": string;
     "loc": string;
     "chain": string[] | null;
@@ -22,6 +55,7 @@ export interface AIEgress {
      * optional Net.Coffee metadata
      */
     "details": AIIPDetails | null;
+    "error"?: string;
 }
 
 /**

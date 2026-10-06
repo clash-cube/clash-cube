@@ -137,9 +137,8 @@ export interface Settings {
     "saveData": boolean;
 
     /**
-     * AIChecks controls Overview's route and egress checks. AI Services
-     * remain selected when checks are disabled; an empty list checks none.
+     * AIServices is the services Overview checks the routes and egress of;
+     * an empty list checks none.
      */
-    "aiChecks": boolean;
     "aiServices": string[] | null;
 }

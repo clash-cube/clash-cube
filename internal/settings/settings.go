@@ -65,9 +65,8 @@ type Settings struct {
 	// marks expensive (a personal hotspot) or constrained (Low Data Mode).
 	SaveData bool `json:"saveData"`
 
-	// AIChecks controls Overview's route and egress checks. AI Services
-	// remain selected when checks are disabled; an empty list checks none.
-	AIChecks   bool     `json:"aiChecks"`
+	// AIServices is the services Overview checks the routes and egress of;
+	// an empty list checks none.
 	AIServices []string `json:"aiServices"`
 }
 
@@ -104,7 +103,6 @@ func Defaults() Settings {
 		FindProcess: true,
 		Notify:      true,
 		SaveData:    true,
-		AIChecks:    true,
 		AIServices:  []string{"OpenAI", "Claude"},
 		Theme:       "system",
 		Lang:        "system",
@@ -126,6 +124,14 @@ func Load() Settings {
 	s := Defaults()
 	if b, err := os.ReadFile(appdir.Settings()); err == nil {
 		_ = json.Unmarshal(b, &s)
+		// Checks used to have their own switch over the selection; off
+		// meant none, which the selection now says by itself.
+		var legacy struct {
+			AIChecks *bool `json:"aiChecks"`
+		}
+		if json.Unmarshal(b, &legacy) == nil && legacy.AIChecks != nil && !*legacy.AIChecks {
+			s.AIServices = []string{}
+		}
 	}
 	return s
 }

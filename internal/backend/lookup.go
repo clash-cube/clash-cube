@@ -196,39 +196,99 @@ func splitTarget(s string) (string, int, error) {
 // and reads the rule and chain the core gave it (REJECT for a rejected
 // one). Nothing is sent through it.
 func routeOf(ctx context.Context, c *mihomoapi.Client, target string) (mihomoapi.Connection, error) {
-	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", net.JoinHostPort(proxyHost, strconv.Itoa(settings.Load().MixedPort)))
-	if err != nil {
-		return mihomoapi.Connection{}, err
+	r := routesOf(ctx, c, []string{target})[0]
+	return r.conn, r.err
+}
+
+type routeResult struct {
+	conn mihomoapi.Connection
+	err  error
+}
+
+// routesOf is routeOf for many targets at once: the tunnels open together
+// and one poll of the core's connections reads them all, rather than one
+// poll per target.
+func routesOf(ctx context.Context, c *mihomoapi.Client, targets []string) []routeResult {
+	out := make([]routeResult, len(targets))
+	conns := make([]net.Conn, len(targets))
+	defer func() {
+		for _, conn := range conns {
+			if conn != nil {
+				conn.Close()
+			}
+		}
+	}()
+	proxy := net.JoinHostPort(proxyHost, strconv.Itoa(settings.Load().MixedPort))
+	var mu sync.Mutex
+	waiting := map[string]int{} // local port → target
+	var wg sync.WaitGroup
+	for i, target := range targets {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			conn, err := connectThroughCore(ctx, proxy, target)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				out[i].err = err
+				return
+			}
+			conns[i] = conn
+			waiting[strconv.Itoa(conn.LocalAddr().(*net.TCPAddr).Port)] = i
+		}()
 	}
-	defer conn.Close()
-	port := strconv.Itoa(conn.LocalAddr().(*net.TCPAddr).Port)
+	wg.Wait()
+	// the core lists a connection once its route is dialled
+	for try := 0; len(waiting) > 0 && try < 30; try++ {
+		if try > 0 {
+			select {
+			case <-ctx.Done():
+				for _, i := range waiting {
+					out[i].err = ctx.Err()
+				}
+				return out
+			case <-time.After(150 * time.Millisecond):
+			}
+		}
+		list, err := c.Connections(ctx)
+		if err != nil {
+			for _, i := range waiting {
+				out[i].err = err
+			}
+			return out
+		}
+		for _, cn := range list.Connections {
+			if i, ok := waiting[cn.Metadata.SourcePort]; ok && cn.Metadata.SourceIP == proxyHost {
+				_ = c.CloseConnection(ctx, cn.ID)
+				out[i].conn = cn
+				delete(waiting, cn.Metadata.SourcePort)
+			}
+		}
+	}
+	for _, i := range waiting {
+		out[i].err = errors.New("no route: rejected, or the target is unreachable")
+	}
+	return out
+}
+
+// connectThroughCore asks the mixed port, proxy, for a tunnel to target
+// and gives it once the core accepted it.
+func connectThroughCore(ctx context.Context, proxy, target string) (net.Conn, error) {
+	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", proxy)
+	if err != nil {
+		return nil, err
+	}
 	_ = conn.SetDeadline(time.Now().Add(6 * time.Second))
 	fmt.Fprintf(conn, "CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", target, target)
 	resp, err := http.ReadResponse(bufio.NewReader(conn), &http.Request{Method: http.MethodConnect})
 	if err != nil {
-		return mihomoapi.Connection{}, errors.New("the core closed the connection: rejected, or the target is unreachable")
+		conn.Close()
+		return nil, errors.New("the core closed the connection: rejected, or the target is unreachable")
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return mihomoapi.Connection{}, fmt.Errorf("the core answered %s", resp.Status)
+		conn.Close()
+		return nil, fmt.Errorf("the core answered %s", resp.Status)
 	}
-	// the core lists the connection once its route is dialled
-	for i := 0; i < 30; i++ {
-		conns, err := c.Connections(ctx)
-		if err != nil {
-			return mihomoapi.Connection{}, err
-		}
-		for _, cn := range conns.Connections {
-			if cn.Metadata.SourcePort == port && cn.Metadata.SourceIP == proxyHost {
-				_ = c.CloseConnection(ctx, cn.ID)
-				return cn, nil
-			}
-		}
-		select {
-		case <-ctx.Done():
-			return mihomoapi.Connection{}, ctx.Err()
-		case <-time.After(150 * time.Millisecond):
-		}
-	}
-	return mihomoapi.Connection{}, errors.New("no route: rejected, or the target is unreachable")
+	return conn, nil
 }
