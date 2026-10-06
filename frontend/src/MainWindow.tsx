@@ -7,7 +7,7 @@ import { Popover, Menu, type MenuItem } from "./components/Popover";
 import { copyCommand, coreLabel, coreTone, openSettings, restartCore, setSystemProxy, setTun, startCore, stopCore } from "./actions";
 import { speed } from "./format";
 import { Overview } from "./views/Overview";
-import { Usage } from "./views/Usage";
+import { OverviewTabs, Usage } from "./views/Usage";
 import { Proxies } from "./views/Proxies";
 import { Profiles } from "./views/Profiles";
 import { Connections } from "./views/Connections";
@@ -18,8 +18,11 @@ import { Settings } from "./views/Settings";
 import { Prewarm } from "./components/Prewarm";
 import { useConnectionFeed } from "./connectionStore";
 
-// three.js is loaded only when the globe first shows
-const GlobeView = lazy(() => import("./views/Globe").then((m) => ({ default: m.GlobeView })));
+// three.js is loaded only once the overview shows, ahead of its globe tab
+const loadGlobe = () => import("./views/Globe");
+const GlobeView = lazy(() => loadGlobe().then((m) => ({ default: m.GlobeView })));
+// the pages sharing the overview's tab: switching among them keeps the head
+const OVERVIEW_TABS = new Set<View>(["overview", "usage", "globe"]);
 
 const VIEWS: Record<View, ComponentType> = {
   overview: Overview, usage: Usage, globe: GlobeView, proxies: Proxies, profiles: Profiles, connections: Connections, rules: Rules, logs: Logs, events: Events, settings: Settings,
@@ -37,6 +40,15 @@ export function MainWindow() {
   const [pending, setPending] = useState<"proxy" | "tun" | null>(null);
   const [wag, setWag] = useState(0);
   const Page = VIEWS[view] ?? Overview;
+  // a switch among the overview's tabs moves only what is under the head.
+  // Decided once per page and kept: dropping the class on a later render
+  // would hand the page its entrance again, and it would play then.
+  const entered = useRef({ view, tabSwitch: false });
+  if (entered.current.view !== view) {
+    entered.current = { view, tabSwitch: OVERVIEW_TABS.has(view) && OVERVIEW_TABS.has(entered.current.view) };
+  }
+  const tabSwitch = entered.current.tabSwitch;
+  useEffect(() => { if (OVERVIEW_TABS.has(view)) loadGlobe().catch(() => {}); }, [view]);
   const core = state?.core ?? "stopped";
   const running = core === "running";
   const close = () => setMenu(null);
@@ -94,7 +106,7 @@ export function MainWindow() {
   };
 
   return (
-    <div className="app window">
+    <div className={"app window" + (tabSwitch ? " tab-switch" : "")}>
       <header className={"top" + (level ? " fit-" + level : "")} ref={topRef}>
         <div className="brand" onMouseEnter={() => setWag((w) => w + 1)}>
           <span className={"logo" + (wag ? " spin" : "")} key={wag}><Logo /></span>
@@ -135,7 +147,9 @@ export function MainWindow() {
           <Menu close={close} items={menuItems()} />
         </Popover>
       </header>
-      <Suspense fallback={<div className="view" />}><Page key={view} /></Suspense>
+      <Suspense fallback={<div className="view">{OVERVIEW_TABS.has(view) && <div className="view-head"><OverviewTabs value={view as "overview" | "usage" | "globe"} /></div>}</div>}>
+        <Page key={view} />
+      </Suspense>
       <Prewarm />
     </div>
   );

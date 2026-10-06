@@ -199,6 +199,7 @@ export function OverviewTabs({ value }: { value: "overview" | "usage" | "globe" 
   const setView = useStore((s) => s.setView);
   return (
     <Segmented<View>
+      id="overview-tabs"
       className="track small"
       value={value}
       onChange={setView}

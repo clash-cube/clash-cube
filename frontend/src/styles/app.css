@@ -85,6 +85,10 @@ code, .mono { font-family: var(--code); font-size: 11.5px; }
 .view { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 14px; animation: view-in .24s var(--ease); }
 .view::-webkit-scrollbar { width: 0; }
 @keyframes view-in { from { opacity: 0; transform: translateY(5px); } }
+/* between the overview's tabs the head stays put; only the page under it comes in */
+.tab-switch > .view { animation: none; }
+.tab-switch > .view > :not(.view-head) { animation: view-in .24s var(--ease); }
+.tab-switch > .view > .view-head .view-tools { animation: pop-fade .2s ease-out; }
 .view-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 28px; }
 .view-head h2 { font-size: 15px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
 .view-head .sub { color: var(--muted); font-size: 12px; white-space: nowrap; }
