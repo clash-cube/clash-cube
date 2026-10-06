@@ -133,23 +133,55 @@ func TestRouteTakes(t *testing.T) {
 	}
 }
 
+func TestFor(t *testing.T) {
+	ms := []Module{
+		{Name: "a-own", Enabled: true, Profile: "a"},
+		{Name: "global", Enabled: true},
+		{Name: "b-own", Enabled: true, Profile: "b"},
+		{Name: "off", Profile: "a"},
+		{Name: "global-off"},
+		{Name: "a-own2", Enabled: true, Profile: "a"},
+	}
+	var names []string
+	for _, m := range For("a", ms) {
+		names = append(names, m.Name)
+	}
+	if !reflect.DeepEqual(names, []string{"global", "a-own", "a-own2"}) {
+		t.Errorf("for a: %v", names)
+	}
+	if got := For("c", ms); len(got) != 1 || got[0].Name != "global" {
+		t.Errorf("for c: %+v", got)
+	}
+}
+
 func TestPicksFollowProfiles(t *testing.T) {
 	t.Setenv("CLASHCUBE_HOME", t.TempDir())
 	r := &Route{Service: "Google", Policy: "select", Pick: true, Nodes: map[string][]string{"a": {"n1"}, "b": {"n2"}}, Upstream: map[string]string{"a": "front", "b": "old"}}
-	if err := Save([]Module{{Name: "Google", Route: r}, {Name: "plain", Body: "hosts: {}"}}); err != nil {
+	own := &Route{Service: "Telegram", Policy: "select", Pick: true, Nodes: map[string][]string{"a": {"n3"}}, Upstream: map[string]string{"a": "front"}}
+	if err := Save([]Module{{Name: "Google", Route: r}, {Name: "plain", Body: "hosts: {}"}, {Name: "a's", Profile: "a", Route: own}, {Name: "b's", Profile: "b", Body: "hosts: {}"}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := CopyPicks("a", "c"); err != nil {
+	if err := CopyProfile("a", "c"); err != nil {
 		t.Fatal(err)
 	}
-	if err := ForgetPicks("b"); err != nil {
+	if err := ForgetProfile("b"); err != nil {
 		t.Fatal(err)
 	}
-	got := List()[0].Route.Nodes
+	ms := List()
+	if len(ms) != 4 || ms[2].Profile != "a" || ms[3].Profile != "c" || ms[3].ID == ms[2].ID {
+		t.Fatalf("modules = %+v", ms)
+	}
+	if got := ms[3].Route; !reflect.DeepEqual(got.Nodes, map[string][]string{"c": {"n3"}}) || !reflect.DeepEqual(got.Upstream, map[string]string{"c": "front"}) {
+		t.Errorf("copied route = %+v", got)
+	}
+	if got := ms[2].Route.Nodes; !reflect.DeepEqual(got, map[string][]string{"a": {"n3"}}) {
+		t.Errorf("the original's picks changed: %v", got)
+	}
+	got := ms[0].Route.Nodes
 	if !reflect.DeepEqual(got, map[string][]string{"a": {"n1"}, "c": {"n1"}}) {
 		t.Errorf("nodes = %v", got)
 	}
-	if got := List()[0].Route.Upstream; !reflect.DeepEqual(got, map[string]string{"a": "front", "c": "front"}) {
+	if got := ms[0].Route.Upstream; !reflect.DeepEqual(got, map[string]string{"a": "front", "c": "front"}) {
 		t.Errorf("upstreams = %v", got)
 	}
 }

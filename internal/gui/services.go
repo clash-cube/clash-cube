@@ -243,8 +243,8 @@ func (s *ProxyService) Groups() ([]Group, error) {
 	}
 	order = append(order, "GLOBAL")
 	made := map[string]string{}
-	for _, m := range modules.List() {
-		if m.Enabled && m.Route != nil {
+	for _, m := range modules.For(settings.Load().Profile, modules.List()) {
+		if m.Route != nil {
 			if g := m.Route.GroupIn(func(n string) bool { _, ok := all[n]; return ok }); g != "" {
 				made[g] = m.ID
 			}

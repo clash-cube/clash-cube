@@ -12,6 +12,11 @@ export interface Module {
     "body": string;
 
     /**
+     * the ID of the profile it is laid over alone; empty, over every one
+     */
+    "profile"?: string;
+
+    /**
      * a service sent through a policy: the body is made from it, again
      * for each profile (runtimecfg), so its group's name never clashes
      */

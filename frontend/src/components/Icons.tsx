@@ -38,6 +38,7 @@ export const Stop = ({ size }: P) => (<svg {...s(size)}><rect x="4" y="4" width=
 export const Globe = ({ size }: P) => (<svg {...s(size)}><circle cx="8" cy="8" r="6" /><path d="M2 8h12M8 2c1.8 2 2.6 4 2.6 6S9.8 12 8 14c-1.8-2-2.6-4-2.6-6S6.2 4 8 2z" /></svg>);
 export const File = ({ size }: P) => (<svg {...s(size)}><path d="M4 1.8h5L12.5 5v9.2H4z" /><path d="M9 1.8V5h3.5" /></svg>);
 export const Shield = ({ size }: P) => (<svg {...s(size)}><path d="M8 1.8 13 3.8v4c0 3-2.2 5.2-5 6.4-2.8-1.2-5-3.4-5-6.4v-4z" /></svg>);
+export const Grip = ({ size }: P) => (<svg {...s(size)} fill="currentColor" stroke="none">{[4, 8, 12].flatMap((y) => [6, 10].map((x) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.1" />))}</svg>);
 export const Arrow = ({ size, dir }: P & { dir: "up" | "down" }) => (<svg {...s(size)} style={{ transform: dir === "down" ? "rotate(180deg)" : undefined }}><path d="M8 13V3M4 7l4-4 4 4" /></svg>);
 export const Route = ({ size }: P) => (<svg {...s(size)}><path d="M8 14V9.5L4 5.5M8 9.5l4-4" /><path d="M2.5 6V3.5H5M13.5 6V3.5H11" /></svg>);
 export const Wifi = ({ size }: P) => (<svg {...s(size)}><path d="M2 6.6a9 9 0 0 1 12 0M4.2 9.1a5.8 5.8 0 0 1 7.6 0M6.4 11.5a2.6 2.6 0 0 1 3.2 0" /><circle cx="8" cy="13.4" r=".5" /></svg>);

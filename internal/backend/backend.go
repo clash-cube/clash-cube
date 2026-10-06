@@ -572,7 +572,7 @@ func (b *Backend) RemoveProfile(id string) error {
 	if err := profiles.Remove(id); err != nil {
 		return err
 	}
-	if err := modules.ForgetPicks(id); err != nil {
+	if err := modules.ForgetProfile(id); err != nil {
 		log.Println("modules:", err)
 	}
 	b.emitProfiles()
@@ -580,13 +580,14 @@ func (b *Backend) RemoveProfile(id string) error {
 }
 
 // DuplicateProfile copies a profile as a local one the user can edit, and
-// the nodes modules picked for it; name is the copy's.
+// its own modules and the nodes global ones picked for it; name is the
+// copy's.
 func (b *Backend) DuplicateProfile(id, name string) (profiles.Profile, error) {
 	p, err := profiles.Duplicate(id, name)
 	if err != nil {
 		return p, err
 	}
-	if err := modules.CopyPicks(id, p.ID); err != nil {
+	if err := modules.CopyProfile(id, p.ID); err != nil {
 		log.Println("modules:", err)
 	}
 	b.ProfileChanged("")

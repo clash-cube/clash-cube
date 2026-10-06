@@ -305,45 +305,74 @@ func (r Route) Body(profile string, taken, declared func(string) bool) (string, 
 // Matches says whether the region takes the node of that name.
 func (r Region) Matches(name string) bool { return Route{Region: r.Key}.Takes("", name) }
 
-// CopyPicks gives the profile to the nodes picked for the profile from,
-// as a copy of it has the same nodes.
-func CopyPicks(from, to string) error {
-	return editPicks(func(r *Route) bool {
-		changed := false
-		if names, ok := r.Nodes[from]; ok {
-			r.Nodes[to] = append([]string{}, names...)
-			changed = true
-		}
-		if name, ok := r.Upstream[from]; ok {
-			r.Upstream[to] = name
-			changed = true
-		}
-		return changed
-	})
-}
-
-// ForgetPicks drops the nodes picked for a profile that is gone.
-func ForgetPicks(profile string) error {
-	return editPicks(func(r *Route) bool {
-		_, nodes := r.Nodes[profile]
-		_, upstream := r.Upstream[profile]
-		delete(r.Nodes, profile)
-		delete(r.Upstream, profile)
-		return nodes || upstream
-	})
-}
-
-func editPicks(edit func(*Route) bool) error {
+// CopyProfile gives a copy of profile from what from has: copies of its
+// own modules, and the nodes the global ones picked for it.
+func CopyProfile(from, to string) error {
 	ms := List()
+	var copies []Module
 	changed := false
 	for _, m := range ms {
-		if m.Route == nil {
+		if m.Profile == from {
+			c := m
+			c.ID, c.Profile = "", to
+			if r := m.Route; r != nil {
+				c.Route = r.only(from, to)
+			}
+			copies = append(copies, c)
 			continue
 		}
-		changed = edit(m.Route) || changed
+		if r := m.Route; r != nil && m.Profile == "" {
+			if names, ok := r.Nodes[from]; ok {
+				r.Nodes[to] = append([]string{}, names...)
+				changed = true
+			}
+			if name, ok := r.Upstream[from]; ok {
+				r.Upstream[to] = name
+				changed = true
+			}
+		}
+	}
+	if !changed && len(copies) == 0 {
+		return nil
+	}
+	return Save(append(ms, copies...))
+}
+
+// ForgetProfile drops a profile that is gone: its own modules, and the
+// nodes the global ones picked for it.
+func ForgetProfile(id string) error {
+	ms := List()
+	kept := ms[:0]
+	changed := false
+	for _, m := range ms {
+		if m.Profile == id {
+			changed = true
+			continue
+		}
+		if r := m.Route; r != nil {
+			_, nodes := r.Nodes[id]
+			_, upstream := r.Upstream[id]
+			delete(r.Nodes, id)
+			delete(r.Upstream, id)
+			changed = changed || nodes || upstream
+		}
+		kept = append(kept, m)
 	}
 	if !changed {
 		return nil
 	}
-	return Save(ms)
+	return Save(kept)
+}
+
+// only is a copy of r with the picks of profile from, as to's.
+func (r *Route) only(from, to string) *Route {
+	c := *r
+	c.Nodes, c.Upstream = nil, nil
+	if names, ok := r.Nodes[from]; ok {
+		c.Nodes = map[string][]string{to: append([]string{}, names...)}
+	}
+	if name, ok := r.Upstream[from]; ok {
+		c.Upstream = map[string]string{to: name}
+	}
+	return &c
 }
