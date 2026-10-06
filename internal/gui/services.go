@@ -64,6 +64,18 @@ func (s *AppService) DNSEgress() (backend.DNSEgress, error) { return s.h.b.DNSEg
 // ProxyEgress is where proxied traffic leaves, and the chain it took.
 func (s *AppService) ProxyEgress() (backend.ProxyEgress, error) { return s.h.b.ProxyEgress() }
 
+// AIRoutes is where the rules send each of an AI service's names ("OpenAI"
+// or "Claude"), without a request to the service.
+func (s *AppService) AIRoutes(service string) (backend.AIRoute, error) {
+	return s.h.b.AIRoutes(service)
+}
+
+// AIEgress asks the AI service for its address; force bypasses the local
+// IP attribute cache. Concurrent lookups for the same IP share a request.
+func (s *AppService) AIEgress(service string, force bool) (backend.AIEgress, error) {
+	return s.h.b.AIEgress(service, force)
+}
+
 // HelperStatus is service mode's state, for Settings.
 func (s *AppService) HelperStatus() backend.HelperStatus { return s.h.b.HelperStatus() }
 
@@ -621,6 +633,8 @@ type Patch struct {
 	FindProcess     *bool     `json:"findProcess,omitempty"`
 	Notify          *bool     `json:"notify,omitempty"`
 	SaveData        *bool     `json:"saveData,omitempty"`
+	AIChecks        *bool     `json:"aiChecks,omitempty"`
+	AIServices      *[]string `json:"aiServices,omitempty"`
 }
 
 func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
@@ -659,6 +673,8 @@ func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
 		set(&st.FindProcess, p.FindProcess)
 		set(&st.Notify, p.Notify)
 		set(&st.SaveData, p.SaveData)
+		set(&st.AIChecks, p.AIChecks)
+		set(&st.AIServices, p.AIServices)
 	})
 	if p.Dock != nil {
 		application.InvokeAsync(func() { s.h.dock(s.h.main.IsVisible()) })

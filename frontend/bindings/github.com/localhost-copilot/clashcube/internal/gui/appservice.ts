@@ -22,6 +22,22 @@ import * as usage$0 from "../usage/models.js";
 import * as $models from "./models.js";
 
 /**
+ * AIEgress asks the AI service for its address; force bypasses the local
+ * IP attribute cache. Concurrent lookups for the same IP share a request.
+ */
+export function AIEgress(service: string, force: boolean): $CancellablePromise<backend$0.AIEgress> {
+    return $Call.ByID(3126919820, service, force);
+}
+
+/**
+ * AIRoutes is where the rules send each of an AI service's names ("OpenAI"
+ * or "Claude"), without a request to the service.
+ */
+export function AIRoutes(service: string): $CancellablePromise<backend$0.AIRoute> {
+    return $Call.ByID(2546804065, service);
+}
+
+/**
  * AppIcon is an app's icon (a bundle or executable path; "" for a LAN
  * client) as a PNG data URL, for the page to show.
  */

@@ -6,6 +6,84 @@
 import * as wifi$0 from "../wifi/models.js";
 
 /**
+ * AIEgress is the address a service sees, asked of it once.
+ */
+export interface AIEgress {
+    "ip": string;
+    "loc": string;
+    "chain": string[] | null;
+
+    /**
+     * the service doesn't serve Loc
+     */
+    "unsupported": boolean;
+
+    /**
+     * optional Net.Coffee metadata
+     */
+    "details": AIIPDetails | null;
+}
+
+/**
+ * AIHost is where the rules send one of a service's names.
+ */
+export interface AIHost {
+    "host": string;
+    "rule": string;
+    "rulePayload": string;
+
+    /**
+     * node first; ["REJECT"] when refused
+     */
+    "chain": string[] | null;
+    "error"?: string;
+}
+
+/**
+ * AIIPDetails describes the observed IP using Net.Coffee's database.
+ * Network is set when the API returned another address in a shared CIDR
+ * cache entry; those attributes describe the network, not this exact IP.
+ */
+export interface AIIPDetails {
+    "city": string;
+    "region": string;
+    "operator": string;
+    "asn": number;
+
+    /**
+     * Residential | Datacenter | Mobile | Business | Unknown
+     */
+    "kind": string;
+    "network": string;
+}
+
+/**
+ * AIRoute is how a service's names leave.
+ */
+export interface AIRoute {
+    "service": string;
+    "hosts": AIHost[] | null;
+
+    /**
+     * the node most names leave by, the first name's on a tie
+     */
+    "node": string;
+
+    /**
+     * consistent: all leave by Node; split: by several nodes; direct:
+     * some leave from this Mac; refused: all are refused; failed: none
+     * could be routed
+     */
+    "verdict": string;
+
+    /**
+     * groups on the way that pick a node themselves (url-test, fallback,
+     * load-balance), so the route may change later
+     */
+    "auto": string[] | null;
+}
+
+/**
  * ClientRate is one app's traffic now, as Surge's "Top Clients" lists it:
  * its name, the path its icon comes from, and its speed in bytes a second.
  */

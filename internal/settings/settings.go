@@ -64,6 +64,11 @@ type Settings struct {
 	// SaveData pauses the app's own background traffic on networks macOS
 	// marks expensive (a personal hotspot) or constrained (Low Data Mode).
 	SaveData bool `json:"saveData"`
+
+	// AIChecks controls Overview's route and egress checks. AI Services
+	// remain selected when checks are disabled; an empty list checks none.
+	AIChecks   bool     `json:"aiChecks"`
+	AIServices []string `json:"aiServices"`
 }
 
 // NetworkRule is what to set while on the networks it matches: a Wi-Fi
@@ -99,6 +104,8 @@ func Defaults() Settings {
 		FindProcess: true,
 		Notify:      true,
 		SaveData:    true,
+		AIChecks:    true,
+		AIServices:  []string{"OpenAI", "Claude"},
 		Theme:       "system",
 		Lang:        "system",
 		Dock:        "window",

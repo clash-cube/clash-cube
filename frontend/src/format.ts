@@ -31,6 +31,16 @@ export function flag(cc: string | undefined): string {
 // an address with its country's flag in front
 export const flagged = (ip: string | undefined, cc?: string) => (ip ? [flag(cc), ip].filter(Boolean).join(" ") : "—");
 
+// Keep the network recognizable without exposing the host portion. Also
+// accepts CIDRs; unknown formats are hidden rather than passed through.
+export function maskedIP(value: string): string {
+  const [ip, prefix] = value.split("/");
+  let masked = "***";
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) masked = ip.split(".").slice(0, 2).join(".") + ".*.*";
+  else if (ip.includes(":")) masked = ip.split(":").slice(0, 2).map((part) => /^[0-9a-f]{1,4}$/i.test(part) ? part : "*").join(":") + ":*:*";
+  return prefix && /^\d+$/.test(prefix) ? `${masked}/${prefix}` : masked;
+}
+
 export function ago(iso: string | number | Date, t: (s: string, v?: Record<string, string | number>) => string): string {
   const ms = Date.now() - new Date(iso).getTime();
   if (!isFinite(ms) || ms < 0) return "";

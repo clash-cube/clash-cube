@@ -135,4 +135,11 @@ export interface Settings {
      * marks expensive (a personal hotspot) or constrained (Low Data Mode).
      */
     "saveData": boolean;
+
+    /**
+     * AIChecks controls Overview's route and egress checks. AI Services
+     * remain selected when checks are disabled; an empty list checks none.
+     */
+    "aiChecks": boolean;
+    "aiServices": string[] | null;
 }

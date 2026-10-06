@@ -88,6 +88,7 @@ type Backend struct {
 	connBreak map[string]bool
 	// globe.go
 	globe globeState
+	aiIPs aiIPCache
 
 	// watch.go
 	events       []Event

@@ -10,6 +10,8 @@ import { errText, toast, toastError } from "../components/Toast";
 import { copyCommand, coreLabel, coreTone, restartCore, run, setTun, startCore, stopCore } from "../actions";
 import { ago } from "../format";
 import { NetworkRules } from "../components/NetworkRules";
+import { AI_SERVICES } from "../aiServices";
+import { AIServiceSetting } from "../components/AIServiceSetting";
 
 const TABS = ["general", "network", "rules", "tun", "core"] as const;
 type Tab = (typeof TABS)[number];
@@ -21,6 +23,8 @@ const Applying = createContext<ReadonlySet<string>>(new Set());
 
 // the tab ?view=settings#<tab> names, else the one last open
 function firstTab(): Tab {
+  const requested = useStore.getState().settingsTarget?.tab as Tab;
+  if (TABS.includes(requested)) return requested;
   const h = location.hash.slice(1) as Tab;
   if (TABS.includes(h)) return h;
   try { const v = localStorage.getItem("settings.tab") as Tab; if (TABS.includes(v)) return v; } catch {}
@@ -31,6 +35,7 @@ export function Settings() {
   const t = useT();
   const s = useStore((st) => st.settings);
   const state = useStore((st) => st.state);
+  const target = useStore((st) => st.settingsTarget);
   const [tab, setTab] = useState<Tab>(firstTab);
   const [applying, setApplying] = useState<ReadonlySet<string>>(new Set());
   const pick = (v: Tab) => {
@@ -42,6 +47,11 @@ export function Settings() {
     window.addEventListener("settings-tab", on);
     return () => window.removeEventListener("settings-tab", on);
   }, []);
+  useEffect(() => {
+    if (!s || !target || target.tab !== tab) return;
+    if (target.section) document.getElementById(target.section)?.scrollIntoView({ block: "start" });
+    useStore.setState({ settingsTarget: null });
+  }, [tab, target, !!s]);
   if (!s) return <div className="view" />;
 
   const tunStacks = [
@@ -98,6 +108,16 @@ export function Settings() {
           </Row>
         </Section>
 
+        <Section title={t("AI services")}>
+          <Row label={t("Check AI services on Overview")} sub={t("Automatically check routes and egress IP for the selected services.")} wrap>
+            <Switch on={s.aiChecks} onChange={(v) => patch({ aiChecks: v })} />
+          </Row>
+          {AI_SERVICES.map((service) => (
+            <AIServiceSetting key={service} service={service} on={s.aiServices?.includes(service) ?? false} disabled={!s.aiChecks}
+              onChange={(on) => patch({ aiServices: on ? [...(s.aiServices ?? []), service] : (s.aiServices ?? []).filter((name) => name !== service) })} />
+          ))}
+        </Section>
+
         <Section title={t("Keyboard shortcuts")}>
           <Hotkeys />
         </Section>
@@ -148,7 +168,7 @@ export function Settings() {
           </Row>
         </Section>
 
-        <Section title={t("Leak Protection")}>
+        <Section title={t("Leak Protection")} id="leak-protection">
           {state?.systemProxy && !state.tun && (
             <div className="row">
               <div className="who">
@@ -322,10 +342,10 @@ function ServiceModeRow() {
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
   return (
     <>
-      <div className="section-title">{title}</div>
+      <div className="section-title" id={id}>{title}</div>
       <div className="list">{children}</div>
     </>
   );
@@ -333,7 +353,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 // Row is a setting; field names the core setting it changes, so the row
 // says so while the core reloads for it.
-function Row({ label, sub, wrap, field, children }: { label: string; sub?: string; wrap?: boolean; field?: keyof Patch; children: ReactNode }) {
+function Row({ label, sub, wrap, field, children }: { label: ReactNode; sub?: string; wrap?: boolean; field?: keyof Patch; children: ReactNode }) {
   const t = useT();
   const applying = useContext(Applying).has(field ?? "");
   return (

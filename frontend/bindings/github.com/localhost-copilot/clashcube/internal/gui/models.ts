@@ -96,6 +96,8 @@ export interface Patch {
     "findProcess"?: boolean | null;
     "notify"?: boolean | null;
     "saveData"?: boolean | null;
+    "aiChecks"?: boolean | null;
+    "aiServices"?: string[] | null;
 }
 
 /**

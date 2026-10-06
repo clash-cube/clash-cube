@@ -7,6 +7,7 @@ import { useT } from "../i18n";
 import { bytes, speed } from "../format";
 import { Sparkline } from "../components/Sparkline";
 import { ConnectivityCards } from "../components/ConnectivityCards";
+import { AIChecks } from "../components/AIChecks";
 import { Segmented } from "../components/Segmented";
 import { Switch } from "../components/Switch";
 import { Arrow, Globe, Shield, File, Chevron, Route } from "../components/Icons";
@@ -105,6 +106,8 @@ export function Overview() {
       </div>
 
       <ConnectivityCards />
+
+      <AIChecks />
 
       <div className="list controls">
         <div className="row">

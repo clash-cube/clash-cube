@@ -17,7 +17,7 @@ const fields: Record<Item, (keyof Connectivity)[]> = {
 
 // a chain, node first, as "policy → node"; the policy alone when the rule
 // named the node itself
-const route = (chain: string[]) =>
+export const route = (chain: string[]) =>
   chain.length > 1 ? `${chain[chain.length - 1]} → ${chain[0]}` : chain[0] ?? "—";
 
 // the least each card's bars scale to: a router answers in a few ms, a

@@ -71,7 +71,8 @@ export async function copyCommand(lan: boolean) {
 }
 
 // openSettings shows the settings on one tab, also when they are open.
-export function openSettings(tab: string) {
+export function openSettings(tab: string, section?: string) {
+  useStore.setState({ settingsTarget: { tab, section } });
   try { localStorage.setItem("settings.tab", tab); } catch {}
   window.dispatchEvent(new CustomEvent("settings-tab", { detail: tab }));
   useStore.getState().setView("settings");
