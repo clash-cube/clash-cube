@@ -92,11 +92,7 @@ func TestAIRoutesThroughCore(t *testing.T) {
 	defer srv.Close()
 	_, port, _ := net.SplitHostPort(srv.Listener.Addr().String())
 	t.Setenv("CLASHCUBE_HOME", t.TempDir())
-	// no process lookup: a cold one takes the core over 10s on CI's Intel
-	// Macs, and the routes don't depend on it
-	if _, err := settings.Update(func(s *settings.Settings) {
-		s.MixedPort, s.AutoStart, s.Mode, s.FindProcess = freePort(t), false, "rule", false
-	}); err != nil {
+	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort, s.AutoStart, s.Mode = freePort(t), false, "rule" }); err != nil {
 		t.Fatal(err)
 	}
 	const profile = `
@@ -123,11 +119,19 @@ rules:
 	}
 	t.Cleanup(b.Shutdown)
 	c, _ := b.Client()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 	defer cancel()
 
 	n, _ := strconv.Atoi(port)
-	r := aiRoutes(ctx, c, "Claude", []string{"a.test", "b.test", "r.test"}, n)
+	// the core answers its API before it routes: mihomo starts the API
+	// first and the tunnel once the rest is loaded, which takes a few
+	// seconds on CI's Intel Macs
+	var r AIRoute
+	for range 5 {
+		if r = aiRoutes(ctx, c, "Claude", []string{"a.test", "b.test", "r.test"}, n); r.Hosts[0].Error == "" {
+			break
+		}
+	}
 	if got := r.Hosts[0]; got.Error != "" || got.Rule != "Domain" || got.RulePayload != "a.test" || !reflect.DeepEqual(got.Chain, []string{"DIRECT", "Claude"}) {
 		t.Errorf("a.test: %+v", got)
 	}
