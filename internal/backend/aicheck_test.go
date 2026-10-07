@@ -92,7 +92,11 @@ func TestAIRoutesThroughCore(t *testing.T) {
 	defer srv.Close()
 	_, port, _ := net.SplitHostPort(srv.Listener.Addr().String())
 	t.Setenv("CLASHCUBE_HOME", t.TempDir())
-	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort, s.AutoStart, s.Mode = freePort(t), false, "rule" }); err != nil {
+	// no process lookup: a cold one takes the core over 10s on CI's Intel
+	// Macs, and the routes don't depend on it
+	if _, err := settings.Update(func(s *settings.Settings) {
+		s.MixedPort, s.AutoStart, s.Mode, s.FindProcess = freePort(t), false, "rule", false
+	}); err != nil {
 		t.Fatal(err)
 	}
 	const profile = `
