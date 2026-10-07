@@ -15,9 +15,14 @@ async function mount(settings, savingData = false, state = {}) {
   const useStore = (select) => select(store);
   useStore.setState = (patch) => { store = { ...store, ...patch }; };
   const calls = [];
+  const opened = [];
   const mocks = {
     "../actions": { openSettings: (...args) => navigation.push(args) },
-    "../api": { App: { AICheck: (service, force) => new Promise((resolve, reject) => calls.push({ service, force, resolve, reject })) } },
+    "../api": { App: {
+      AICheck: (service, force) => new Promise((resolve, reject) => calls.push({ service, force, resolve, reject })),
+      OpenURL: async (url) => { opened.push(url); },
+    } },
+    "./Toast": { toastError: () => {} },
     "../store": { useStore },
     "../i18n": { useT: () => (text, vars) => text.replace(/\{(\w+)\}/g, (m, k) => vars?.[k] ?? m) },
     "./Icons": { Refresh: () => null, Eye: () => null, Close: () => null, ExternalLink: () => null, Shield: () => null },
@@ -43,7 +48,7 @@ async function mount(settings, savingData = false, state = {}) {
   const render = () => React.createElement(AIChecks);
   await act(async () => { root = create(render()); });
   return {
-    get root() { return root; }, calls, navigation,
+    get root() { return root; }, calls, navigation, opened,
     text: () => JSON.stringify(root.toJSON()),
     find: (props) => root.root.findAllByProps(props),
     async update(patch) {
@@ -185,6 +190,8 @@ test("IP attributes show as a tag and in the details; hiding masks addresses", a
   assert.equal(view.find({ className: "ai-kind warn" }).length, 1);
   await act(async () => view.root.root.findByProps({ className: "row click" }).props.onClick());
   for (const value of ["Aiea", "Hawaiian Telcom", "AS36149", "claude.ai"]) assert.ok(view.text().includes(value), `missing ${value}`);
+  await act(async () => view.root.root.findByProps({ "aria-label": "Open in Net.Coffee" }).props.onClick());
+  assert.deepEqual(view.opened, ["https://ip.net.coffee/ip/72.234.229.123"]);
   await act(async () => view.root.root.findByProps({ "aria-label": "Hide IP address" }).props.onClick());
   assert.ok(view.text().includes("72.234.*.*"));
   assert.ok(!view.text().includes("72.234.229.123"));

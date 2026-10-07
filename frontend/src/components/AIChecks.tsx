@@ -6,6 +6,7 @@ import { flagged, maskedIP, nodeLabel } from "../format";
 import { ExternalLink, Eye, Refresh, Shield } from "./Icons";
 import { Fold } from "./Fold";
 import { Popover } from "./Popover";
+import { toastError } from "./Toast";
 import { route } from "./ConnectivityCards";
 import { AI_SERVICES } from "../aiServices";
 import { AIServiceName } from "./AIServiceName";
@@ -232,6 +233,8 @@ function EgressDetails({ egress, hidden }: { egress: AIEgress[]; hidden: boolean
             {" · "}{t("ISP")}: {e.details.operator || t("Unknown")}{e.details.asn > 0 && ` (AS${e.details.asn})`}
             {e.details.network && <> · {t("Network data: {cidr}", { cidr: hidden ? maskedIP(e.details.network) : e.details.network })}</>}
           </> : t("IP attributes unavailable")}
+          <button className="icon ai-ip-link" title={t("Open in Net.Coffee")} aria-label={t("Open in Net.Coffee")}
+            onClick={() => App.OpenURL(`https://ip.net.coffee/ip/${e.ip}`).catch(toastError)}><ExternalLink size={11} /></button>
         </div>
       ))}
     </div>
