@@ -70,6 +70,10 @@ type Settings struct {
 	AIServices []string `json:"aiServices"`
 
 	CityGeo bool `json:"cityGeo"` // the globe places connections at cities, from a downloaded database
+
+	// AutoUpdateApp looks for a new release of the app every few hours and
+	// downloads it, to be installed at the next restart.
+	AutoUpdateApp bool `json:"autoUpdateApp"`
 }
 
 // NetworkRule is what to set while on the networks it matches: a Wi-Fi
@@ -101,15 +105,16 @@ func Defaults() Settings {
 			"127.0.0.1", "192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12",
 			"localhost", "*.local", "*.crashlytics.com", "<local>",
 		},
-		AutoStart:   true,
-		FindProcess: true,
-		Notify:      true,
-		SaveData:    true,
-		AIServices:  []string{"OpenAI", "Claude"},
-		Theme:       "system",
-		Lang:        "system",
-		Dock:        "window",
-		TestURL:     "https://www.gstatic.com/generate_204",
+		AutoStart:     true,
+		FindProcess:   true,
+		Notify:        true,
+		SaveData:      true,
+		AutoUpdateApp: true,
+		AIServices:    []string{"OpenAI", "Claude"},
+		Theme:         "system",
+		Lang:          "system",
+		Dock:          "window",
+		TestURL:       "https://www.gstatic.com/generate_204",
 	}
 }
 

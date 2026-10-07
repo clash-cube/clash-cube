@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { Hotkeys } from "../components/Hotkeys";
 import { useT } from "../i18n";
 import { applyTheme, useStore } from "../store";
-import { App, Proxy, Settings as S, type Patch, type HelperStatus, type GeoInfo, type CityGeoInfo } from "../api";
+import { App, Proxy, Settings as S, type Patch, type HelperStatus, type AppUpdate, type GeoInfo, type CityGeoInfo } from "../api";
 import { Switch } from "../components/Switch";
 import { Segmented } from "../components/Segmented";
 import { Refresh } from "../components/Icons";
@@ -135,7 +135,10 @@ export function Settings() {
         </Section>
 
         <Section title={t("About")}>
-          <Row label={t("ClashCube")}><span className="mono muted">{state?.appVersion}</span></Row>
+          <UpdateRow />
+          <Row label={t("Check for updates automatically")} sub={t("Every 6 hours, not on metered networks. A new version is downloaded and installed when ClashCube restarts.")} wrap>
+            <Switch on={s.autoUpdateApp} onChange={(v) => patch({ autoUpdateApp: v })} />
+          </Row>
           <Row label={t("mihomo")}><span className="mono muted">{state?.coreVersion}</span></Row>
         </Section>
       </>}
@@ -344,6 +347,59 @@ function ActionButton({ label, busyLabel, busy, disabled, className, onClick }: 
     <button className={"btn small" + (className ? " " + className : "")} disabled={disabled || on} onClick={press}>
       {on && <Spinner />}{on ? busyLabel : label}
     </button>
+  );
+}
+
+// UpdateRow is the app's version and what can be done about a newer one.
+function UpdateRow() {
+  const t = useT();
+  const state = useStore((st) => st.state);
+  const fromState = state?.update;
+  const [progress, setProgress] = useState<AppUpdate | null>(null);
+  const [busy, setBusy] = useState(false);
+  const downloading = fromState?.state === "downloading";
+  // the download's progress has no event
+  useEffect(() => {
+    if (!downloading) { setProgress(null); return; }
+    const id = setInterval(() => App.AppUpdate().then(setProgress).catch(() => {}), 500);
+    return () => clearInterval(id);
+  }, [downloading]);
+  const u = (downloading && progress?.state === "downloading" ? progress : fromState) ?? { state: "idle" } as AppUpdate;
+
+  const check = async () => {
+    const r = await App.CheckAppUpdate();
+    if (r.state === "latest") toast(t("ClashCube is up to date"));
+    else if (r.state === "error") toast(t("Couldn't check for updates: {error}", { error: r.error ?? "" }), "err", 5000);
+  };
+  const restart = async () => {
+    setBusy(true);
+    try { await App.RestartToUpdate(); } catch (e) { if (!/cancelled/.test(errText(e))) toastError(e); }
+    setBusy(false);
+  };
+  const pct = u.total ? Math.floor((u.done ?? 0) * 100 / u.total) : 0;
+  const sub = {
+    idle: "",
+    checking: t("Checking for updates…"),
+    latest: t("Up to date"),
+    source: t("Built from source; updates itself only as a release"),
+    downloading: u.total ? t("Downloading {version}… {pct}%", { version: u.latest ?? "", pct }) : t("Downloading {version}…", { version: u.latest ?? "" }),
+    ready: t("Version {version} is ready", { version: u.latest ?? "" }),
+    available: u.stuck ? t("Version {version} is out. Move ClashCube to Applications to update it here.", { version: u.latest ?? "" }) : t("Version {version} is out", { version: u.latest ?? "" }),
+    installed: t("Version {version} is installed and opens next time", { version: u.latest ?? "" }),
+    error: t("Couldn't update: {error}", { error: u.error ?? "" }),
+  }[u.state] ?? "";
+  return (
+    <div className="row">
+      <div className="who">
+        <div className="name">{t("ClashCube")} <span className="mono muted">{state?.appVersion}</span></div>
+        {sub && <div className={"sub wrap" + (u.state === "error" ? " warn" : "")}>{sub}</div>}
+      </div>
+      <div className="end">
+        {u.state === "ready" ? <ActionButton className="primary" label={t("Restart to Update")} busyLabel={t("Updating…")} busy={busy} onClick={restart} />
+          : u.state === "available" && u.url ? <button className="btn small" onClick={() => App.OpenURL(u.url!)}>{t("Download")}</button>
+          : <ActionButton label={t("Check for Updates")} busyLabel={downloading ? t("Downloading…") : t("Checking for updates…")} busy={u.state === "checking" || downloading} onClick={check} />}
+      </div>
+    </div>
   );
 }
 

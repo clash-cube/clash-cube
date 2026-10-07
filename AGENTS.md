@@ -55,6 +55,8 @@ cd frontend && npx tsc    # type check
 - Debug switches: `CLASHCUBE_SHOW=main|panel|menu` opens a window or the tray
   menu at start. `CLASHCUBE_VIEW=proxies` (or `settings#tun`, or `globe` for global
   connections) picks the page.
+  `CLASHCUBE_UPDATE_FEED=<url of an update.json>` checks for app updates there
+  instead of GitHub; sign a test manifest with `scripts/signhelper -manifest`.
 - Tests that need a core re-exec the test binary as `core` (see `TestMain` in
   `internal/backend` and `internal/helper`).
 

@@ -125,6 +125,40 @@ export interface AIRoute {
 }
 
 /**
+ * AppUpdate is where updating the app stands, for Settings and the tray.
+ */
+export interface AppUpdate {
+    /**
+     * idle | checking | latest | downloading | ready | installed | available | source | error
+     */
+    "state": string;
+    "latest"?: string;
+    "notes"?: string;
+
+    /**
+     * the release page
+     */
+    "url"?: string;
+
+    /**
+     * available: why it can't replace itself
+     */
+    "stuck"?: string;
+    "error"?: string;
+
+    /**
+     * downloading: bytes so far, of total (0 when unknown)
+     */
+    "done"?: number;
+    "total"?: number;
+
+    /**
+     * unix ms of the last answer
+     */
+    "checked"?: number;
+}
+
+/**
  * CityGeoInfo is the city database's state, for Settings.
  */
 export interface CityGeoInfo {
@@ -699,4 +733,9 @@ export interface State {
      * the last configuration refused, until one is taken
      */
     "refusal"?: Refusal | null;
+
+    /**
+     * updating the app itself (appupdate.go)
+     */
+    "update": AppUpdate;
 }

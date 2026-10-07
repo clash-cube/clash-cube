@@ -5,7 +5,7 @@ import { Segmented } from "../components/Segmented";
 import type { Event } from "../api";
 
 type Filter = "all" | "warning";
-const KINDS: Record<string, string> = { core: "Core", proxy: "System Proxy", network: "Network", profile: "Profiles", group: "Proxy groups" };
+const KINDS: Record<string, string> = { core: "Core", proxy: "System Proxy", network: "Network", profile: "Profiles", group: "Proxy groups", app: "App" };
 
 // What happened while the app ran, newest first: the core stopping, the
 // network changing, an automatic group moving, a subscription failing.

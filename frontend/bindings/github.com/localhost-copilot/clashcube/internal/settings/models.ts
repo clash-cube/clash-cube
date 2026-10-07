@@ -146,4 +146,10 @@ export interface Settings {
      * the globe places connections at cities, from a downloaded database
      */
     "cityGeo": boolean;
+
+    /**
+     * AutoUpdateApp looks for a new release of the app every few hours and
+     * downloads it, to be installed at the next restart.
+     */
+    "autoUpdateApp": boolean;
 }

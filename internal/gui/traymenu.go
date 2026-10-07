@@ -622,6 +622,9 @@ func (m *trayMenu) rebuild() {
 	}
 
 	menu.AddSeparator()
+	if u := st.Update; u.State == "ready" {
+		menu.Add(fmt.Sprintf(tr("Restart to Update to %s", "重启以更新到 %s"), u.Latest)).OnClick(m.run("update app", (&AppService{m.h}).RestartToUpdate))
+	}
 	keyed(menu, menu.Add(tr("Quit ClashCube", "退出 ClashCube")), "Q", func(*application.Context) { m.h.app.Quit() })
 
 	m.h.tray.SetMenu(menu)

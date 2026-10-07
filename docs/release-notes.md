@@ -1,15 +1,22 @@
 ClashCube for macOS 12 and later. This is a prerelease; please report issues with your macOS version and CPU architecture.
 
-### What's new in v0.1.3
+### What's new in v0.1.5
 
-- Drag ClashCube directly onto the Applications shortcut in the DMG to install.
-- A new installer layout with subtle cube artwork and a clear direction arrow.
-- Both Apple Silicon and Intel packages use the same installer layout.
+- ClashCube updates itself. It checks GitHub every 6 hours (not on metered networks), downloads a new version in the background, and installs it when you choose Restart to Update or quit. Each download is checked against a manifest signed with the release key before it replaces the app. Turn this off in Settings → General → About.
+- A globe of where connections go, with front-node chains and city-level places.
+- Route and egress checks for AI services (OpenAI, Claude, Google AI, Meta AI).
+- The merged runtime configuration, shown as a diff against the profile.
+- Where each rule leads and what it matches; rule providers unfold under their row.
+- Modules can belong to one profile; switch a connection's proxy from Connections.
 
 ### 本次更新
 
-- DMG 新增 Applications 快捷入口，直接拖入即可安装。
-- 安装窗口采用浅灰立方体背景和细线箭头，两个架构保持一致。
+- 支持自动更新：每 6 小时检查一次 GitHub（按流量计费的网络上不检查），在后台下载新版本，点“重启以更新”或退出时安装。替换前会用发布密钥签名的清单校验下载内容。可在“设置 → 通用 → 关于”中关闭。
+- 新增连接地球视图，显示前置节点链路和城市级位置。
+- 新增 AI 服务（OpenAI、Claude、Google AI、Meta AI）的路由和出口检测。
+- 可查看合并后的运行配置及其与原配置的差异。
+- 显示每条规则的去向和匹配内容；规则集可在所在行内展开。
+- 模块可只属于某个配置；可在连接页直接切换连接的代理。
 
 ### Downloads
 

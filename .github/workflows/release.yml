@@ -80,24 +80,49 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: macos-${{ matrix.arch }}
-          path: bin/release/*.dmg
+          path: |
+            bin/release/*.dmg
+            bin/release/*.zip
           if-no-files-found: error
           retention-days: 7
 
   draft:
-    needs: build
+    needs: [prepare, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          submodules: recursive
           persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.26.6'
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: macos-*
           path: release
           merge-multiple: true
+      - name: Sign the update manifest
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_STAMP: ${{ needs.prepare.outputs.stamp }}
+          GH_REPO: ${{ github.repository }}
+          UPDATE_KEY: ${{ secrets.CLASHCUBE_UPDATE_KEY }}
+        run: |
+          umask 077
+          key="$RUNNER_TEMP/clashcube-update.key"
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$UPDATE_KEY" > "$key"
+          unset UPDATE_KEY
+          v="${RELEASE_TAG#v}"
+          go run ./scripts/signhelper -key "$key" -manifest -version "$v" -stamp "$RELEASE_STAMP" \
+            -base "https://github.com/$GH_REPO/releases/download/$RELEASE_TAG" \
+            -url "https://github.com/$GH_REPO/releases/tag/$RELEASE_TAG" \
+            -notes docs/release-notes.md \
+            "arm64=release/ClashCube-$v-macos-arm64.zip" "amd64=release/ClashCube-$v-macos-amd64.zip" \
+            > release/update.json
       - name: Create release draft
         env:
           GH_TOKEN: ${{ github.token }}
@@ -107,8 +132,8 @@ jobs:
           cd release
           test -f "ClashCube-${RELEASE_TAG#v}-macos-arm64.dmg"
           test -f "ClashCube-${RELEASE_TAG#v}-macos-amd64.dmg"
-          sha256sum ./*.dmg > SHA256SUMS
+          sha256sum ./*.dmg ./*.zip > SHA256SUMS
           # Never replace assets on an existing release, including a published one.
-          gh release create "$RELEASE_TAG" ./*.dmg SHA256SUMS \
+          gh release create "$RELEASE_TAG" ./*.dmg ./*.zip SHA256SUMS update.json \
             --verify-tag --draft --prerelease --title "ClashCube $RELEASE_TAG" \
             --notes-file ../docs/release-notes.md

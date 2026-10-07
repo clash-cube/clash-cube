@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/localhost-copilot/clashcube/internal/appdir"
+	"github.com/localhost-copilot/clashcube/internal/appupdate"
 	"github.com/localhost-copilot/clashcube/internal/coremgr"
 	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 	"github.com/localhost-copilot/clashcube/internal/modules"
@@ -47,6 +48,8 @@ type State struct {
 	Network     Network `json:"network"`
 	// the last configuration refused, until one is taken
 	Refusal *Refusal `json:"refusal,omitempty"`
+	// updating the app itself (appupdate.go)
+	Update AppUpdate `json:"update"`
 }
 
 // Sink is told what changes; the GUI turns these into events.
@@ -114,6 +117,10 @@ type Backend struct {
 	// network.go
 	net     netWatch
 	applyMu sync.Mutex // one network rule applied at a time
+
+	// appupdate.go
+	upd       appUpdater
+	installMu sync.Mutex // one install at a time
 }
 
 func New(version, coreVersion string, defaultYAML []byte, sink Sink) *Backend {
@@ -151,7 +158,11 @@ func (b *Backend) Init() error {
 	if proxyPointsAt(proxyHost, s.MixedPort) && !listening(s.MixedPort) {
 		_ = proxyClear()
 	}
+	if bundle := appupdate.Bundle(); bundle != "" && appupdate.Stuck(bundle) == "" {
+		b.upd.bundle = bundle
+	}
 	go b.autoUpdate()
+	go b.appUpdateLoop()
 	go b.refreshCity()
 	return nil
 }
@@ -191,7 +202,7 @@ func (b *Backend) State() State {
 		Mode: s.Mode, SystemProxy: s.SystemProxy, ProxyLost: lost && s.SystemProxy, Tun: s.Tun, TunStack: s.TunStack,
 		ServiceMode: s.ServiceMode, MixedPort: s.MixedPort,
 		Profile: s.Profile, ProfileName: name, Busy: busy, Network: b.network(s),
-		Refusal: refusal,
+		Refusal: refusal, Update: b.AppUpdate(),
 	}
 }
 

@@ -639,6 +639,7 @@ type Patch struct {
 	Notify          *bool     `json:"notify,omitempty"`
 	SaveData        *bool     `json:"saveData,omitempty"`
 	AIServices      *[]string `json:"aiServices,omitempty"`
+	AutoUpdateApp   *bool     `json:"autoUpdateApp,omitempty"`
 }
 
 func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
@@ -678,6 +679,7 @@ func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
 		set(&st.Notify, p.Notify)
 		set(&st.SaveData, p.SaveData)
 		set(&st.AIServices, p.AIServices)
+		set(&st.AutoUpdateApp, p.AutoUpdateApp)
 	})
 	if p.Dock != nil {
 		application.InvokeAsync(func() { s.h.dock(s.h.main.IsVisible()) })

@@ -7,6 +7,7 @@ export type {
     AIHost,
     AIIPDetails,
     AIRoute,
+    AppUpdate,
     CityGeoInfo,
     ClientRate,
     Connectivity,

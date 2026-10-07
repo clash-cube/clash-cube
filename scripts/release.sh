@@ -27,3 +27,7 @@ printf 'mode: direct\nrules: []\n' > "$check_home/config.yaml"
 hdiutil verify bin/ClashCube.dmg
 mkdir -p bin/release
 cp bin/ClashCube.dmg "bin/release/ClashCube-${version#v}-macos-$arch.dmg"
+# The app updates itself from this zip (internal/appupdate); ditto keeps
+# the bundle's code seal.
+rm -f "bin/release/ClashCube-${version#v}-macos-$arch.zip"
+ditto -c -k --keepParent "$app" "bin/release/ClashCube-${version#v}-macos-$arch.zip"

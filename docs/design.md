@@ -34,6 +34,7 @@ GUI 用 `os.Executable()` 加 `core` 参数拉起自己。GUI 进程也会执行
 - **helper socket**：`/var/run/clashcube-helper.sock`，每个连接只处理一条 JSON 请求；用 `LOCAL_PEERCRED` 取对端 uid，只放行安装用户和 root。
 - **helper 操作**：只有 `start`、`stop`、`version`、`update`。`start` 只接受 `<数据目录>/core/runtime.yaml`，拒绝符号链接和非本人所有的文件。不执行任意命令或路径。
 - **helper 免密更新**：helper 和 app 是同一个二进制，每次发版 hash 都变。没有 Developer ID，所以用自己的 ed25519 钥匙：`bundle.sh` 对 `go build` 的产物签名（`Contents/Resources/helper.sig`），签的是去掉 Mach-O 签名区后的 hash，ad-hoc codesign 不影响它。GUI 发现 helper 不是当前版本时发 `update`；helper 把文件读进内存（`O_NOFOLLOW`、必须属于本人）再验签，要求构建时间比自己新，然后 `rename` 替换自己并退出，由 launchd 拉起新版本。验签失败（自己编译、没有钥匙）就退回弹密码重装。私钥泄露等于所有装了 helper 的机器的 root，只放在构建者本机或 CI secret 里。
+- **app 自更新**（`internal/appupdate`）：每个 release 带一份 `update.json`，列出版本、构建时间戳和两个架构 zip 的 SHA-256，用同一把 ed25519 钥匙签名（消息带 `clashcube-app-update` 前缀，和 helper 签名区分开）。app 从 GitHub API 找版本最高的、带 `update.json` 的非草稿 release（预发布也算），验清单签名，下载 zip 校验 hash，解包后再要求 `codesign --verify` 通过、可执行文件的 `helper.sig` 能用内置公钥验过、时间戳等于清单所写且比自己新。之后把新 bundle `rename` 到旧 bundle 的位置，运行中的进程不受影响；“重启以更新”立即换并重新打开，直接退出时也会换（不弹密码）。所在目录不可写就用 osascript 要管理员密码；从 DMG 或 App Translocation 里运行时只给下载链接。下载经过 mixed 端口（有监听时）。自己编译的版本（`git describe` 带提交数或 dirty）只检查不下载。新版启动后照常发现 helper 不是当前版本，免密更新它。
 - **残余风险**：root core 读取用户目录里的配置，所以以该用户身份运行的进程能通过改配置影响 root core。所有 clash 类 GUI 的服务模式都有这个问题。
 - helper 安装时由 root 拷贝到 `/Library/PrivilegedHelperTools` 并清除 quarantine；没有 Developer ID，app 只做 ad-hoc 签名。
 

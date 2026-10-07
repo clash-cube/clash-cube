@@ -87,6 +87,7 @@ func Run(version string) error {
 		Mac:    application.MacOptions{ActivationPolicy: dockPolicy(s.Dock == "always")},
 		OnShutdown: func() {
 			h.b.Shutdown()
+			h.installOnQuit()
 		},
 		ErrorHandler: func(err error) { log.Println("clashcube:", err) },
 	})

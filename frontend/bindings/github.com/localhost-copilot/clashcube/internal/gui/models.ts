@@ -97,6 +97,7 @@ export interface Patch {
     "notify"?: boolean | null;
     "saveData"?: boolean | null;
     "aiServices"?: string[] | null;
+    "autoUpdateApp"?: boolean | null;
 }
 
 /**

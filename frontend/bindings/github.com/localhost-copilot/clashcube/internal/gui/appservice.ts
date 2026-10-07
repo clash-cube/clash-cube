@@ -39,6 +39,21 @@ export function AppIcon(path: string): $CancellablePromise<string> {
 }
 
 /**
+ * AppUpdate is where updating the app stands, with the download's progress.
+ */
+export function AppUpdate(): $CancellablePromise<backend$0.AppUpdate> {
+    return $Call.ByID(2515592305);
+}
+
+/**
+ * CheckAppUpdate looks for a new release now; one that is newer starts
+ * downloading.
+ */
+export function CheckAppUpdate(): $CancellablePromise<backend$0.AppUpdate> {
+    return $Call.ByID(2058225839);
+}
+
+/**
  * ChooseApp asks for an app or an executable; a cancelled dialog is the
  * zero App.
  */
@@ -169,6 +184,15 @@ export function Quit(): $CancellablePromise<void> {
 
 export function Restart(): $CancellablePromise<void> {
     return $Call.ByID(100359480);
+}
+
+/**
+ * RestartToUpdate puts the downloaded version in place, asking for the
+ * administrator's password where the app's folder needs it, and opens it
+ * once this one has quit.
+ */
+export function RestartToUpdate(): $CancellablePromise<void> {
+    return $Call.ByID(2018331376);
 }
 
 export function RevealData(): $CancellablePromise<void> {
