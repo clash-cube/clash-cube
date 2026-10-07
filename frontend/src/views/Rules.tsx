@@ -14,6 +14,7 @@ import { Segmented } from "../components/Segmented";
 import { ago, nodeLabel } from "../format";
 import { useGroups } from "../useGroups";
 import { routeOf } from "../components/RouteChain";
+import { reveal } from "../reveal";
 
 type Tab = "rules" | "providers" | "lookup";
 
@@ -64,6 +65,29 @@ export function Rules() {
   const load = () => { if (running && !busy) Proxy.Rules().then((r) => setRules(r ?? [])).catch(() => {}); };
   useEffect(load, [running, profile, busy]);
   usePoll(load, 3000, [running, busy]);
+
+  // a rule asked for from elsewhere (an AI service's route) is shown open,
+  // scrolled to and marked for a moment, once the rules are there
+  const target = useStore((s) => s.rulesTarget);
+  const [marked, setMarked] = useState(-1);
+  useEffect(() => {
+    if (!target || !rules.length) return;
+    useStore.setState({ rulesTarget: null });
+    setTab("rules");
+    const r = rules.find((r) => r.type === target.type && r.payload === target.payload);
+    if (!r) return;
+    setQ("");
+    setOrder("profile");
+    setLimit((l) => Math.max(l, rules.indexOf(r) + 50));
+    setOpen((o) => new Set(o).add(r.index));
+    setMarked(r.index);
+    requestAnimationFrame(() => reveal(document.querySelector(`.rules .trow[data-index="${r.index}"]`)));
+  }, [target, rules]);
+  useEffect(() => {
+    if (marked < 0) return;
+    const t = setTimeout(() => setMarked(-1), 1600);
+    return () => clearTimeout(t);
+  }, [marked]);
 
   const maxHits = useMemo(() => Math.max(1, ...rules.map((r) => r.extra?.hitCount ?? 0)), [rules]);
   const shown = useMemo(() => {
@@ -126,7 +150,8 @@ export function Rules() {
             const at = r.extra?.hitAt as unknown as string | undefined;
             return (
               <Fragment key={r.index}>
-              <div className={"trow click" + (open.has(r.index) ? " open" : "")} title={t("Click for details")} onClick={() => toggle(r.index)}>
+              <div className={"trow click" + (open.has(r.index) ? " open" : "") + (marked === r.index ? " marked" : "")} data-index={r.index}
+                title={t("Click for details")} onClick={() => toggle(r.index)}>
                 <span className="cell idx num"><Chevron size={9} className="chev" />{r.index + 1}</span>
                 <span className="cell"><span className="rtype">{r.type}</span></span>
                 <span className="cell mono payload" title={r.payload}>{r.payload || "—"}{r.size > 0 && <span className="sub"> ({r.size})</span>}</span>

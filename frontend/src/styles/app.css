@@ -300,6 +300,8 @@ select.input { padding-right: 6px; }
 
 /* ---- proxies ----------------------------------------------------------- */
 .group { background: var(--card); border: 1px solid var(--line); border-radius: 12px; flex: none; }
+.group.marked { animation: group-marked 1.6s var(--ease); }
+@keyframes group-marked { 0%, 45% { box-shadow: 0 0 0 2px var(--accent); } 100% { box-shadow: 0 0 0 2px transparent; } }
 .is-panel .group { border: 0; box-shadow: var(--card-edge); border-radius: 10px; }
 .group-head { display: flex; align-items: center; gap: 10px; padding: 9px 10px 9px 12px; min-height: 52px; border-radius: 12px; transition: background .12s; }
 .group-head:hover { background: var(--card-2); }
@@ -560,8 +562,10 @@ select.input { padding-right: 6px; }
 .badge.bad { color: var(--red); background: var(--red-soft); }
 .ai-hosts { padding: 2px 14px 10px; }
 .ai-host { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 3px 0; font-size: 12px; }
-.ai-host > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ai-host .rule { color: var(--faint); font-size: 11px; }
+.ai-host > span, .ai-host > button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ai-host .rule { color: var(--faint); font-size: 11px; justify-self: start; max-width: 100%; text-align: left; }
+.ai-host .ai-group, .ai-host button.rule { padding: 0; border-radius: 3px; text-underline-offset: 2px; }
+.ai-host .ai-group:hover, .ai-host button.rule:hover { color: var(--accent); text-decoration: underline; }
 .ai-host.warn .via { color: var(--amber); }
 .ai-host.bad .via { color: var(--red); }
 .ai-host.refused .via, .ai-host.fail .via { color: var(--muted); }
@@ -836,6 +840,8 @@ select.input { padding-right: 6px; }
 .rules .trow.click, .rule-providers .trow.click { cursor: default; transition: background .12s; }
 .rules .trow.click:hover, .rule-providers .trow.click:hover { background: var(--card-2); }
 .rules .trow.open, .rule-providers .trow.open { background: var(--sel); }
+.rules .trow.marked { animation: rule-marked 1.6s var(--ease); }
+@keyframes rule-marked { from, 40% { background: var(--accent-soft); } }
 .rule-detail.provider-detail { padding-left: 14px; }
 .runtime-config { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
 .runtime-config .err { color: var(--red); }

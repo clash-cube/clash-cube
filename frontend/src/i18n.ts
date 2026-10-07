@@ -240,6 +240,7 @@ const zh: Record<string, string> = {
   "Unknown": "未知",
   "Residential": "住宅", "Datacenter": "机房", "Mobile": "移动网络", "Business": "企业",
   "IP attributes provided by Net.Coffee": "IP 属性数据由 Net.Coffee 提供", "Open in Net.Coffee": "在 Net.Coffee 中查看",
+  "Choose a node for {group} in Proxies": "在代理页为 {group} 选择节点", "Show this rule in Rules": "在规则页查看这条规则",
   "Network data: {cidr}": "网段数据：{cidr}", "IP attributes unavailable": "IP 属性暂不可用",
   "Domain": "域名",
   "Check routes and egress IP on Overview": "在首页检测路线和出口 IP", "Check now": "立即检测",

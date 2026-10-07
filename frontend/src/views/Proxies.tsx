@@ -9,6 +9,7 @@ import { Bolt, Chevron, Columns, Refresh, Rows, Search, Sort } from "../componen
 import { ago, bytes, delayClass, fmtDelay, nodeLabel } from "../format";
 import type { Group, Member, Provider } from "../api";
 import { startCore } from "../actions";
+import { reveal } from "../reveal";
 
 type Tab = "groups" | "providers";
 
@@ -35,6 +36,24 @@ export function Proxies() {
     setTwoCols(!twoCols);
     try { localStorage.setItem("proxies.columns", twoCols ? "1" : "2"); } catch {}
   };
+  // a group asked for from elsewhere (an AI service's route) is shown open,
+  // scrolled to and marked for a moment, once the groups are there
+  const target = useStore((s) => s.proxiesTarget);
+  const [marked, setMarked] = useState("");
+  useEffect(() => {
+    if (!target || !groups) return;
+    useStore.setState({ proxiesTarget: null });
+    setTab("groups");
+    setQ("");
+    setOpen((o) => ({ ...o, [target]: true }));
+    setMarked(target);
+    requestAnimationFrame(() => reveal(document.querySelector(`.group[data-group="${CSS.escape(target)}"]`)));
+  }, [target, groups]);
+  useEffect(() => {
+    if (!marked) return;
+    const t = setTimeout(() => setMarked(""), 1600);
+    return () => clearTimeout(t);
+  }, [marked]);
 
   if (core !== "running") {
     return (
@@ -107,6 +126,7 @@ export function Proxies() {
           node: (
             <GroupCard
               g={g}
+              marked={marked === g.name}
               open={isOpen(g.name, g.name !== "GLOBAL")}
               toggle={() => toggle(g.name, g.name !== "GLOBAL")}
               sorted={sorted}
@@ -175,15 +195,15 @@ function useWidth() {
   return [ref, width] as const;
 }
 
-export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne, testing, flash, compact }: {
+export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne, testing, flash, compact, marked }: {
   g: Group; open: boolean; toggle: () => void; sorted: boolean;
   onSelect: (name: string) => void; onTest: () => void; onTestOne: (name: string) => void;
-  testing: Record<string, boolean>; flash: string; compact?: boolean;
+  testing: Record<string, boolean>; flash: string; compact?: boolean; marked?: boolean;
 }) {
   const t = useT();
   const now = (g.members ?? []).find((m) => m.name === g.now);
   return (
-    <div className={"group" + (open ? " open" : "")}>
+    <div className={"group" + (open ? " open" : "") + (marked ? " marked" : "")} data-group={g.name}>
       <div className="group-head" onClick={toggle}>
         <Chevron className={"chev" + (open ? " open" : "")} />
         <div className="who">

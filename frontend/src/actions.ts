@@ -70,6 +70,19 @@ export async function copyCommand(lan: boolean) {
   else toast(t("Copied"));
 }
 
+// openProxyGroup shows a group on the proxies page, open, to pick its node.
+export function openProxyGroup(group: string) {
+  useStore.setState({ proxiesTarget: group });
+  useStore.getState().setView("proxies");
+}
+
+// openRule shows the first active rule of a type and value on the rules
+// page, open: the one a connection that names them matched.
+export function openRule(type: string, payload: string) {
+  useStore.setState({ rulesTarget: { type, payload } });
+  useStore.getState().setView("rules");
+}
+
 // openSettings shows the settings on one tab, also when they are open.
 export function openSettings(tab: string, section?: string) {
   useStore.setState({ settingsTarget: { tab, section } });

@@ -17,7 +17,7 @@ async function mount(settings, savingData = false, state = {}) {
   const calls = [];
   const opened = [];
   const mocks = {
-    "../actions": { openSettings: (...args) => navigation.push(args) },
+    "../actions": { openSettings: (...args) => navigation.push(args), openProxyGroup: (group) => navigation.push(["proxies", group]), openRule: (...rule) => navigation.push(["rules", ...rule]) },
     "../api": { App: {
       AICheck: (service, force) => new Promise((resolve, reject) => calls.push({ service, force, resolve, reject })),
       OpenURL: async (url) => { opened.push(url); },
@@ -190,6 +190,12 @@ test("IP attributes show as a tag and in the details; hiding masks addresses", a
   assert.equal(view.find({ className: "ai-kind warn" }).length, 1);
   await act(async () => view.root.root.findByProps({ className: "row click" }).props.onClick());
   for (const value of ["Aiea", "Hawaiian Telcom", "AS36149", "claude.ai"]) assert.ok(view.text().includes(value), `missing ${value}`);
+  // each route's policy opens that group on the proxies page, its rule the rule
+  const policies = view.find({ className: "ai-group" });
+  assert.equal(policies.length, 2);
+  await act(async () => policies[0].props.onClick());
+  await act(async () => view.find({ className: "mono rule" })[1].props.onClick());
+  assert.deepEqual(view.navigation, [["proxies", "AI"], ["rules", "DomainSuffix", "api.anthropic.com"]]);
   await act(async () => view.root.root.findByProps({ "aria-label": "Open in Net.Coffee" }).props.onClick());
   assert.deepEqual(view.opened, ["https://ip.net.coffee/ip/72.234.229.123"]);
   await act(async () => view.root.root.findByProps({ "aria-label": "Hide IP address" }).props.onClick());

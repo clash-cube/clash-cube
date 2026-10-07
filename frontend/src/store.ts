@@ -31,6 +31,10 @@ type Store = {
   connQuery: string;
   view: View;
   settingsTarget: { tab: string; section?: string } | null;
+  // a group the proxies page shows next, scrolled to and open
+  proxiesTarget: string | null;
+  // a rule the rules page shows next, scrolled to and open
+  rulesTarget: { type: string; payload: string } | null;
   setView: (v: View) => void;
   refreshSettings: () => Promise<void>;
   clearLogs: () => void;
@@ -55,6 +59,8 @@ export const useStore = create<Store>((set) => ({
   view: (new URLSearchParams(location.search).get("view") as View) || "overview",
   setView: (view) => set({ view }),
   settingsTarget: null,
+  proxiesTarget: null,
+  rulesTarget: null,
   refreshSettings: async () => set({ settings: await Settings.Get() }),
   clearLogs: () => set({ logs: [] }),
   clearEvents: () => { App.ClearEvents(); set({ events: [] }); },

@@ -10,7 +10,7 @@ import { toastError } from "./Toast";
 import { route } from "./ConnectivityCards";
 import { AI_SERVICES } from "../aiServices";
 import { AIServiceName } from "./AIServiceName";
-import { openSettings } from "../actions";
+import { openProxyGroup, openRule, openSettings } from "../actions";
 
 type Lookup<T> = T | "loading" | "failed";
 
@@ -261,8 +261,18 @@ function HostLine({ h, node, i }: { h: AIHost; node: string; i: number }) {
   return (
     <div className={"ai-host stagger " + cls} style={{ ["--i" as string]: i }}>
       <span className="mono host">{h.host}</span>
-      <span className="via" title={chain.length ? [...chain].reverse().join(" → ") : h.error}>{h.error ? t("Failed") : route(chain)}</span>
-      <span className="mono rule" title={[h.rule, h.rulePayload].filter(Boolean).join(" ")}>{h.rule}{h.rulePayload && ` ${h.rulePayload}`}</span>
+      <span className="via" title={chain.length ? [...chain].reverse().join(" → ") : h.error}>
+        {h.error ? t("Failed") : chain.length > 1 ? <>
+          {/* the rule's policy, where the node is chosen */}
+          <button className="ai-group" title={t("Choose a node for {group} in Proxies", { group: chain[chain.length - 1] })}
+            onClick={() => openProxyGroup(chain[chain.length - 1])}>{chain[chain.length - 1]}</button>
+          {` → ${chain[0]}`}
+        </> : route(chain)}
+      </span>
+      {h.rule
+        ? <button className="mono rule" title={[h.rule, h.rulePayload].filter(Boolean).join(" ") + "\n" + t("Show this rule in Rules")}
+            onClick={() => openRule(h.rule, h.rulePayload)}>{h.rule}{h.rulePayload && ` ${h.rulePayload}`}</button>
+        : <span />}
     </div>
   );
 }
