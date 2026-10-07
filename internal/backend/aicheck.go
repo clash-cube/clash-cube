@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
 	"slices"
 	"sync"
 	"time"
@@ -13,12 +12,8 @@ import (
 	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 )
 
-// An AI service sees one user behind every name its apps talk to, its
-// telemetry included, and an account whose requests come from several
-// addresses, or from this Mac's own, looks shared or out of region. The
-// check reads where the rules send each name: a connection through the
-// core that the node opens and that is closed before anything (TLS, a
-// name, a path) is sent, so the service sees no request.
+// AI checks inspect rules without connecting to service domains. Egress
+// addresses come from one cached Cloudflare trace per node, shared by services.
 
 // AIHost is where the rules send one of a service's names.
 type AIHost struct {
@@ -44,8 +39,7 @@ type AIRoute struct {
 	Auto []string `json:"auto"`
 }
 
-// AIEgress is the address a service sees through one node, asked of it
-// once by a name that leaves by that node.
+// AIEgress is a node's Cloudflare-observed address and this service's route.
 type AIEgress struct {
 	Node        string       `json:"node"`
 	Names       int          `json:"names"` // how many of the service's names leave by Node
@@ -53,12 +47,11 @@ type AIEgress struct {
 	Loc         string       `json:"loc"`
 	Chain       []string     `json:"chain"`
 	Unsupported bool         `json:"unsupported"` // the service doesn't serve Loc
-	Details     *AIIPDetails `json:"details"`     // optional Net.Coffee metadata
+	Details     *AIIPDetails `json:"details"`     // optional IPLocate metadata
 	Error       string       `json:"error,omitempty"`
 }
 
-// AICheck is a service's routes, the address each of their nodes shows
-// it, and what the two say together.
+// AICheck combines a service's predicted routes with its nodes' exit addresses.
 type AICheck struct {
 	Route AIRoute `json:"route"`
 	// The addresses are each node's, asked of Cloudflare through it rather
@@ -78,17 +71,13 @@ type AICheck struct {
 type aiService struct {
 	name string
 	// Representative TCP/443 targets, not suffix patterns. The first host
-	// provides the egress trace (unless nodeEgress) and wins a tie for the
-	// main node. Shared telemetry may intentionally follow a different
+	// wins a tie for the main node. Shared telemetry may follow a different
 	// service's rules; include it to reveal that split.
 	hosts []string
 	// countries the service's supported list leaves out, among those a
 	// node is likely in: Claude's from anthropic.com/supported-countries,
 	// OpenAI's from help.openai.com/en/articles/7947663 (October 2026)
 	unsupported []string
-	// The service's names don't answer Cloudflare's trace: ask it of
-	// Cloudflare through each node instead.
-	nodeEgress bool
 }
 
 // Coverage reviewed against the supplied clash-config-mix-no-tuic config
@@ -125,9 +114,8 @@ var aiServices = []aiService{
 	// The config's google-gemini ruleset covers Google's AI products as a
 	// whole. Sample its 2026-10-06 list: every product, and every suffix
 	// outside google.com and googleapis.com, which a broader rule placed
-	// above the ruleset would catch as a whole. Every name is a real
-	// connection through its node, so skip aliases under a sampled suffix.
-	{name: "Google AI", nodeEgress: true, hosts: []string{
+	// above the ruleset would catch as a whole.
+	{name: "Google AI", hosts: []string{
 		// Gemini app
 		"gemini.google.com", "gemini.google", "bard.google.com", "geminiweb-pa.clients6.google.com", "gemini.gstatic.com",
 		// Gemini API and AI Studio
@@ -149,7 +137,7 @@ var aiServices = []aiService{
 	// Meta AI's own names first, so they decide the main node, then the
 	// Facebook site and CDN it signs in and loads assets through. The
 	// broader facebook/instagram/whatsapp rulesets are not Meta AI.
-	{name: "Meta AI", nodeEgress: true, hosts: []string{
+	{name: "Meta AI", hosts: []string{
 		"meta.ai", "www.meta.ai", "facebook.com", "static.xx.fbcdn.net",
 	}},
 }
@@ -163,9 +151,8 @@ func aiServiceNamed(name string) (aiService, error) {
 	return aiService{}, fmt.Errorf("unknown service %q", name)
 }
 
-// AICheck reads where the rules send each of the service's names and asks
-// the service, through every node they leave by, the address it sees.
-// force bypasses the IP attribute cache.
+// AICheck inspects the service's routes and shares a cached Cloudflare trace
+// per node. force bypasses only the IP attribute cache, never the node cache.
 func (b *Backend) AICheck(service string, force bool) (AICheck, error) {
 	s, err := aiServiceNamed(service)
 	if err != nil {
@@ -177,7 +164,7 @@ func (b *Backend) AICheck(service string, force bool) (AICheck, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	out := aiCheck(ctx, c, s, 443)
+	out := aiCheck(ctx, c, s, &b.aiEgress, proxyTrace)
 	// Enrichment is optional: an unavailable database must not hide the
 	// service's observed address or replace it with a cached subnet address.
 	var wg sync.WaitGroup
@@ -194,73 +181,14 @@ func (b *Backend) AICheck(service string, force bool) (AICheck, error) {
 	return out, nil
 }
 
-// aiCheck routes the service's names on port, then asks for the egress
-// address through each node they leave by: the first name's trace runs
-// alongside the routes, the other nodes' after them.
-func aiCheck(ctx context.Context, c *mihomoapi.Client, s aiService, port int) AICheck {
-	trace := func(host string) string {
-		if port == 443 {
-			return "https://" + host + "/cdn-cgi/trace"
-		}
-		return "http://" + net.JoinHostPort(host, fmt.Sprint(port)) + "/cdn-cgi/trace"
-	}
-	if s.nodeEgress {
-		// Cloudflare's own trace stands in for the service's; in tests,
-		// the first name's server answers it.
-		u := proxyTrace
-		if port != 443 {
-			u = trace(s.hosts[0])
-		}
-		route := aiRoutes(ctx, c, s.name, s.hosts, port)
-		return s.result(route, nodeEgress(ctx, c, s, route.Hosts, u))
-	}
-	var first AIEgress
-	var firstErr error
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		first, firstErr = aiEgress(ctx, c, s, trace(s.hosts[0]))
-	}()
-	route := aiRoutes(ctx, c, s.name, s.hosts, port)
-	<-done
-
-	egress := egressNodes(route.Hosts)
-	var wg sync.WaitGroup
-	for i := range egress {
-		e := &egress[i]
-		if firstErr == nil && len(first.Chain) > 0 && first.Chain[0] == e.Node {
-			first.Node, first.Names = e.Node, e.Names
-			*e = first
-			continue
-		}
-		// any name of the node's will do; a few, as not every host answers
-		// Cloudflare's trace
-		var tries []string
-		for _, h := range route.Hosts {
-			if h.Error == "" && len(h.Chain) > 0 && h.Chain[0] == e.Node && h.Host != s.hosts[0] && len(tries) < 3 {
-				tries = append(tries, h.Host)
-			}
-		}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			e.Error = "no name that leaves by this node answered"
-			for _, h := range tries {
-				if got, err := aiEgress(ctx, c, s, trace(h)); err == nil {
-					got.Node, got.Names = e.Node, e.Names
-					*e = got
-					return
-				}
-			}
-		}()
-	}
-	wg.Wait()
-	return s.result(route, egress)
+func aiCheck(ctx context.Context, c *mihomoapi.Client, s aiService, cache *aiEgressCache, traceURL string) AICheck {
+	route := aiRoutes(ctx, c, s.name, s.hosts, 443)
+	return s.result(route, nodeEgress(ctx, c, s, route.Hosts, cache, traceURL))
 }
 
 // nodeEgress asks Cloudflare's trace at traceURL through each node the
 // names leave by, named to the core rather than reached by a name's rule.
-func nodeEgress(ctx context.Context, c *mihomoapi.Client, s aiService, hosts []AIHost, traceURL string) []AIEgress {
+func nodeEgress(ctx context.Context, c *mihomoapi.Client, s aiService, hosts []AIHost, cache *aiEgressCache, traceURL string) []AIEgress {
 	egress := egressNodes(hosts)
 	var wg sync.WaitGroup
 	for i := range egress {
@@ -277,7 +205,7 @@ func nodeEgress(ctx context.Context, c *mihomoapi.Client, s aiService, hosts []A
 		go func() {
 			defer wg.Done()
 			var got AIEgress
-			body, err := c.Trace(ctx, e.Node, traceURL)
+			body, err := cache.get(ctx, c, e.Node, traceURL)
 			if err == nil {
 				got, err = parseEgress(s, body, chain)
 			}
@@ -301,7 +229,7 @@ func (s aiService) result(route AIRoute, egress []AIEgress) AICheck {
 	if status == "direct" && len(s.unsupported) == 0 {
 		level = "muted"
 	}
-	return AICheck{Route: route, NodeEgress: s.nodeEgress, Egress: egress, Status: status, Level: level}
+	return AICheck{Route: route, NodeEgress: true, Egress: egress, Status: status, Level: level}
 }
 
 // egressNodes lists the nodes routed names leave by, most names first and
@@ -363,16 +291,19 @@ func judgeCheck(r AIRoute, egress []AIEgress) (status, level string) {
 
 func aiRoutes(ctx context.Context, c *mihomoapi.Client, service string, hosts []string, port int) AIRoute {
 	out := AIRoute{Service: service, Hosts: make([]AIHost, len(hosts)), Auto: []string{}}
-	targets := make([]string, len(hosts))
+	var wg sync.WaitGroup
 	for i, h := range hosts {
-		targets[i] = net.JoinHostPort(h, fmt.Sprint(port))
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			r, err := c.InspectRoute(ctx, net.JoinHostPort(h, fmt.Sprint(port)))
+			out.Hosts[i] = AIHost{Host: h, Rule: r.Rule, RulePayload: r.RulePayload, Chain: r.Chains}
+			if err != nil {
+				out.Hosts[i].Error = err.Error()
+			}
+		}()
 	}
-	for i, r := range routesOf(ctx, c, targets) {
-		out.Hosts[i] = AIHost{Host: hosts[i], Rule: r.conn.Rule, RulePayload: r.conn.RulePayload, Chain: r.conn.Chains}
-		if r.err != nil {
-			out.Hosts[i].Error = r.err.Error()
-		}
-	}
+	wg.Wait()
 	out.Node, out.Verdict = judgeRoutes(out.Hosts)
 	if ps, err := c.Proxies(ctx); err == nil {
 		for _, h := range out.Hosts {
@@ -426,17 +357,6 @@ func judgeRoutes(hosts []AIHost) (node, verdict string) {
 		return node, "split"
 	}
 	return node, "consistent"
-}
-
-// aiEgress asks one of the service's names, through the core, the address
-// it sees: one plain request for Cloudflare's trace, which its edge
-// answers.
-func aiEgress(ctx context.Context, c *mihomoapi.Client, s aiService, traceURL string) (AIEgress, error) {
-	body, chain := throughCore(ctx, c, http.MethodGet, traceURL)
-	if chain == nil {
-		return AIEgress{}, errors.New("the request through the core failed")
-	}
-	return parseEgress(s, body, chain)
 }
 
 // parseEgress reads the address and region from a trace fetched along

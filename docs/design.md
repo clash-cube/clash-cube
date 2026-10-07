@@ -38,7 +38,25 @@ GUI 用 `os.Executable()` 加 `core` 参数拉起自己。GUI 进程也会执行
 - **残余风险**：root core 读取用户目录里的配置，所以以该用户身份运行的进程能通过改配置影响 root core。所有 clash 类 GUI 的服务模式都有这个问题。
 - helper 安装时由 root 拷贝到 `/Library/PrivilegedHelperTools` 并清除 quarantine；没有 Developer ID，app 只做 ad-hoc 签名。
 
+### 1.4 AI 服务检测
+
+AI 服务检测通过内核的 `/clashcube/route` 调用同一个规则匹配器，只分析
+TCP/443 域名对应的规则和节点链，不连接 AI 服务域名。IP 类规则可能需要
+DNS 解析；没有实际应用连接时，不模拟进程规则、嗅探或 UDP 行为。
+自动策略组的结果是当时的选择，不保证后续连接仍选择同一个节点。
+
+出口 IP 统一经对应节点向 Cloudflare 查询，所有 AI 服务共享按内核实例和
+节点区分的三分钟缓存，并发请求合并，失败缓存三十秒。手动刷新仍复用
+有效的节点出口缓存，只强制刷新 IP 属性。配置重载和网络重置清空出口缓存。
+节点若按目标二次分流，AI 服务实际看到的出口可能不同；这里的地区判断
+只是根据节点出口地区推断，不代表服务实际可用。
+
+IP 属性使用 IPLocate 的 `/api/lookup/<ip>` 查询已取得的出口地址，不需要
+再经该节点访问 AI 服务。属性按 IP 缓存十分钟，失败缓存三十秒；缺失或
+限流不影响路由和出口 IP 的展示。`isp` 只显示为运营商，不推断为住宅 IP。
+
 ## 2. 数据目录
+
 
 `~/Library/Application Support/ClashCube/`（开发时用 `CLASHCUBE_HOME` 指到别处）：
 

@@ -82,8 +82,8 @@ test("services checked through their nodes show the node's egress and explain wh
   assert.equal(view.find({ className: "ai-ip" }).length, 2);
   await act(async () => view.root.root.findAllByProps({ className: "row click" })[0].props.onClick());
   assert.ok(view.text().includes("gemini.google.com"));
-  assert.ok(view.text().includes("each node's is asked of Cloudflare through it"));
-  assert.ok(!view.text().includes("Each check queries the service through the core for its egress IP."));
+  assert.ok(view.text().includes("Routes are analyzed without connecting to AI domains."));
+  assert.ok(view.text().includes("shared across services for three minutes"));
   await view.close();
 });
 const check = (over = {}) => ({
@@ -196,8 +196,8 @@ test("IP attributes show as a tag and in the details; hiding masks addresses", a
   await act(async () => policies[0].props.onClick());
   await act(async () => view.find({ className: "mono rule" })[1].props.onClick());
   assert.deepEqual(view.navigation, [["proxies", "AI"], ["rules", "DomainSuffix", "api.anthropic.com"]]);
-  await act(async () => view.root.root.findByProps({ "aria-label": "Open in Net.Coffee" }).props.onClick());
-  assert.deepEqual(view.opened, ["https://ip.net.coffee/ip/72.234.229.123"]);
+  await act(async () => view.root.root.findByProps({ "aria-label": "View IPLocate data" }).props.onClick());
+  assert.deepEqual(view.opened, ["https://iplocate.io/api/lookup/72.234.229.123"]);
   await act(async () => view.root.root.findByProps({ "aria-label": "Hide IP address" }).props.onClick());
   assert.ok(view.text().includes("72.234.*.*"));
   assert.ok(!view.text().includes("72.234.229.123"));

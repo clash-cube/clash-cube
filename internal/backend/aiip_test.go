@@ -83,12 +83,15 @@ func TestAIIPAttributes(t *testing.T) {
 		status                    int
 		fail                      bool
 	}{
-		{"residential subnet cache", `{"ip":"72.234.229.132","cidr":"72.234.229.0/24","city":"Aiea","region":"Hawaii","company_name":"Hawaiian Telcom","asn":36149,"isResidential":true}`, "Residential", "72.234.229.0/24", 200, false},
-		{"hosting", `{"ip":"72.234.229.123","company_type":"hosting"}`, "Datacenter", "", 200, false},
-		{"mobile", `{"ip":"72.234.229.123","is_mobile":true,"isResidential":true}`, "Mobile", "", 200, false},
+		{"ISP is not proof of residential", `{"ip":"72.234.229.123","city":"Aiea","subdivision":"Hawaii","company":{"name":"Hawaiian Telcom","type":"isp"},"asn":{"asn":"AS36149","route":"72.234.229.0/24"}}`, "ISP", "72.234.229.0/24", 200, false},
+		{"hosting", `{"ip":"72.234.229.123","company":{"type":"hosting"}}`, "Datacenter", "", 200, false},
+		{"hosting overrides ISP", `{"ip":"72.234.229.123","company":{"type":"isp"},"privacy":{"is_hosting":true}}`, "Datacenter", "", 200, false},
+		{"ASN fallback", `{"ip":"72.234.229.123","city":"Aiea","subdivision":"Hawaii","company":null,"asn":{"asn":"AS36149","name":"Hawaiian Telcom","type":"isp","route":"72.234.229.0/24"}}`, "ISP", "72.234.229.0/24", 200, false},
+		{"unknown provider category", `{"ip":"72.234.229.123","company":{"type":"other"}}`, "Unknown", "", 200, false},
+		{"invalid network ignored", `{"ip":"72.234.229.123","asn":{"route":"1.1.1.0/24"}}`, "Unknown", "", 200, false},
 		{"missing attributes stay unknown", `{"ip":"72.234.229.123"}`, "Unknown", "", 200, false},
-		{"unrelated response", `{"ip":"1.1.1.1","cidr":"1.1.1.0/24"}`, "", "", 200, true},
-		{"mismatch without network", `{"ip":"72.234.229.132"}`, "", "", 200, true},
+		{"unrelated response", `{"ip":"1.1.1.1","asn":{"route":"1.1.1.0/24"}}`, "", "", 200, true},
+		{"another address in same network", `{"ip":"72.234.229.132","asn":{"route":"72.234.229.0/24"}}`, "", "", 200, true},
 		{"empty response", `{}`, "", "", 200, true},
 		{"invalid JSON", `<html>unavailable</html>`, "", "", 200, true},
 		{"rate limited", `{}`, "", "", 429, true},
@@ -115,7 +118,7 @@ func TestAIIPAttributes(t *testing.T) {
 			if got.Kind != tc.kind || got.Network != tc.network {
 				t.Fatalf("unexpected attributes: %+v", got)
 			}
-			if tc.network != "" && (got.City != "Aiea" || got.Operator != "Hawaiian Telcom" || got.ASN != 36149) {
+			if tc.network != "" && (got.City != "Aiea" || got.Region != "Hawaii" || got.Operator != "Hawaiian Telcom" || got.ASN != 36149) {
 				t.Fatalf("missing attributes: %+v", got)
 			}
 		})

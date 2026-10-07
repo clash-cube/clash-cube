@@ -185,6 +185,7 @@ func (b *Backend) scheduleReset() {
 // to it, which would hang until they time out, and its DNS answers. The
 // system proxy is set again for a service that just came up.
 func (b *Backend) resetNetwork() {
+	b.aiEgress.clear()
 	c := b.core.Client()
 	if c == nil {
 		return

@@ -64,9 +64,9 @@ func (s *AppService) DNSEgress() (backend.DNSEgress, error) { return s.h.b.DNSEg
 // ProxyEgress is where proxied traffic leaves, and the chain it took.
 func (s *AppService) ProxyEgress() (backend.ProxyEgress, error) { return s.h.b.ProxyEgress() }
 
-// AICheck is where the rules send each of an AI service's names ("OpenAI"
-// or "Claude") and the address the service sees through each node they
-// leave by; force bypasses the local IP attribute cache.
+// AICheck inspects an AI service's routes without connecting to its domains.
+// Exit IPs are queried from Cloudflare and cached per node across services;
+// force bypasses only the IP attribute cache.
 func (s *AppService) AICheck(service string, force bool) (backend.AICheck, error) {
 	return s.h.b.AICheck(service, force)
 }

@@ -196,7 +196,6 @@ const zh: Record<string, string> = {
   "Videos, Shorts and YouTube Music": "视频、Shorts 和 YouTube Music",
   "ChatGPT and the OpenAI API, which refuse some regions": "ChatGPT 和 OpenAI API，部分地区不可用",
   "AI services": "AI 服务",
-  "This service's domains don't report an egress IP, so each node's is asked of Cloudflare through it. A node that routes by destination may show the service another address, and region availability isn't checked.": "该服务的域名不提供出口 IP 回显，因此经每个节点向 Cloudflare 查询出口 IP。按目标分流的节点可能让服务看到另一个地址，且未检测地区可用性。",
   "Claude apps, Anthropic domains and IP ranges, including shared telemetry services": "Claude 客户端、Anthropic 域名和 IP 段，包含共用的遥测服务",
   "Non-Chinese AI services and GrowthBook; place above OpenAI and Claude so their rules take priority": "海外 AI 服务和 GrowthBook；请移到 OpenAI 和 Claude 上方，让专用规则优先",
   "Telegram's sites and the addresses its apps connect to": "Telegram 的网站和客户端直连的 IP 段",
@@ -252,7 +251,7 @@ const zh: Record<string, string> = {
   "Refresh routes, egress IP and IP attributes": "刷新路线、出口 IP 和 IP 属性",
   "Unknown": "未知",
   "Residential": "住宅", "Datacenter": "机房", "Mobile": "移动网络", "Business": "企业",
-  "IP attributes provided by Net.Coffee": "IP 属性数据由 Net.Coffee 提供", "Open in Net.Coffee": "在 Net.Coffee 中查看",
+  "IP attributes provided by IPLocate": "IP 属性数据由 IPLocate 提供", "View IPLocate data": "查看 IPLocate 数据",
   "Choose a node for {group} in Proxies": "在代理页为 {group} 选择节点", "Show this rule in Rules": "在规则页查看这条规则",
   "Network data: {cidr}": "网段数据：{cidr}", "IP attributes unavailable": "IP 属性暂不可用",
   "Domain": "域名",
@@ -268,7 +267,7 @@ const zh: Record<string, string> = {
   "Every name is refused": "所有域名都被拒绝", "No name could be routed": "没有域名能完成路由",
   "{service} doesn't serve this region": "{service} 不支持该地区",
   "{groups} pick a node by themselves; the route may change": "{groups} 会自动选择节点，路线可能变化",
-  "Each check queries the service through the core for its egress IP. The check comes from ClashCube, so PROCESS-NAME rules apply only to the real apps.": "每次检测都会经内核向服务查询出口 IP。检测从 ClashCube 发出，因此 PROCESS-NAME 规则只对真正的应用生效。",
+  "Routes are analyzed without connecting to AI domains. Each node's exit IP is queried from Cloudflare and shared across services for three minutes. Destination-based routing may use another exit IP. App process rules and service availability are not tested.": "仅分析路由，不连接 AI 域名。每个节点向 Cloudflare 查询一次出口 IP，所有服务共用三分钟缓存。按目标分流时可能使用不同出口 IP。不检测应用进程规则和服务实际可用性。",
 };
 
 export type Vars = Record<string, string | number>;

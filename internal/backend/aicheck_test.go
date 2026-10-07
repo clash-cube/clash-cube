@@ -85,10 +85,17 @@ func TestAIRoutesThroughCore(t *testing.T) {
 	}
 	fake.reset()
 	var requests atomic.Int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	var connections atomic.Int32
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Add(1)
 		fmt.Fprint(w, "fl=1\nip=203.0.113.9\nloc=HK\n")
 	}))
+	srv.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			connections.Add(1)
+		}
+	}
+	srv.Start()
 	defer srv.Close()
 	_, port, _ := net.SplitHostPort(srv.Listener.Addr().String())
 	t.Setenv("CLASHCUBE_HOME", t.TempDir())
@@ -108,6 +115,7 @@ rules:
   - DOMAIN,b.test,Auto
   - DOMAIN,r.test,REJECT
   - DOMAIN,t.test,Claude
+  - DOMAIN,unreachable.invalid,Claude
   - MATCH,DIRECT
 `
 	b := New("test", "test", []byte(profile), nopSink{make(chan State, 64)})
@@ -147,12 +155,20 @@ rules:
 	if !reflect.DeepEqual(r.Auto, []string{"Auto"}) {
 		t.Errorf("auto groups %q, want [Auto]", r.Auto)
 	}
+	if connections.Load() != 0 {
+		t.Fatalf("route inspection connected to a service %d times", connections.Load())
+	}
+	if got := aiRoutes(ctx, c, "Claude", []string{"unreachable.invalid"}, n).Hosts[0]; got.Error != "" || got.RulePayload != "unreachable.invalid" {
+		t.Fatalf("unreachable domain should still match its route: %+v", got)
+	}
 
 	// the egress is asked through each node, and an address in a region
 	// the service doesn't serve outweighs consistent routes
 	s, _ := aiServiceNamed("Claude")
 	s.hosts = []string{"t.test", "a.test", "r.test"}
-	check := aiCheck(ctx, c, s, n)
+	var cache aiEgressCache
+	traceURL := srv.URL + "/cdn-cgi/trace"
+	check := aiCheck(ctx, c, s, &cache, traceURL)
 	if len(check.Egress) != 1 {
 		t.Fatalf("egress %+v, want one node", check.Egress)
 	}
@@ -163,13 +179,12 @@ rules:
 		t.Errorf("status %q %q, want unsupported bad", check.Status, check.Level)
 	}
 
-	// a node the first name doesn't leave by is asked through its own names
+	// Changing the representative domain must reuse the node's trace.
 	s.hosts = []string{"r.test", "a.test"}
-	if check = aiCheck(ctx, c, s, n); len(check.Egress) != 1 || check.Egress[0].IP != "203.0.113.9" || check.Egress[0].Names != 1 {
+	if check = aiCheck(ctx, c, s, &cache, traceURL); len(check.Egress) != 1 || check.Egress[0].IP != "203.0.113.9" || check.Egress[0].Names != 1 {
 		t.Errorf("egress through a later name %+v", check.Egress)
 	}
-	// Services whose names don't answer the trace ask it through each node
-	// by name, once per node; DIRECT is muted with no unsupported list.
+	// Other services reuse the same trace, but apply their own region policy.
 	for _, service := range []string{"Google AI", "Meta AI"} {
 		s, err := aiServiceNamed(service)
 		if err != nil {
@@ -177,7 +192,7 @@ rules:
 		}
 		s.hosts = []string{"a.test", "r.test", "t.test"}
 		before := requests.Load()
-		got := aiCheck(ctx, c, s, n)
+		got := aiCheck(ctx, c, s, &cache, traceURL)
 		if !got.NodeEgress || got.Status != "direct" || got.Level != "muted" || !reflect.DeepEqual(got.Route.Hosts[1].Chain, []string{"REJECT"}) {
 			t.Errorf("%s result: %+v", service, got)
 		}
@@ -187,8 +202,20 @@ rules:
 		if e := got.Egress[0]; e.Node != "DIRECT" || e.Names != 2 || e.IP != "203.0.113.9" || e.Loc != "HK" || e.Unsupported || !reflect.DeepEqual(e.Chain, []string{"DIRECT", "Claude"}) {
 			t.Errorf("%s egress %+v", service, e)
 		}
-		if d := requests.Load() - before; d != 1 {
-			t.Errorf("%s sent %d trace requests, want 1", service, d)
+		if d := requests.Load() - before; d != 0 {
+			t.Errorf("%s sent %d additional trace requests, want 0", service, d)
+		}
+	}
+	if requests.Load() != 1 || connections.Load() != 1 {
+		t.Fatalf("shared node: %d requests, %d connections; want one each", requests.Load(), connections.Load())
+	}
+	for mode, want := range map[string][]string{"direct": {"DIRECT"}, "global": {"DIRECT", "GLOBAL"}} {
+		if err := c.PatchConfigs(ctx, map[string]any{"mode": mode}); err != nil {
+			t.Fatal(err)
+		}
+		got := aiRoutes(ctx, c, "Claude", []string{"r.test"}, n).Hosts[0]
+		if got.Error != "" || !reflect.DeepEqual(got.Chain, want) {
+			t.Errorf("%s mode: %+v, want %v", mode, got, want)
 		}
 	}
 	// the core fetches only a trace, and only through a node it knows

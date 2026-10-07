@@ -1,3 +1,5 @@
+git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 h1:N3IGoHHp9pb6mj1cbXbuaSXV/UMKwmbKLf53nQmtqMA=
+git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3/go.mod h1:QtOLZGz8olr4qH2vWK0QH0w0O4T9fEIjMuWpKUsH7nc=
 github.com/Demogorgon314/dtls/v3 v3.1.6-0.20260813024800-71e5e4d15116 h1:uWPWtVJsYAiwhaHMvvhCXiHswuJ7lXgMvfLragk8JVg=
 github.com/Demogorgon314/dtls/v3 v3.1.6-0.20260813024800-71e5e4d15116/go.mod h1:gz1K4jg6c+fq86oQMH4pilpCEOEPwmEr2jY+VcF/mkU=
 github.com/Demogorgon314/gvisor v0.0.0-20260903010743-8b460a59da7d h1:EuYxPkBvKuROXBC+Ls+p4Yetd6WDRpVST8dbMfXPXzg=

@@ -481,6 +481,14 @@ func (c *Client) Trace(ctx context.Context, proxy, traceURL string) (string, err
 	return v.Body, err
 }
 
+// InspectRoute matches a destination without dialing it. Older cores return
+// 404; callers must not fall back to probing the real destination.
+func (c *Client) InspectRoute(ctx context.Context, target string) (Connection, error) {
+	var v Connection
+	err := c.req(ctx, http.MethodGet, "/clashcube/route?"+url.Values{"target": {target}}.Encode(), nil, &v)
+	return v, err
+}
+
 // ClosedConnections is the connections that ended since the last call,
 // with their final byte counts (internal/core's /clashcube/closed). An
 // older core doesn't serve it, and answers 404.

@@ -19,7 +19,7 @@ const statusLabel: Record<string, string> = {
   unsupported: "Unsupported region", refused: "Refused", failed: "Failed",
 };
 // what the address looks like to a service weighing it for abuse
-const kindClass: Record<string, string> = { Residential: "good", Mobile: "good", Datacenter: "warn", Business: "muted" };
+const kindClass: Record<string, string> = { ISP: "muted", Datacenter: "warn", Business: "muted" };
 
 // Results outlive Overview, so returning to it doesn't check again. Each is
 // kept for the mode, profile and network it was made on, for a while.
@@ -194,9 +194,7 @@ function ServiceRow({ service, r, running, open, onOpen, hidden, onCheck }: {
         {result && <AIRouteDetails result={result} />}
         <div className="ai-hosts">
           <div className="note stagger" style={{ ["--i" as string]: hosts.length }}>
-            {done && r.nodeEgress
-              ? t("This service's domains don't report an egress IP, so each node's is asked of Cloudflare through it. A node that routes by destination may show the service another address, and region availability isn't checked.")
-              : t("Each check queries the service through the core for its egress IP. The check comes from ClashCube, so PROCESS-NAME rules apply only to the real apps.")}
+            {t("Routes are analyzed without connecting to AI domains. Each node's exit IP is queried from Cloudflare and shared across services for three minutes. Destination-based routing may use another exit IP. App process rules and service availability are not tested.")}
           </div>
         </div>
       </Fold>
@@ -224,7 +222,7 @@ function EgressDetails({ egress, hidden }: { egress: AIEgress[]; hidden: boolean
   const known = egress.filter((e) => e.ip);
   if (known.length === 0) return null;
   return (
-    <div className="ai-hosts ai-egress-details" title={t("IP attributes provided by Net.Coffee")}>
+    <div className="ai-hosts ai-egress-details" title={t("IP attributes provided by IPLocate")}>
       {known.map((e, i) => (
         <div key={e.node} className="stagger" style={{ ["--i" as string]: i }}>
           {egress.length > 1 && <span className="ai-egress-node">{nodeLabel(e.node)}</span>}
@@ -233,8 +231,8 @@ function EgressDetails({ egress, hidden }: { egress: AIEgress[]; hidden: boolean
             {" · "}{t("ISP")}: {e.details.operator || t("Unknown")}{e.details.asn > 0 && ` (AS${e.details.asn})`}
             {e.details.network && <> · {t("Network data: {cidr}", { cidr: hidden ? maskedIP(e.details.network) : e.details.network })}</>}
           </> : t("IP attributes unavailable")}
-          <button className="icon ai-ip-link" title={t("Open in Net.Coffee")} aria-label={t("Open in Net.Coffee")}
-            onClick={() => App.OpenURL(`https://ip.net.coffee/ip/${e.ip}`).catch(toastError)}><ExternalLink size={11} /></button>
+          <button className="icon ai-ip-link" title={t("View IPLocate data")} aria-label={t("View IPLocate data")}
+            onClick={() => App.OpenURL(`https://iplocate.io/api/lookup/${encodeURIComponent(e.ip)}`).catch(toastError)}><ExternalLink size={11} /></button>
         </div>
       ))}
     </div>

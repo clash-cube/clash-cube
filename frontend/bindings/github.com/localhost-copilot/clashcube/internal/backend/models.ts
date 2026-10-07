@@ -6,8 +6,7 @@
 import * as wifi$0 from "../wifi/models.js";
 
 /**
- * AICheck is a service's routes, the address each of their nodes shows
- * it, and what the two say together.
+ * AICheck combines a service's predicted routes with its nodes' exit addresses.
  */
 export interface AICheck {
     "route": AIRoute;
@@ -39,8 +38,7 @@ export interface AICheck {
 }
 
 /**
- * AIEgress is the address a service sees through one node, asked of it
- * once by a name that leaves by that node.
+ * AIEgress is a node's Cloudflare-observed address and this service's route.
  */
 export interface AIEgress {
     "node": string;
@@ -59,7 +57,7 @@ export interface AIEgress {
     "unsupported": boolean;
 
     /**
-     * optional Net.Coffee metadata
+     * optional IPLocate metadata
      */
     "details": AIIPDetails | null;
     "error"?: string;
@@ -81,9 +79,8 @@ export interface AIHost {
 }
 
 /**
- * AIIPDetails describes the observed IP using Net.Coffee's database.
- * Network is set when the API returned another address in a shared CIDR
- * cache entry; those attributes describe the network, not this exact IP.
+ * AIIPDetails describes the observed IP using IPLocate's database.
+ * Network is its containing ASN route, when supplied by the provider.
  */
 export interface AIIPDetails {
     "city": string;
@@ -92,7 +89,7 @@ export interface AIIPDetails {
     "asn": number;
 
     /**
-     * Residential | Datacenter | Mobile | Business | Unknown
+     * ISP | Datacenter | Business | Unknown
      */
     "kind": string;
     "network": string;

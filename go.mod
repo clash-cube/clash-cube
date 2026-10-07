@@ -4,6 +4,8 @@ go 1.25.0
 
 require (
 	github.com/dlclark/regexp2 v1.12.0
+	github.com/metacubex/chi v0.1.1
+	github.com/metacubex/http v0.1.7
 	github.com/metacubex/mihomo v0.0.0
 	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/wailsapp/wails/v3 v3.0.0-beta.27
@@ -15,6 +17,7 @@ require (
 )
 
 require (
+	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/RyuaNerin/go-krypto v1.3.0 // indirect
 	github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344 // indirect
 	github.com/adrg/xdg v0.5.3 // indirect
@@ -67,7 +70,6 @@ require (
 	github.com/metacubex/bbolt v0.0.0-20260706163408-d4ec34ad7c48 // indirect
 	github.com/metacubex/blake3 v0.1.0 // indirect
 	github.com/metacubex/chacha v0.1.5 // indirect
-	github.com/metacubex/chi v0.1.1 // indirect
 	github.com/metacubex/connect-ip-go v0.0.0-20260727083417-67ccdb0cf771 // indirect
 	github.com/metacubex/cpu v0.1.1 // indirect
 	github.com/metacubex/edwards25519 v1.2.0 // indirect
@@ -76,7 +78,6 @@ require (
 	github.com/metacubex/gvisor v0.0.0-20260922041103-e2cbcd6e7400 // indirect
 	github.com/metacubex/hkdf v0.1.0 // indirect
 	github.com/metacubex/hpke v0.1.0 // indirect
-	github.com/metacubex/http v0.1.7 // indirect
 	github.com/metacubex/jls-quic-go v0.0.0-20260727080412-732f2fc9a34d // indirect
 	github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796 // indirect
 	github.com/metacubex/jsonv2 v0.0.0-20260721082349-16b4998c8f89 // indirect

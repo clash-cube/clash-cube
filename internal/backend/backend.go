@@ -90,8 +90,9 @@ type Backend struct {
 	connHist  map[string][]LatencySample
 	connBreak map[string]bool
 	// globe.go
-	globe globeState
-	aiIPs aiIPCache
+	globe    globeState
+	aiIPs    aiIPCache
+	aiEgress aiEgressCache
 
 	// watch.go
 	events       []Event
@@ -359,7 +360,11 @@ func (b *Backend) reload() error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	return c.ReloadConfigs(ctx, appdir.RuntimeConfig())
+	err := c.ReloadConfigs(ctx, appdir.RuntimeConfig())
+	if err == nil {
+		b.aiEgress.clear()
+	}
+	return err
 }
 
 // Shutdown is the app quitting.

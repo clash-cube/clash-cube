@@ -22,9 +22,9 @@ import * as usage$0 from "../usage/models.js";
 import * as $models from "./models.js";
 
 /**
- * AICheck is where the rules send each of an AI service's names ("OpenAI"
- * or "Claude") and the address the service sees through each node they
- * leave by; force bypasses the local IP attribute cache.
+ * AICheck inspects an AI service's routes without connecting to its domains.
+ * Exit IPs are queried from Cloudflare and cached per node across services;
+ * force bypasses only the IP attribute cache.
  */
 export function AICheck(service: string, force: boolean): $CancellablePromise<backend$0.AICheck> {
     return $Call.ByID(4110234925, service, force);
