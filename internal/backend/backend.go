@@ -152,6 +152,7 @@ func (b *Backend) Init() error {
 		_ = proxyClear()
 	}
 	go b.autoUpdate()
+	go b.refreshCity()
 	return nil
 }
 

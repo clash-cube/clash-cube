@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -27,6 +28,10 @@ func TestGlobeRoutes(t *testing.T) {
 	conn := func(id, host, dest string, up, down int64, chains ...string) mihomoapi.Connection {
 		return mihomoapi.Connection{ID: id, Metadata: mihomoapi.Metadata{Host: host, DestIP: dest}, Upload: up, Download: down, Chains: chains}
 	}
+	inner := conn("10", "", "JP", 5, 5, "🇭🇰 HK 01", "Front") // a node dialling its server through its front node
+	inner.Metadata.Type = "Inner"
+	update := conn("12", "rules.example", "US", 5, 5, "🇭🇰 HK 01", "Proxy") // the core fetching a rule set
+	update.Metadata.Type = "Inner"
 	conns := []mihomoapi.Connection{
 		conn("1", "a.example", "US", 10, 100, "🇭🇰 HK 01", "Proxy"),
 		conn("2", "b.example", "US", 1, 1000, "🇭🇰 HK 02", "Proxy"),
@@ -37,28 +42,83 @@ func TestGlobeRoutes(t *testing.T) {
 		conn("7", "g.example", "ZZ", 5, 5, "DIRECT"), // no centre
 		conn("8", "h.example", "JP", 5, 5, "Premium 01", "Proxy"),
 		conn("9", "", "JP", 5, 5),
+		conn("11", "i.example", "US", 5, 5, "🇯🇵 JP 01", "Proxy"), // through a front node in HK
+		inner, update,
 	}
 	rates := map[string][2]int64{"1": {1, 2}, "2": {3, 4000}, "4": {0, 10}}
-	to := func(c mihomoapi.Connection) string { return c.Metadata.DestIP }
-	routes := globeRoutes(conns, rates, to, nodeCountry)
+	to := func(c mihomoapi.Connection) (string, string) { return c.Metadata.DestIP, c.Metadata.DestIP }
+	via := func(node string) []string {
+		if node == "🇯🇵 JP 01" {
+			return []string{"HK", "JP"}
+		}
+		if cc := nodeCountry(node); cc != "" {
+			return []string{cc}
+		}
+		return nil
+	}
+	routes := globeRoutes(conns, rates, to, via, map[string]bool{"Front": true})
 
 	want := []GlobeRoute{
-		{To: "US", Via: "HK", Conns: 2, Up: 4, Down: 4002, Total: 1111},
+		{To: "US", Via: []string{"HK"}, Conns: 3, Up: 4, Down: 4002, Total: 1121},
 		{To: "CN", Direct: true, Conns: 1, Down: 10, Total: 10},
 		{To: "US", Direct: true, Conns: 1, Total: 10},
 		{To: "JP", Conns: 1, Total: 10},
+		{To: "US", Via: []string{"HK", "JP"}, Conns: 1, Total: 10},
 	}
 	if len(routes) != len(want) {
 		t.Fatalf("routes = %+v", routes)
 	}
 	for i, w := range want {
 		r := routes[i]
-		if r.To != w.To || r.Via != w.Via || r.Direct != w.Direct || r.Conns != w.Conns || r.Up != w.Up || r.Down != w.Down || r.Total != w.Total {
+		if r.To != w.To || fmt.Sprint(r.Via) != fmt.Sprint(w.Via) || r.Direct != w.Direct || r.Conns != w.Conns || r.Up != w.Up || r.Down != w.Down || r.Total != w.Total {
 			t.Errorf("route %d = %+v, want %+v", i, r, w)
 		}
 	}
-	if h := routes[0].Hosts; len(h) != 2 || h[0].Host != "b.example" || h[0].Total != 1001 {
+	if h := routes[0].Hosts; len(h) != 3 || h[0].Host != "b.example" || h[0].Total != 1001 {
 		t.Errorf("hosts = %+v, want b.example first", h)
+	}
+	if e := routes[0].Ends; len(e) != 1 || e[0].At != "US" || e[0].Conns != 3 || len(e[0].Hosts) != 3 {
+		t.Errorf("ends = %+v", e)
+	}
+}
+
+func TestGlobeRouteEnds(t *testing.T) {
+	conn := func(id, ip string, down int64) mihomoapi.Connection {
+		return mihomoapi.Connection{ID: id, Metadata: mihomoapi.Metadata{Host: id + ".example", DestIP: ip}, Download: down, Chains: []string{"DIRECT"}}
+	}
+	cities := map[string]string{"1": "US/Ashburn", "2": "US/San Jose", "3": "US/Ashburn"}
+	to := func(c mihomoapi.Connection) (string, string) { return cities[c.ID], c.Metadata.DestIP }
+	routes := globeRoutes([]mihomoapi.Connection{conn("1", "US", 10), conn("2", "US", 50), conn("3", "US", 20)}, nil, to, nil, nil)
+	if len(routes) != 1 {
+		t.Fatalf("a country's cities split its route: %+v", routes)
+	}
+	e := routes[0].Ends
+	if len(e) != 2 || e[0].At != "US/San Jose" || e[1].At != "US/Ashburn" || e[1].Conns != 2 || e[1].Total != 30 {
+		t.Errorf("ends = %+v", e)
+	}
+}
+
+func TestGlobeChain(t *testing.T) {
+	g := globeState{proxies: map[string]mihomoapi.Proxy{
+		"exit":    {Name: "exit", Dialer: "front"},
+		"front":   {Name: "front", All: []string{"hk", "sg"}, Now: "hk"},
+		"hk":      {Name: "hk", Dialer: "entry"},
+		"entry":   {Name: "entry"},
+		"loop-a":  {Name: "loop-a", Dialer: "loop-b"},
+		"loop-b":  {Name: "loop-b", Dialer: "loop-a"},
+		"to-none": {Name: "to-none", Dialer: "empty"},
+		"empty":   {Name: "empty", All: []string{"x"}},
+	}}
+	for exit, want := range map[string][]string{
+		"exit":    {"entry", "hk", "exit"},
+		"entry":   {"entry"},
+		"loop-a":  {"loop-b", "loop-a"},
+		"to-none": {"to-none"},
+		"unknown": {"unknown"},
+	} {
+		if got := g.chain(exit); fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Errorf("chain(%s) = %v, want %v", exit, got, want)
+		}
 	}
 }
 

@@ -141,4 +141,9 @@ export interface Settings {
      * an empty list checks none.
      */
     "aiServices": string[] | null;
+
+    /**
+     * the globe places connections at cities, from a downloaded database
+     */
+    "cityGeo": boolean;
 }

@@ -3,27 +3,31 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Line2 } from "three/addons/lines/Line2.js";
 import { LineGeometry } from "three/addons/lines/LineGeometry.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
-import type { Globe, GlobeRoute, Place } from "../../api";
+import type { Globe, GlobeEnd, GlobeRoute, Place } from "../../api";
 import dayURL from "../../assets/globe/earth-day.webp";
 import nightURL from "../../assets/globe/earth-night.webp";
 
 // A textured Earth lit by the real sun, the connections drawn as arcs from
-// this Mac's country (through the nodes' when known) to where they go, and
-// light running along the arcs that move data, toward the side receiving.
+// this Mac (through the nodes' countries when known, in the order the data
+// goes) to where they go, and light running along the arcs that move data,
+// toward the side receiving. Places are countries, or cities in them.
 
-export const routeKey = (r: GlobeRoute) => `${r.to}|${r.via}|${r.direct ? "direct" : "proxy"}`;
+export const routeKey = (r: GlobeRoute) => `${r.to}|${(r.via ?? []).join(">")}|${r.direct ? "direct" : "proxy"}`;
+
+// a route's arcs at most, one to each place it reaches, the busiest first
+const MAX_ENDS = 4;
 
 export type Earth = {
   setData: (g: Globe, routes: GlobeRoute[]) => void;
   setHighlight: (key: string | null) => void;
-  focus: (cc: string) => void;
+  focus: (place: string) => void;
   detach: () => void;
 };
 
 type Opts = {
-  // a country under the pointer, with where to show its details; null when none
-  onHover: (cc: string | null, x: number, y: number) => void;
-  label: (cc: string) => string;
+  // a place under the pointer, with where to show its details; null when none
+  onHover: (place: string | null, x: number, y: number) => void;
+  label: (place: string) => string;
 };
 
 const SEGMENTS = 48;
@@ -35,13 +39,13 @@ const TRAIL = 16;
 const TAIL_LEN = 0.32;
 const MAX_PULSES = 6;
 
-const vec = (p: Place, r = 1, out = new THREE.Vector3()) => {
+const vec = (p: { lat: number; lon: number }, r = 1, out = new THREE.Vector3()) => {
   const la = THREE.MathUtils.degToRad(p.lat), lo = THREE.MathUtils.degToRad(p.lon);
   return out.set(r * Math.cos(la) * Math.cos(lo), r * Math.sin(la), -r * Math.cos(la) * Math.sin(lo));
 };
 
 // the arc between two places, raised with their distance
-function arc(a: Place, b: Place): THREE.Vector3[] {
+function arc(a: { lat: number; lon: number }, b: { lat: number; lon: number }): THREE.Vector3[] {
   const s = vec(a), e = vec(b);
   const angle = s.angleTo(e);
   const lift = 0.04 + Math.min(0.3, angle * 0.12);
@@ -172,10 +176,11 @@ class Dots {
 // A pulse runs once along its route, from where it was sent to where the
 // data goes; it fades in as it leaves and its tail drains into the end.
 type Pulse = { t: number; back: boolean };
-// A route's arc keeps its pulses while the data changes; one that goes away
-// fades out, its pulses still in flight finishing their trip.
+// An arc, a route's to one place, keeps its pulses while the data changes;
+// one that goes away fades out, its pulses still in flight finishing their
+// trip. The route's busiest place's is its main one, drawn heavier.
 type Drawn = {
-  route: GlobeRoute; key: string; origin: string; line: Line2; mat: LineMaterial; path: THREE.Vector3[];
+  route: GlobeRoute; end: GlobeEnd; main: boolean; key: string; origin: string; line: Line2; mat: LineMaterial; path: THREE.Vector3[];
   trip: number; tail: number; pulses: Pulse[]; due: number; rate: number; fade: number; gone: boolean;
 };
 
@@ -247,7 +252,7 @@ async function build() {
   const labelEls = new Map<string, HTMLElement>();
 
   let data: Globe | null = null;
-  // the countries' centres, from data
+  // the places, from data
   let at: Record<string, Place> = {};
   const drawn = new Map<string, Drawn>();
   let cur: GlobeRoute[] = [];
@@ -283,34 +288,51 @@ async function build() {
 
   const drop = (d: Drawn) => { scene.remove(d.line); d.line.geometry.dispose(); d.mat.dispose(); drawn.delete(d.key); };
 
-  // sync matches the routes to their arcs by key: an arc stays as its
-  // route's figures change, a new one fades in, a gone one fades out
+  // stops is the places an arc goes through: this Mac, the nodes'
+  // countries, the place. A hop within the country it leaves or reaches
+  // is left out, as on a globe it goes nowhere.
+  const stops = (r: GlobeRoute, e: GlobeEnd) => {
+    const origin = data?.origin ?? "";
+    const o = at[origin], end = at[e.at];
+    if (!o || !end) return [];
+    const out: Place[] = [o];
+    for (const v of r.via ?? []) {
+      const p = at[v];
+      if (p && p.cc !== o.cc && p.cc !== end.cc && p.cc !== out[out.length - 1].cc) out.push(p);
+    }
+    if (e.at !== origin) out.push(end);
+    return out;
+  };
+
+  // sync matches the routes' places to their arcs by key: an arc stays as
+  // its figures change, a new one fades in, a gone one fades out
   const sync = () => {
-    const o = data?.origin ? at[data.origin] : undefined;
     const live = new Set<string>();
-    if (data && o) {
+    if (data?.origin && at[data.origin]) {
       for (const r of cur) {
-        const key = routeKey(r);
-        const old = drawn.get(key);
-        if (old && old.origin === data.origin) { old.route = r; old.gone = false; live.add(key); continue; }
-        if (old) drop(old);
-        const stops = [o, ...(r.via && r.via !== data.origin && r.via !== r.to ? [at[r.via]] : []), at[r.to]].filter(Boolean) as Place[];
-        if (stops.length < 2 || (stops.length === 2 && r.to === data.origin)) continue;
-        const path: THREE.Vector3[] = [];
-        for (let i = 0; i + 1 < stops.length; i++) path.push(...arc(stops[i], stops[i + 1]).slice(i ? 1 : 0));
-        let len = 0;
-        for (let i = 1; i < path.length; i++) len += path[i].distanceTo(path[i - 1]);
-        const geo = new LineGeometry();
-        geo.setPositions(path.flatMap((v) => [v.x, v.y, v.z]));
-        const mat = new LineMaterial({ color: lineFor(r).getHex(), linewidth: 1.4, transparent: true, opacity: 0, depthWrite: false });
-        mat.resolution.set(width, height);
-        const line = new Line2(geo, mat);
-        line.renderOrder = 3;
-        scene.add(line);
-        // a longer arc takes longer, but not in proportion, so short ones don't crawl
-        const trip = THREE.MathUtils.clamp(1.1 + len * 0.5, 1.3, 3);
-        drawn.set(key, { route: r, key, origin: data.origin, line, mat, path, trip, tail: Math.min(0.3, TAIL_LEN / len), pulses: [], due: 0, rate: 0, fade: still ? 1 : 0, gone: false });
-        live.add(key);
+        (r.ends ?? []).slice(0, MAX_ENDS).forEach((e, i) => {
+          const key = routeKey(r) + "@" + e.at;
+          const old = drawn.get(key);
+          if (old && old.origin === data!.origin) { old.route = r; old.end = e; old.main = i === 0; old.gone = false; live.add(key); return; }
+          if (old) drop(old);
+          const st = stops(r, e);
+          if (st.length < 2) return;
+          const path: THREE.Vector3[] = [];
+          for (let j = 0; j + 1 < st.length; j++) path.push(...arc(st[j], st[j + 1]).slice(j ? 1 : 0));
+          let len = 0;
+          for (let j = 1; j < path.length; j++) len += path[j].distanceTo(path[j - 1]);
+          const geo = new LineGeometry();
+          geo.setPositions(path.flatMap((v) => [v.x, v.y, v.z]));
+          const mat = new LineMaterial({ color: lineFor(r).getHex(), linewidth: 1.4, transparent: true, opacity: 0, depthWrite: false });
+          mat.resolution.set(width, height);
+          const line = new Line2(geo, mat);
+          line.renderOrder = 3;
+          scene.add(line);
+          // a longer arc takes longer, but not in proportion, so short ones don't crawl
+          const trip = THREE.MathUtils.clamp(1.1 + len * 0.5, 1.3, 3);
+          drawn.set(key, { route: r, end: e, main: i === 0, key, origin: data!.origin, line, mat, path, trip, tail: Math.min(0.3, TAIL_LEN / len), pulses: [], due: 0, rate: 0, fade: still ? 1 : 0, gone: false });
+          live.add(key);
+        });
       }
     }
     for (const d of drawn.values()) if (!live.has(d.key)) d.gone = true;
@@ -327,9 +349,11 @@ async function build() {
     // a place only direct connections reach takes their colour
     const w = new Map<string, number>(), proxied = new Set<string>();
     for (const r of routes) {
-      w.set(r.to, (w.get(r.to) ?? 0) + r.total + 1);
-      if (!r.direct) proxied.add(r.to);
-      if (r.via) { w.set(r.via, w.get(r.via) ?? 0); proxied.add(r.via); }
+      for (const e of (r.ends ?? []).slice(0, MAX_ENDS)) {
+        w.set(e.at, (w.get(e.at) ?? 0) + e.total + 1);
+        if (!r.direct) proxied.add(e.at);
+      }
+      for (const v of r.via ?? []) { w.set(v, w.get(v) ?? 0); proxied.add(v); }
     }
     places = [...w].filter(([cc]) => at[cc]).map(([cc, weight]) => ({ cc, p: vec(at[cc], MARK_R), weight, origin: false, direct: !proxied.has(cc) }));
     if (at[g.origin]) places.push({ cc: g.origin, p: vec(at[g.origin], MARK_R), weight: Infinity, origin: true, direct: false });
@@ -385,17 +409,18 @@ async function build() {
       const k = (rate: number) => (still ? 1 : Math.min(1, dt * rate));
       d.fade += ((d.gone ? 0 : 1) - d.fade) * k(5);
       if (d.gone && d.fade < 0.01 && !d.pulses.length) { drop(d); continue; }
-      const on = highlight === d.key, dim = highlight !== null && !on;
-      d.mat.opacity += ((dim ? 0.12 : on ? 0.95 : 0.55) * d.fade - d.mat.opacity) * k(8);
-      d.mat.linewidth = on ? 2.4 : 1.4;
+      const on = highlight === routeKey(r), dim = highlight !== null && !on;
+      d.mat.opacity += ((dim ? 0.12 : on ? 0.95 : d.main ? 0.55 : 0.4) * d.fade - d.mat.opacity) * k(8);
+      d.mat.linewidth = (on ? 2.4 : 1.4) * (d.main ? 1 : 0.7);
       d.mat.color.copy(lineFor(r));
       if (still) continue;
       // the speed, eased, so a quiet second doesn't stop the pulses
-      d.rate += ((d.gone ? 0 : r.up + r.down) - d.rate) * k(1.2);
+      const e = d.end;
+      d.rate += ((d.gone ? 0 : e.up + e.down) - d.rate) * k(1.2);
       if (d.rate > 256) {
-        // busier routes send pulses more often
+        // busier arcs send pulses more often
         d.due -= dt * Math.min(2.2, 0.35 + Math.log10(1 + d.rate / 1024) * 0.55);
-        if (d.due <= 0 && d.pulses.length < MAX_PULSES) { d.pulses.push({ t: 0, back: r.down >= r.up }); d.due = 1; }
+        if (d.due <= 0 && d.pulses.length < MAX_PULSES) { d.pulses.push({ t: 0, back: e.down >= e.up }); d.due = 1; }
       }
       const c = r.direct ? colors.direct : colors.proxy;
       for (const p of d.pulses) {
@@ -467,8 +492,8 @@ async function build() {
   };
   const run = () => renderer.setAnimationLoop(document.hidden || !host ? null : loop);
 
-  const focus = (cc: string) => {
-    const p = at[cc];
+  const focus = (place: string) => {
+    const p = at[place];
     if (!p) return;
     pause();
     focusAnim = { from: camera.position.clone(), to: vec({ lat: Math.max(-50, Math.min(50, p.lat)), lon: p.lon }, Math.min(camera.position.length(), DISTANCE)), t: 0 };
@@ -509,7 +534,7 @@ async function build() {
     return {
       setData: (g, routes) => { if (mine()) setData(g, routes); },
       setHighlight: (key) => { if (mine()) highlight = key; },
-      focus: (cc) => { if (mine()) focus(cc); },
+      focus: (place) => { if (mine()) focus(place); },
       detach: () => { if (mine()) detach(); },
     };
   };

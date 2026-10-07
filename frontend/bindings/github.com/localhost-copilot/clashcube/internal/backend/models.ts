@@ -125,6 +125,28 @@ export interface AIRoute {
 }
 
 /**
+ * CityGeoInfo is the city database's state, for Settings.
+ */
+export interface CityGeoInfo {
+    "on": boolean;
+    "ready": boolean;
+    "downloading": boolean;
+    "got": number;
+    "of": number;
+
+    /**
+     * on disk
+     */
+    "size": number;
+
+    /**
+     * unix ms; 0 when there is none
+     */
+    "updated": number;
+    "error": string;
+}
+
+/**
  * ClientRate is one app's traffic now, as Surge's "Top Clients" lists it:
  * its name, the path its icon comes from, and its speed in bytes a second.
  */
@@ -283,13 +305,14 @@ export interface GeoInfo {
 }
 
 /**
- * Globe is where the connections go now, by country, for the overview's
- * globe: from this Mac's country, through the country a node's name gives,
- * to the destination's.
+ * Globe is where the connections go now, for the overview's globe: from
+ * this Mac, through the countries the nodes' names give, to the
+ * destination. Places are countries' centres, or with the city database
+ * the cities the addresses are in.
  */
 export interface Globe {
     /**
-     * this Mac's country; "" while unknown
+     * this Mac's place; "" while unknown
      */
     "origin": string;
 
@@ -299,7 +322,7 @@ export interface Globe {
     "originIp": string;
 
     /**
-     * the centre of every country named here
+     * every place named here
      */
     "places": { [_ in string]?: Place } | null;
 
@@ -307,6 +330,23 @@ export interface Globe {
      * the busiest first
      */
     "routes": GlobeRoute[] | null;
+
+    /**
+     * places come from the city database
+     */
+    "cities": boolean;
+}
+
+/**
+ * GlobeEnd is a route's connections to one place.
+ */
+export interface GlobeEnd {
+    "at": string;
+    "conns": number;
+    "up": number;
+    "down": number;
+    "total": number;
+    "hosts": GlobeHost[] | null;
 }
 
 export interface GlobeHost {
@@ -316,15 +356,18 @@ export interface GlobeHost {
 
 /**
  * GlobeRoute is the connections to one country by one way: directly, or
- * through nodes in one country.
+ * through nodes in the countries of Via.
  */
 export interface GlobeRoute {
+    /**
+     * the country
+     */
     "to": string;
 
     /**
-     * the nodes' country; "" for DIRECT, or nodes whose names don't say
+     * the nodes' countries, in the order the data goes: front nodes first, the exit last; none for DIRECT, or nodes whose names don't say
      */
-    "via": string;
+    "via": string[] | null;
     "direct": boolean;
     "conns": number;
 
@@ -343,6 +386,11 @@ export interface GlobeRoute {
      * the busiest, at most globeHosts
      */
     "hosts": GlobeHost[] | null;
+
+    /**
+     * the places in To it reaches, the busiest first
+     */
+    "ends": GlobeEnd[] | null;
 }
 
 /**
@@ -513,9 +561,14 @@ export interface Node {
     "region"?: string;
 }
 
+/**
+ * Place is a country ("JP") or a city in one ("JP/Osaka").
+ */
 export interface Place {
     "lat": number;
     "lon": number;
+    "cc": string;
+    "city"?: string;
 }
 
 /**

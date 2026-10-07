@@ -13,34 +13,51 @@ import (
 	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 	"github.com/localhost-copilot/clashcube/internal/modules"
 	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
+	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
-// Globe is where the connections go now, by country, for the overview's
-// globe: from this Mac's country, through the country a node's name gives,
-// to the destination's.
+// Globe is where the connections go now, for the overview's globe: from
+// this Mac, through the countries the nodes' names give, to the
+// destination. Places are countries' centres, or with the city database
+// the cities the addresses are in.
 type Globe struct {
-	Origin   string           `json:"origin"`   // this Mac's country; "" while unknown
+	Origin   string           `json:"origin"`   // this Mac's place; "" while unknown
 	OriginIP string           `json:"originIp"` // the public address it was found from
-	Places   map[string]Place `json:"places"`   // the centre of every country named here
+	Places   map[string]Place `json:"places"`   // every place named here
 	Routes   []GlobeRoute     `json:"routes"`   // the busiest first
+	Cities   bool             `json:"cities"`   // places come from the city database
 }
 
+// Place is a country ("JP") or a city in one ("JP/Osaka").
 type Place struct {
-	Lat float64 `json:"lat"`
-	Lon float64 `json:"lon"`
+	Lat  float64 `json:"lat"`
+	Lon  float64 `json:"lon"`
+	CC   string  `json:"cc"`
+	City string  `json:"city,omitempty"`
 }
 
 // GlobeRoute is the connections to one country by one way: directly, or
-// through nodes in one country.
+// through nodes in the countries of Via.
 type GlobeRoute struct {
-	To     string      `json:"to"`
-	Via    string      `json:"via"` // the nodes' country; "" for DIRECT, or nodes whose names don't say
+	To     string      `json:"to"`  // the country
+	Via    []string    `json:"via"` // the nodes' countries, in the order the data goes: front nodes first, the exit last; none for DIRECT, or nodes whose names don't say
 	Direct bool        `json:"direct"`
 	Conns  int         `json:"conns"`
 	Up     int64       `json:"up"` // bytes a second
 	Down   int64       `json:"down"`
 	Total  int64       `json:"total"` // what its connections have moved
 	Hosts  []GlobeHost `json:"hosts"` // the busiest, at most globeHosts
+	Ends   []GlobeEnd  `json:"ends"`  // the places in To it reaches, the busiest first
+}
+
+// GlobeEnd is a route's connections to one place.
+type GlobeEnd struct {
+	At    string      `json:"at"`
+	Conns int         `json:"conns"`
+	Up    int64       `json:"up"`
+	Down  int64       `json:"down"`
+	Total int64       `json:"total"`
+	Hosts []GlobeHost `json:"hosts"`
 }
 
 type GlobeHost struct {
@@ -59,6 +76,10 @@ const (
 	minSample = 800 * time.Millisecond
 	// speeds are measured over about this long, as apps move data in bursts
 	speedWindow = 3 * time.Second
+	// the proxies, for the nodes' dialer-proxy, are read again after this
+	proxiesTTL = 5 * time.Second
+	// front nodes followed at most, should dialer-proxy go round
+	maxHops = 4
 )
 
 // globeState is what Globe keeps between calls: the last byte counts, for
@@ -71,6 +92,8 @@ type globeState struct {
 	hosts    map[string]hostAddr
 	pending  map[string]bool
 	nodes    map[string]string
+	proxies  map[string]mihomoapi.Proxy
+	readAt   time.Time
 	origin   string
 	originIP string
 	originAt time.Time
@@ -103,88 +126,186 @@ func (b *Backend) Globe() (Globe, error) {
 	if err != nil {
 		return out, err
 	}
+	cities := settings.Load().CityGeo && cityReady()
+	out.Cities = cities
+	// a country's place: a node's, or where an address isn't known closer
+	named := func(cc string) string {
+		if p, ok := countryPlace(cc, cities); ok {
+			out.Places[cc] = p
+		}
+		return cc
+	}
 	g := &b.globe
 	g.mu.Lock()
+	g.readProxies(ctx, c)
 	rates := g.sample(time.Now(), conns.Connections)
-	out.Routes = globeRoutes(conns.Connections, rates, func(cn mihomoapi.Connection) string { return country(g.addrOf(c, cn)) }, g.nodeCountry)
-	out.Origin, out.OriginIP = g.locate(b)
-	g.mu.Unlock()
-	for _, r := range out.Routes {
-		for _, cc := range []string{r.To, r.Via} {
-			if p, ok := countryCentres[cc]; ok {
-				out.Places[cc] = Place{p[0], p[1]}
+	to := func(cn mihomoapi.Connection) (string, string) {
+		ip := g.addrOf(c, cn)
+		if cities {
+			if p, ok := cityPlace(ip); ok {
+				id := p.CC + "/" + p.City
+				out.Places[id] = p
+				return id, p.CC
 			}
 		}
+		cc := country(ip)
+		return named(cc), cc
 	}
-	if p, ok := countryCentres[out.Origin]; ok {
-		out.Places[out.Origin] = Place{p[0], p[1]}
+	via := func(exit string) []string {
+		var ccs []string
+		for _, n := range g.chain(exit) {
+			if cc := g.nodeCountry(n); hasCentre(cc) && (len(ccs) == 0 || ccs[len(ccs)-1] != cc) {
+				ccs = append(ccs, named(cc))
+			}
+		}
+		return ccs
+	}
+	fronts := map[string]bool{}
+	for _, p := range g.proxies {
+		if p.Dialer != "" {
+			fronts[p.Dialer] = true
+		}
+	}
+	out.Routes = globeRoutes(conns.Connections, rates, to, via, fronts)
+	origin, ip := g.locate(b)
+	g.mu.Unlock()
+	if origin != "" {
+		out.Origin, out.OriginIP = named(origin), ip
+		if p, ok := cityPlace(ip); ok && cities && p.CC == origin {
+			out.Origin = p.CC + "/" + p.City
+			out.Places[out.Origin] = p
+		}
 	}
 	return out, nil
 }
 
-// globeRoutes groups conns by destination and way; to gives a connection's
-// destination country, via a node's.
-func globeRoutes(conns []mihomoapi.Connection, rates map[string][2]int64, to func(mihomoapi.Connection) string, via func(string) string) []GlobeRoute {
+// globeRoutes groups conns by destination country and way; to gives a
+// connection's place and country, via the countries the data goes through
+// to an exit node. A node's connection to its server through its front
+// node (one of fronts, the policies a dialer-proxy names) carries other
+// connections, which show on their own.
+func globeRoutes(conns []mihomoapi.Connection, rates map[string][2]int64, to func(mihomoapi.Connection) (string, string), via func(string) []string, fronts map[string]bool) []GlobeRoute {
+	type end struct {
+		GlobeEnd
+		hosts map[string]int64
+	}
 	type acc struct {
 		GlobeRoute
 		hosts map[string]int64
+		ends  map[string]*end
 	}
 	byKey := map[string]*acc{}
 	var order []*acc
 	for _, c := range conns {
-		if len(c.Chains) == 0 {
+		if len(c.Chains) == 0 || c.Metadata.Type == "Inner" && fronts[c.Chains[len(c.Chains)-1]] {
 			continue
 		}
 		node := c.Chains[0]
 		if node == "REJECT" || node == "REJECT-DROP" {
 			continue
 		}
-		dest := to(c)
+		at, dest := to(c)
 		if !hasCentre(dest) {
 			continue
 		}
 		direct := node == "DIRECT"
-		v := ""
+		var v []string
 		if !direct {
-			if v = via(node); !hasCentre(v) {
-				v = ""
-			}
+			v = via(node)
 		}
-		key := dest + "|" + v
+		key := dest + "|" + strings.Join(v, ">")
 		if direct {
 			key += "|direct"
 		}
 		a := byKey[key]
 		if a == nil {
-			a = &acc{GlobeRoute: GlobeRoute{To: dest, Via: v, Direct: direct}, hosts: map[string]int64{}}
+			a = &acc{GlobeRoute: GlobeRoute{To: dest, Via: v, Direct: direct}, hosts: map[string]int64{}, ends: map[string]*end{}}
 			byKey[key] = a
 			order = append(order, a)
 		}
-		r := rates[c.ID]
+		e := a.ends[at]
+		if e == nil {
+			e = &end{GlobeEnd: GlobeEnd{At: at}, hosts: map[string]int64{}}
+			a.ends[at] = e
+		}
+		r, n := rates[c.ID], c.Upload+c.Download
 		a.Conns++
 		a.Up += r[0]
 		a.Down += r[1]
-		a.Total += c.Upload + c.Download
+		a.Total += n
+		e.Conns++
+		e.Up += r[0]
+		e.Down += r[1]
+		e.Total += n
 		md := c.Metadata
 		if h := cmp.Or(md.Host, md.SniffHost, md.DestIP); h != "" {
-			a.hosts[h] += c.Upload + c.Download
+			a.hosts[h] += n
+			e.hosts[h] += n
 		}
+	}
+	busiest := func(x, y GlobeEnd) int {
+		return cmp.Or(cmp.Compare(y.Up+y.Down, x.Up+x.Down), cmp.Compare(y.Total, x.Total), cmp.Compare(y.Conns, x.Conns), strings.Compare(x.At, y.At))
 	}
 	out := make([]GlobeRoute, 0, len(order))
 	for _, a := range order {
-		a.Hosts = make([]GlobeHost, 0, len(a.hosts))
-		for h, n := range a.hosts {
-			a.Hosts = append(a.Hosts, GlobeHost{h, n})
+		a.Hosts = topHosts(a.hosts)
+		a.Ends = make([]GlobeEnd, 0, len(a.ends))
+		for _, e := range a.ends {
+			e.Hosts = topHosts(e.hosts)
+			a.Ends = append(a.Ends, e.GlobeEnd)
 		}
-		slices.SortFunc(a.Hosts, func(x, y GlobeHost) int {
-			return cmp.Or(cmp.Compare(y.Total, x.Total), strings.Compare(x.Host, y.Host))
-		})
-		a.Hosts = a.Hosts[:min(len(a.Hosts), globeHosts)]
+		slices.SortFunc(a.Ends, busiest)
 		out = append(out, a.GlobeRoute)
 	}
 	slices.SortStableFunc(out, func(x, y GlobeRoute) int {
 		return cmp.Or(cmp.Compare(y.Up+y.Down, x.Up+x.Down), cmp.Compare(y.Total, x.Total), cmp.Compare(y.Conns, x.Conns))
 	})
+	return out
+}
+
+// topHosts is the busiest of hosts, at most globeHosts.
+func topHosts(hosts map[string]int64) []GlobeHost {
+	out := make([]GlobeHost, 0, len(hosts))
+	for h, n := range hosts {
+		out = append(out, GlobeHost{h, n})
+	}
+	slices.SortFunc(out, func(x, y GlobeHost) int {
+		return cmp.Or(cmp.Compare(y.Total, x.Total), strings.Compare(x.Host, y.Host))
+	})
+	return out[:min(len(out), globeHosts)]
+}
+
+// readProxies keeps the core's proxies, for chain, a few seconds old at
+// most; on an error the last ones stay.
+func (g *globeState) readProxies(ctx context.Context, c *mihomoapi.Client) {
+	if time.Since(g.readAt) < proxiesTTL {
+		return
+	}
+	g.readAt = time.Now()
+	if ps, err := c.Proxies(ctx); err == nil {
+		g.proxies = ps
+	}
+}
+
+// chain is the nodes the data to exit goes through, in that order: the
+// front node a node's dialer-proxy names (a group's selection, when it
+// names a group) comes before it, and its own before that.
+func (g *globeState) chain(exit string) []string {
+	out := []string{exit}
+	seen := map[string]bool{exit: true}
+	for n := exit; len(out) < maxHops; {
+		d := g.proxies[n].Dialer
+		// a group dials through what it has selected
+		for i := 0; d != "" && i < maxHops && len(g.proxies[d].All) > 0; i++ {
+			d = g.proxies[d].Now
+		}
+		if d == "" || seen[d] || len(g.proxies[d].All) > 0 {
+			break
+		}
+		seen[d] = true
+		out = append([]string{d}, out...)
+		n = d
+	}
 	return out
 }
 
@@ -328,6 +449,17 @@ func nodeCountry(node string) string {
 func regional(r rune) bool { return r >= 0x1F1E6 && r <= 0x1F1FF }
 
 func hasCentre(cc string) bool { _, ok := countryCentres[cc]; return ok }
+
+// countryPlace is where a country's connections go when no address says
+// closer: with the city database its main city, so they meet the cities
+// beside them, else its centre.
+func countryPlace(cc string, cities bool) (Place, bool) {
+	p, ok := countryCentres[cc]
+	if h, hub := countryHubs[cc]; cities && hub {
+		p = h
+	}
+	return Place{Lat: p[0], Lon: p[1], CC: cc}, ok
+}
 
 // locate is this Mac's country and the public address of its direct route
 // it comes from, looked up again in the background now and then.

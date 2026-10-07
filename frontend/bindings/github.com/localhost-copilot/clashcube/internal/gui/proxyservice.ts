@@ -31,6 +31,14 @@ export function AddUserRule(r: userrules$0.Rule): $CancellablePromise<void> {
     return $Call.ByID(2013020188, r);
 }
 
+/**
+ * CityGeoInfo is the globe's city database: whether it is on, there, or
+ * being downloaded.
+ */
+export function CityGeoInfo(): $CancellablePromise<backend$0.CityGeoInfo> {
+    return $Call.ByID(668103062);
+}
+
 export function CloseAllConnections(): $CancellablePromise<void> {
     return $Call.ByID(3536186298);
 }
@@ -120,6 +128,13 @@ export function Select(group: string, name: string): $CancellablePromise<void> {
 }
 
 /**
+ * SetCityGeo turns the city database on, downloading it, or off, removing it.
+ */
+export function SetCityGeo(on: boolean): $CancellablePromise<backend$0.CityGeoInfo> {
+    return $Call.ByID(3276503246, on);
+}
+
+/**
  * SetUserRules replaces them; the core takes them at once.
  */
 export function SetUserRules(rs: userrules$0.Rule[] | null): $CancellablePromise<void> {
@@ -140,6 +155,13 @@ export function TestLatency(kind: string, name: string): $CancellablePromise<bac
  */
 export function TopClients(n: number): $CancellablePromise<backend$0.ClientRate[] | null> {
     return $Call.ByID(3577893539, n);
+}
+
+/**
+ * UpdateCityGeo downloads the city database again.
+ */
+export function UpdateCityGeo(): $CancellablePromise<backend$0.CityGeoInfo> {
+    return $Call.ByID(2119358229);
 }
 
 /**

@@ -19,9 +19,10 @@ const mask = (ip: string) => ip.includes(":")
   : ip.split(".").slice(0, 2).join(".") + ".*.*";
 
 // GlobeView is where the connections go now, on a globe: an arc from this
-// Mac's country, through the nodes' when their names tell, to each country
-// connections go to, with light running along those moving data. The list
-// beside it names them, busiest first; pointing at one lights its arc.
+// Mac, through the nodes' countries when their names tell (front nodes
+// first), to each place connections go to, with light running along those
+// moving data. The list beside it names the countries, busiest first;
+// pointing at one lights its arcs.
 export function GlobeView() {
   const t = useT();
   const running = useStore((s) => s.state?.core === "running");
@@ -30,7 +31,7 @@ export function GlobeView() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [lit, setLit] = useState<string | null>(null);
-  const [hover, setHover] = useState<{ cc: string; x: number; y: number } | null>(null);
+  const [hover, setHover] = useState<{ at: string; x: number; y: number } | null>(null);
   const [broken, setBroken] = useState("");
   const [showIP, setShowIP] = useState(false);
   const host = useRef<HTMLDivElement>(null);
@@ -39,8 +40,14 @@ export function GlobeView() {
   const names = useMemo(() => new Intl.DisplayNames([locale()], { type: "region" }), [lang]);
   const name = (cc: string) => { try { return names.of(cc) ?? cc; } catch { return cc; } };
   const place = (cc: string) => `${flag(cc)} ${name(cc)}`;
-  const placeRef = useRef(place);
-  placeRef.current = place;
+  // a place on the globe: a country, or a city ("US/San Jose")
+  const spot = (at: string) => {
+    const p = globe?.places?.[at];
+    const cc = p?.cc || at.split("/")[0];
+    return p?.city ? `${flag(cc)} ${p.city}` : place(cc);
+  };
+  const spotRef = useRef(spot);
+  spotRef.current = spot;
 
   usePoll(() => {
     if (!running) return;
@@ -59,8 +66,8 @@ export function GlobeView() {
     if (!running || !host.current) return;
     let gone = false;
     attachEarth(host.current, {
-      onHover: (cc, x, y) => setHover(cc ? { cc, x, y } : null),
-      label: (cc) => placeRef.current(cc),
+      onHover: (at, x, y) => setHover(at ? { at, x, y } : null),
+      label: (at) => spotRef.current(at),
     }).then((e) => { if (gone) e.detach(); else earth.current = e; setBroken(""); })
       .catch((e) => !gone && setBroken(errText(e)));
     return () => { gone = true; earth.current?.detach(); earth.current = null; };
@@ -98,7 +105,7 @@ export function GlobeView() {
             <div className="globe-host" ref={host} />
             <div className="globe-stats">
               <div className="globe-origin">
-                {globe?.origin ? t("From {place}", { place: place(globe.origin) }) : t("Locating…")}
+                {globe?.origin ? t("From {place}", { place: spot(globe.origin) }) : t("Locating…")}
                 {globe?.originIp && (
                   <span className="globe-ip">
                     <span className="mono">{showIP ? globe.originIp : mask(globe.originIp)}</span>
@@ -128,14 +135,14 @@ export function GlobeView() {
           <div className="list globe-list" ref={list}>
             {listed.map((r) => (
               <RouteRow key={routeKey(r)} r={r} lit={lit === routeKey(r)} name={name} place={place}
-                onEnter={() => setLit(routeKey(r))} onLeave={() => setLit(null)} onClick={() => earth.current?.focus(r.to)} />
+                onEnter={() => setLit(routeKey(r))} onLeave={() => setLit(null)} onClick={() => earth.current?.focus(r.ends?.[0]?.at ?? r.to)} />
             ))}
             {!routes.length && <div className="globe-list-empty">{t("No connections")}</div>}
           </div>
         </div>
       )}
 
-      {hover && globe && <Tip cc={hover.cc} x={hover.x} y={hover.y} routes={routes} origin={globe.origin} place={place} />}
+      {hover && globe && <Tip at={hover.at} x={hover.x} y={hover.y} globe={globe} routes={routes} name={name} place={place} />}
     </div>
   );
 }
@@ -200,7 +207,7 @@ function RouteRow({ r, lit, name, place, onEnter, onLeave, onClick }: {
         </div>
         <div className="sub">
           <i className={"way " + (r.direct ? "direct" : "proxy")} />
-          {r.direct ? t("Direct") : r.via ? t("via {place}", { place: place(r.via) }) : t("Proxy")}
+          <Way r={r} place={place} />
           {host && <> · {host}{(r.hosts?.length ?? 0) > 1 ? ` +${(r.hosts?.length ?? 1) - 1}` : ""}</>}
         </div>
       </div>
@@ -212,22 +219,37 @@ function RouteRow({ r, lit, name, place, onEnter, onLeave, onClick }: {
   );
 }
 
-// Tip is a country's routes and busiest hosts, by the pointer.
-function Tip({ cc, x, y, routes, origin, place }: {
-  cc: string; x: number; y: number; routes: GlobeRoute[]; origin: string; place: (cc: string) => string;
+// Way is how a route goes: directly, or through its nodes' countries in
+// the order the data goes.
+function Way({ r, place }: { r: GlobeRoute; place: (cc: string) => string }) {
+  const t = useT();
+  if (r.direct) return <>{t("Direct")}</>;
+  if (!r.via?.length) return <>{t("Proxy")}</>;
+  return <>{t("via {place}", { place: r.via.map(place).join(" → ") })}</>;
+}
+
+// Tip is a place's routes and busiest hosts, by the pointer: the
+// connections that end there, and those whose nodes are there.
+function Tip({ at, x, y, globe, routes, name, place }: {
+  at: string; x: number; y: number; globe: Globe; routes: GlobeRoute[]; name: (cc: string) => string; place: (cc: string) => string;
 }) {
   const t = useT();
-  const here = routes.filter((r) => r.to === cc);
-  const through = routes.filter((r) => r.via === cc && r.to !== cc);
-  const hosts = here.flatMap((r) => r.hosts ?? []).sort((a, b) => b.total - a.total).slice(0, 5);
+  const p = globe.places?.[at];
+  const cc = p?.cc || at.split("/")[0];
+  const here = routes.flatMap((r) => (r.ends ?? []).filter((e) => e.at === at).map((e) => ({ r, e })));
+  const through = p?.city ? [] : routes.filter((r) => r.via?.includes(cc) && r.to !== cc);
+  const hosts = here.flatMap(({ e }) => e.hosts ?? []).sort((a, b) => b.total - a.total).slice(0, 5);
   const left = Math.min(x + 14, innerWidth - 250);
   return (
     <div className="globe-tip" style={{ left, top: y + 14 }}>
-      <div className="globe-tip-head">{place(cc)}{cc === origin && <span className="chip">{t("You")}</span>}</div>
-      {here.map((r) => (
+      <div className="globe-tip-head">
+        {p?.city ? <>{flag(cc)} {p.city}<span className="globe-tip-country">{name(cc)}</span></> : place(cc)}
+        {at === globe.origin && <span className="chip">{t("You")}</span>}
+      </div>
+      {here.map(({ r, e }) => (
         <div className="globe-tip-row" key={routeKey(r)}>
-          <span><i className={"way " + (r.direct ? "direct" : "proxy")} />{r.direct ? t("Direct") : r.via ? t("via {place}", { place: place(r.via) }) : t("Proxy")}</span>
-          <span className="num">{t(r.conns === 1 ? "{n} connection" : "{n} connections", { n: r.conns })} · {speed(r.up + r.down)}</span>
+          <span><i className={"way " + (r.direct ? "direct" : "proxy")} /><Way r={r} place={place} /></span>
+          <span className="num">{t(e.conns === 1 ? "{n} connection" : "{n} connections", { n: e.conns })} · {speed(e.up + e.down)}</span>
         </div>
       ))}
       {through.length > 0 && (

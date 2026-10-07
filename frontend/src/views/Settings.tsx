@@ -2,13 +2,13 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { Hotkeys } from "../components/Hotkeys";
 import { useT } from "../i18n";
 import { applyTheme, useStore } from "../store";
-import { App, Proxy, Settings as S, type Patch, type HelperStatus, type GeoInfo } from "../api";
+import { App, Proxy, Settings as S, type Patch, type HelperStatus, type GeoInfo, type CityGeoInfo } from "../api";
 import { Switch } from "../components/Switch";
 import { Segmented } from "../components/Segmented";
 import { Refresh } from "../components/Icons";
 import { errText, toast, toastError } from "../components/Toast";
 import { copyCommand, coreLabel, coreTone, restartCore, run, setTun, startCore, stopCore } from "../actions";
-import { ago } from "../format";
+import { ago, bytes } from "../format";
 import { NetworkRules } from "../components/NetworkRules";
 import { AI_SERVICES } from "../aiServices";
 import { AIServiceName } from "../components/AIServiceName";
@@ -106,6 +106,10 @@ export function Settings() {
               <option value="never">{t("Never")}</option>
             </select>
           </Row>
+        </Section>
+
+        <Section title={t("Global connections")}>
+          <CityGeoRow />
         </Section>
 
         <Section title={t("AI services")}>
@@ -287,6 +291,38 @@ function GeoRow({ running }: { running: boolean }) {
   return (
     <Row label={t("Update GEO databases")} sub={running ? when : t("Needs the core running")}>
       <ActionButton label={t("Update")} busyLabel={t("Updating…")} busy={mine || !!info?.updating} disabled={!running} onClick={update} />
+    </Row>
+  );
+}
+
+// CityGeoRow turns on the globe's city database, which is downloaded then,
+// and removed when it is turned off.
+function CityGeoRow() {
+  const t = useT();
+  const [info, setInfo] = useState<CityGeoInfo | null>(null);
+  const load = () => Proxy.CityGeoInfo().then(setInfo).catch(() => {});
+  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (!info?.downloading) return;
+    const id = setInterval(load, 500);
+    return () => clearInterval(id);
+  }, [info?.downloading]);
+  if (!info) return null;
+  const set = (on: boolean) => {
+    setInfo({ ...info, on });
+    Proxy.SetCityGeo(on).then(setInfo).catch((e) => { toastError(e); load(); });
+  };
+  const sub = info.downloading
+    ? t("Downloading… {got} of {of}", { got: bytes(info.got), of: info.of ? bytes(info.of) : "~60 MB" })
+    : info.error && info.on ? t("Couldn't download: {error}", { error: info.error })
+    : info.on && info.ready ? t("{size} · updated {t} · IP geolocation by DB-IP", { size: bytes(info.size), t: ago(info.updated, t) })
+    : t("Places connections at their cities instead of their countries. Downloads DB-IP's city database, about 60 MB, updated monthly.");
+  return (
+    <Row label={t("City-level locations")} sub={sub} wrap>
+      {info.on && info.error && !info.downloading && (
+        <button className="btn small" onClick={() => Proxy.UpdateCityGeo().then(setInfo).catch(toastError)}>{t("Retry")}</button>
+      )}
+      <Switch on={info.on} onChange={set} />
     </Row>
   );
 }

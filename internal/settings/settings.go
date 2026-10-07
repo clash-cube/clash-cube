@@ -68,6 +68,8 @@ type Settings struct {
 	// AIServices is the services Overview checks the routes and egress of;
 	// an empty list checks none.
 	AIServices []string `json:"aiServices"`
+
+	CityGeo bool `json:"cityGeo"` // the globe places connections at cities, from a downloaded database
 }
 
 // NetworkRule is what to set while on the networks it matches: a Wi-Fi

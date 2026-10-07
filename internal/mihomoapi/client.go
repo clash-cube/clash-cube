@@ -143,6 +143,7 @@ type Proxy struct {
 	Icon     string                  `json:"icon,omitempty"`
 	TestURL  string                  `json:"testUrl,omitempty"`
 	Provider string                  `json:"provider-name,omitempty"`
+	Dialer   string                  `json:"dialer-proxy,omitempty"` // the proxy or group it connects through
 	History  []DelayHistory          `json:"history"`
 	Extra    map[string]ProxyHistory `json:"extra"`
 }

@@ -4,7 +4,7 @@ export * as Proxy from "../bindings/github.com/localhost-copilot/clashcube/inter
 export * as Profiles from "../bindings/github.com/localhost-copilot/clashcube/internal/gui/profileservice";
 export * as Settings from "../bindings/github.com/localhost-copilot/clashcube/internal/gui/settingsservice";
 export type { App as AppInfo, Group, Member, Patch, Provider } from "../bindings/github.com/localhost-copilot/clashcube/internal/gui/models";
-export type { Lookup, State, Event, HelperStatus, GeoInfo, Connectivity, ClientRate, Egress, DNSEgress, ProxyEgress, Network, LatencySample, Globe, GlobeRoute, Place, AIRoute, AIHost, AIEgress, AICheck } from "../bindings/github.com/localhost-copilot/clashcube/internal/backend/models";
+export type { Lookup, State, Event, HelperStatus, GeoInfo, Connectivity, ClientRate, Egress, DNSEgress, ProxyEgress, Network, LatencySample, Globe, GlobeRoute, GlobeEnd, Place, CityGeoInfo, AIRoute, AIHost, AIEgress, AICheck } from "../bindings/github.com/localhost-copilot/clashcube/internal/backend/models";
 export type { NetworkRule, NetworkActions } from "../bindings/github.com/localhost-copilot/clashcube/internal/settings/models";
 export type { Profile, ImportRequest } from "../bindings/github.com/localhost-copilot/clashcube/internal/profiles/models";
 export type { Settings as SettingsT } from "../bindings/github.com/localhost-copilot/clashcube/internal/settings/models";

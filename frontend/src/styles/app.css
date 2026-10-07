@@ -926,6 +926,7 @@ select.input { padding-right: 6px; }
 .globe-list-empty { padding: 18px 14px; color: var(--muted); font-size: 12px; text-align: center; }
 .globe-tip { position: fixed; z-index: 50; width: 236px; padding: 9px 11px; border-radius: 10px; background: var(--pop-bg); box-shadow: var(--shadow); backdrop-filter: blur(20px); font-size: 12px; pointer-events: none; animation: pop-fade .12s ease-out; }
 .globe-tip-head { display: flex; align-items: center; gap: 6px; font-weight: 600; margin-bottom: 4px; }
+.globe-tip-country { font-weight: 400; color: var(--muted); }
 .globe-tip-head .chip { height: 18px; padding: 0 6px; font-size: 10.5px; font-weight: 500; background: var(--accent-soft); color: var(--accent); }
 .globe-tip-row, .globe-tip-hosts > div { display: flex; justify-content: space-between; gap: 10px; line-height: 20px; }
 .globe-tip-row .num, .globe-tip-hosts .num { color: var(--muted); white-space: nowrap; }

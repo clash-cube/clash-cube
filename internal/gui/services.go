@@ -412,6 +412,16 @@ func (s *ProxyService) UpdateGeo() (backend.GeoInfo, error) { return s.h.b.Updat
 // GeoInfo is when the GEO databases last changed, and whether an update runs.
 func (s *ProxyService) GeoInfo() backend.GeoInfo { return s.h.b.GeoInfo() }
 
+// CityGeoInfo is the globe's city database: whether it is on, there, or
+// being downloaded.
+func (s *ProxyService) CityGeoInfo() backend.CityGeoInfo { return s.h.b.CityGeoInfo() }
+
+// SetCityGeo turns the city database on, downloading it, or off, removing it.
+func (s *ProxyService) SetCityGeo(on bool) (backend.CityGeoInfo, error) { return s.h.b.SetCityGeo(on) }
+
+// UpdateCityGeo downloads the city database again.
+func (s *ProxyService) UpdateCityGeo() backend.CityGeoInfo { return s.h.b.UpdateCityGeo() }
+
 // LookupHost tells how the core resolves and routes host (a name, an
 // address, host:port or a URL).
 func (s *ProxyService) LookupHost(host string) (backend.Lookup, error) { return s.h.b.LookupHost(host) }
