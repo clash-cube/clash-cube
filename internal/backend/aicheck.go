@@ -61,6 +61,10 @@ type AIEgress struct {
 // it, and what the two say together.
 type AICheck struct {
 	Route AIRoute `json:"route"`
+	// The addresses are each node's, asked of Cloudflare through it rather
+	// than of the service, which a node splitting by destination may not
+	// show it.
+	NodeEgress bool `json:"nodeEgress"`
 	// one per node the names leave by, the one most leave by first
 	Egress []AIEgress `json:"egress"`
 	// the worst finding: consistent (one node, or nodes sharing one
@@ -74,13 +78,17 @@ type AICheck struct {
 type aiService struct {
 	name string
 	// Representative TCP/443 targets, not suffix patterns. The first host
-	// provides the egress trace. Shared telemetry may intentionally follow
-	// a different service's rules; include it to reveal that split.
+	// provides the egress trace (unless nodeEgress) and wins a tie for the
+	// main node. Shared telemetry may intentionally follow a different
+	// service's rules; include it to reveal that split.
 	hosts []string
 	// countries the service's supported list leaves out, among those a
 	// node is likely in: Claude's from anthropic.com/supported-countries,
 	// OpenAI's from help.openai.com/en/articles/7947663 (October 2026)
 	unsupported []string
+	// The service's names don't answer Cloudflare's trace: ask it of
+	// Cloudflare through each node instead.
+	nodeEgress bool
 }
 
 // Coverage reviewed against the supplied clash-config-mix-no-tuic config
@@ -89,7 +97,7 @@ type aiService struct {
 // their base domain and known application hosts. This is not an exhaustive
 // expansion of wildcards, nor a test of UDP, PROCESS-NAME or IP/ASN rules.
 var aiServices = []aiService{
-	{"OpenAI", []string{
+	{name: "OpenAI", hosts: []string{
 		"chatgpt.com", "chat.openai.com", "ab.chatgpt.com", "api.openai.com", "auth.openai.com",
 		"ios.chat.openai.com", "cdn.oaistatic.com", "files.oaiusercontent.com",
 		"openai.com", "oaistatic.com", "oaiusercontent.com", "oaistatsig.com",
@@ -102,8 +110,8 @@ var aiServices = []aiService{
 		"openaicomproductionae4b.blob.core.windows.net", "production-openaicom-storage.azureedge.net",
 		"openai.com.cdn.cloudflare.net", "browser-intake-datadoghq.com",
 		"o33249.ingest.sentry.io", "openai.qualtrics.com",
-	}, []string{"CN", "HK", "MO", "RU", "BY", "IR", "KP", "CU", "SY", "VE"}},
-	{"Claude", []string{
+	}, unsupported: []string{"CN", "HK", "MO", "RU", "BY", "IR", "KP", "CU", "SY", "VE"}},
+	{name: "Claude", hosts: []string{
 		"claude.ai", "api.anthropic.com", "claude.com", "platform.claude.com", "anthropic.com",
 		"clau.de", "claude.dev", "claudeusercontent.com", "claudemcpclient.com", "claudemcpcontent.com",
 		"servd-anthropic-website.b-cdn.net", "anthropic.com.cdn.cloudflare.net",
@@ -113,7 +121,37 @@ var aiServices = []aiService{
 		"sentry.io", "statsigapi.net", "datadoghq.com", "sift.com",
 		"intercom.io", "intercomcdn.com", "api-iam.intercom.io",
 		"browser-intake-us5-datadoghq.com", "http-intake.logs.us5.datadoghq.com",
-	}, []string{"CN", "HK", "MO", "RU", "BY", "IR", "KP", "CU", "SY", "VE", "AF", "MM", "YE"}},
+	}, unsupported: []string{"CN", "HK", "MO", "RU", "BY", "IR", "KP", "CU", "SY", "VE", "AF", "MM", "YE"}},
+	// The config's google-gemini ruleset covers Google's AI products as a
+	// whole. Sample its 2026-10-06 list: every product, and every suffix
+	// outside google.com and googleapis.com, which a broader rule placed
+	// above the ruleset would catch as a whole. Every name is a real
+	// connection through its node, so skip aliases under a sampled suffix.
+	{name: "Google AI", nodeEgress: true, hosts: []string{
+		// Gemini app
+		"gemini.google.com", "gemini.google", "bard.google.com", "geminiweb-pa.clients6.google.com", "gemini.gstatic.com",
+		// Gemini API and AI Studio
+		"generativelanguage.googleapis.com", "ai.google.dev", "aistudio.google.com", "ai.studio",
+		"alkalimakersuite-pa.clients6.google.com",
+		// Gemini Code Assist and CLI
+		"cloudcode-pa.googleapis.com", "cloudaicompanion.googleapis.com",
+		// NotebookLM, Antigravity, Labs (ImageFX, Whisk), Jules, Opal, Flow,
+		// Stitch, DeepMind and the generative AI portal
+		"notebooklm.google.com", "notebooklm-pa.googleapis.com", "notebooklm.google", "notebook.google",
+		"antigravity.google", "antigravity-pa.googleapis.com", "antigravity-unleash.goog",
+		"labs.google", "aisandbox-pa.googleapis.com",
+		"jules.google.com", "jules.google", "opal.google", "flow.google", "stitch.withgoogle.com",
+		"deepmind.google", "deepmind.com", "generativeai.google",
+		// Chrome DevTools AI and other client backends in the ruleset
+		"aida.googleapis.com", "aicode.googleapis.com", "robinfrontend-pa.googleapis.com",
+		"proactivebackend-pa.googleapis.com", "geller-pa.googleapis.com",
+	}},
+	// Meta AI's own names first, so they decide the main node, then the
+	// Facebook site and CDN it signs in and loads assets through. The
+	// broader facebook/instagram/whatsapp rulesets are not Meta AI.
+	{name: "Meta AI", nodeEgress: true, hosts: []string{
+		"meta.ai", "www.meta.ai", "facebook.com", "static.xx.fbcdn.net",
+	}},
 }
 
 func aiServiceNamed(name string) (aiService, error) {
@@ -166,6 +204,16 @@ func aiCheck(ctx context.Context, c *mihomoapi.Client, s aiService, port int) AI
 		}
 		return "http://" + net.JoinHostPort(host, fmt.Sprint(port)) + "/cdn-cgi/trace"
 	}
+	if s.nodeEgress {
+		// Cloudflare's own trace stands in for the service's; in tests,
+		// the first name's server answers it.
+		u := proxyTrace
+		if port != 443 {
+			u = trace(s.hosts[0])
+		}
+		route := aiRoutes(ctx, c, s.name, s.hosts, port)
+		return s.result(route, nodeEgress(ctx, c, s, route.Hosts, u))
+	}
 	var first AIEgress
 	var firstErr error
 	done := make(chan struct{})
@@ -207,14 +255,59 @@ func aiCheck(ctx context.Context, c *mihomoapi.Client, s aiService, port int) AI
 		}()
 	}
 	wg.Wait()
+	return s.result(route, egress)
+}
+
+// nodeEgress asks Cloudflare's trace at traceURL through each node the
+// names leave by, named to the core rather than reached by a name's rule.
+func nodeEgress(ctx context.Context, c *mihomoapi.Client, s aiService, hosts []AIHost, traceURL string) []AIEgress {
+	egress := egressNodes(hosts)
+	var wg sync.WaitGroup
+	for i := range egress {
+		e := &egress[i]
+		// the chain of the node's first name, for where the address is from
+		var chain []string
+		for _, h := range hosts {
+			if h.Error == "" && len(h.Chain) > 0 && h.Chain[0] == e.Node {
+				chain = h.Chain
+				break
+			}
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var got AIEgress
+			body, err := c.Trace(ctx, e.Node, traceURL)
+			if err == nil {
+				got, err = parseEgress(s, body, chain)
+			}
+			if err != nil {
+				e.Error = err.Error()
+				return
+			}
+			got.Node, got.Names = e.Node, e.Names
+			*e = got
+		}()
+	}
+	wg.Wait()
+	return egress
+}
+
+// result judges the routes with the addresses seen. Without a list of the
+// regions the service leaves out, DIRECT shows it this Mac's region, which
+// it may not serve.
+func (s aiService) result(route AIRoute, egress []AIEgress) AICheck {
 	status, level := judgeCheck(route, egress)
-	return AICheck{Route: route, Egress: egress, Status: status, Level: level}
+	if status == "direct" && len(s.unsupported) == 0 {
+		level = "muted"
+	}
+	return AICheck{Route: route, NodeEgress: s.nodeEgress, Egress: egress, Status: status, Level: level}
 }
 
 // egressNodes lists the nodes routed names leave by, most names first and
 // the first name's on a tie, as judgeRoutes picks the main node.
 func egressNodes(hosts []AIHost) []AIEgress {
-	var out []AIEgress
+	out := []AIEgress{}
 	for _, h := range hosts {
 		if h.Error != "" || len(h.Chain) == 0 || refused(h.Chain[0]) {
 			continue
@@ -343,10 +436,16 @@ func aiEgress(ctx context.Context, c *mihomoapi.Client, s aiService, traceURL st
 	if chain == nil {
 		return AIEgress{}, errors.New("the request through the core failed")
 	}
+	return parseEgress(s, body, chain)
+}
+
+// parseEgress reads the address and region from a trace fetched along
+// chain.
+func parseEgress(s aiService, body string, chain []string) (AIEgress, error) {
 	e := AIEgress{Chain: chain}
 	e.IP, e.Loc = parseTrace(body)
 	if net.ParseIP(e.IP) == nil {
-		return AIEgress{}, errors.New("the service returned no valid egress IP")
+		return AIEgress{}, errors.New("the trace gave no valid egress IP")
 	}
 	e.Unsupported = slices.Contains(s.unsupported, e.Loc)
 	return e, nil

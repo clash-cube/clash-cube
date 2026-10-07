@@ -468,6 +468,18 @@ func (c *Client) DNSLookup(ctx context.Context, name, qtype string) ([]string, e
 	return out, nil
 }
 
+// Trace fetches Cloudflare's trace at traceURL through the named proxy
+// (internal/core's /clashcube/trace) and gives its body. An older core
+// doesn't serve it, and answers 404.
+func (c *Client) Trace(ctx context.Context, proxy, traceURL string) (string, error) {
+	var v struct {
+		Body string `json:"body"`
+	}
+	q := url.Values{"proxy": {proxy}, "url": {traceURL}}
+	err := c.req(ctx, http.MethodGet, "/clashcube/trace?"+q.Encode(), nil, &v)
+	return v.Body, err
+}
+
 // ClosedConnections is the connections that ended since the last call,
 // with their final byte counts (internal/core's /clashcube/closed). An
 // older core doesn't serve it, and answers 404.

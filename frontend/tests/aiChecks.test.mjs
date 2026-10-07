@@ -22,6 +22,7 @@ async function mount(settings, savingData = false, state = {}) {
     "../i18n": { useT: () => (text, vars) => text.replace(/\{(\w+)\}/g, (m, k) => vars?.[k] ?? m) },
     "./Icons": { Refresh: () => null, Eye: () => null, Close: () => null, ExternalLink: () => null, Shield: () => null },
     "./Fold": { Fold: ({ open, children }) => open ? children : null },
+    "./Popover": { Popover: ({ open, children }) => open ? children : null },
     "./ConnectivityCards": { route: (chain) => chain.join(" → ") },
   };
   function load(file) {
@@ -62,29 +63,43 @@ async function mount(settings, savingData = false, state = {}) {
 }
 
 const host = (name, ...chain) => ({ host: name, chain, rule: "DomainSuffix", rulePayload: name });
+
+test("services checked through their nodes show the node's egress and explain where it comes from", async () => {
+  const view = await mount({ aiServices: ["Google AI", "Meta AI"] });
+  assert.deepEqual(view.calls.map((c) => c.service), ["Google AI", "Meta AI"]);
+  await act(async () => {
+    for (const call of view.calls) call.resolve({
+      route: { service: call.service, node: "Proxy", verdict: "consistent", auto: [], hosts: [host(call.service === "Google AI" ? "gemini.google.com" : "meta.ai", "Proxy")] },
+      nodeEgress: true, status: "consistent", level: "good",
+      egress: [{ node: "Proxy", names: 1, ip: "203.0.113.9", loc: "US", chain: ["Proxy"], details: null }],
+    });
+  });
+  assert.equal(view.find({ className: "ai-ip" }).length, 2);
+  await act(async () => view.root.root.findAllByProps({ className: "row click" })[0].props.onClick());
+  assert.ok(view.text().includes("gemini.google.com"));
+  assert.ok(view.text().includes("each node's is asked of Cloudflare through it"));
+  assert.ok(!view.text().includes("Each check queries the service through the core for its egress IP."));
+  await view.close();
+});
 const check = (over = {}) => ({
   route: { node: "us1", verdict: "consistent", auto: [], hosts: [host("claude.ai", "us1", "AI"), host("api.anthropic.com", "us1", "AI")] },
   egress: [{ node: "us1", names: 2, ip: "203.0.113.9", loc: "US", chain: ["us1", "AI"], details: null }],
   status: "consistent", level: "good", ...over,
 });
 
-test("the leak warning links to leak protection only with the system proxy and no TUN", async () => {
+test("the leak shield explains and links to leak protection only with the system proxy and no TUN", async () => {
   const view = await mount({ aiServices: ["Claude"] }, false, { systemProxy: true, tun: false });
-  const banner = view.root.root.findByProps({ className: "banner warn ai-leak" });
-  await act(async () => banner.findByProps({ className: "btn small" }).props.onClick());
+  assert.equal(view.find({ className: "ai-leak-pop" }).length, 0);
+  await act(async () => view.root.root.findByProps({ className: "icon ai-leak-btn" }).props.onClick());
+  const pop = view.root.root.findByProps({ className: "ai-leak-pop" });
+  assert.ok(view.text().includes("WebRTC sends UDP"));
+  await act(async () => pop.findByProps({ className: "btn small" }).props.onClick());
   assert.deepEqual(view.navigation, [["tun", "leak-protection"]]);
+  assert.equal(view.find({ className: "ai-leak-pop" }).length, 0);
   await view.updateState({ tun: true });
-  assert.equal(view.find({ className: "banner warn ai-leak" }).length, 0);
+  assert.equal(view.find({ className: "icon ai-leak-btn" }).length, 0);
   await view.updateState({ tun: false, systemProxy: false });
-  assert.equal(view.find({ className: "banner warn ai-leak" }).length, 0);
-  await view.close();
-});
-
-test("dismissing the leak warning lasts across page visits", async () => {
-  const view = await mount({ aiServices: ["Claude"] }, false, { systemProxy: true, tun: false });
-  await act(async () => view.root.root.findByProps({ "aria-label": "Dismiss until next launch" }).props.onClick());
-  await view.remount();
-  assert.equal(view.find({ className: "banner warn ai-leak" }).length, 0);
+  assert.equal(view.find({ className: "icon ai-leak-btn" }).length, 0);
   await view.close();
 });
 

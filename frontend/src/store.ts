@@ -31,8 +31,6 @@ type Store = {
   connQuery: string;
   view: View;
   settingsTarget: { tab: string; section?: string } | null;
-  // Session-only: returning to Overview keeps the warning dismissed.
-  aiLeakHintDismissed: boolean;
   setView: (v: View) => void;
   refreshSettings: () => Promise<void>;
   clearLogs: () => void;
@@ -57,7 +55,6 @@ export const useStore = create<Store>((set) => ({
   view: (new URLSearchParams(location.search).get("view") as View) || "overview",
   setView: (view) => set({ view }),
   settingsTarget: null,
-  aiLeakHintDismissed: false,
   refreshSettings: async () => set({ settings: await Settings.Get() }),
   clearLogs: () => set({ logs: [] }),
   clearEvents: () => { App.ClearEvents(); set({ events: [] }); },

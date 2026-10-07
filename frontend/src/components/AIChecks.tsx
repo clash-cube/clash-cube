@@ -3,8 +3,9 @@ import { App, type AICheck, type AIEgress, type AIHost, type AIRoute } from "../
 import { useStore } from "../store";
 import { useT } from "../i18n";
 import { flagged, maskedIP, nodeLabel } from "../format";
-import { Close, ExternalLink, Eye, Refresh, Shield } from "./Icons";
+import { ExternalLink, Eye, Refresh, Shield } from "./Icons";
 import { Fold } from "./Fold";
+import { Popover } from "./Popover";
 import { route } from "./ConnectivityCards";
 import { AI_SERVICES } from "../aiServices";
 import { AIServiceName } from "./AIServiceName";
@@ -30,7 +31,6 @@ export function AIChecks() {
   const t = useT();
   const running = useStore((s) => s.state?.core === "running");
   const systemProxyOnly = useStore((s) => !!s.state?.systemProxy && !s.state?.tun);
-  const hintDismissed = useStore((s) => s.aiLeakHintDismissed);
   const mode = useStore((s) => s.state?.mode);
   const profile = useStore((s) => s.state?.profile);
   const reset = useStore((s) => s.networkReset);
@@ -87,18 +87,12 @@ export function AIChecks() {
   return (
     <>
       <div className="section-title section-head">
-        <span>{t("AI services")}</span>
+        <span className="ai-head-title">{t("AI services")}{systemProxyOnly && <LeakHint />}</span>
         <span className="ai-head-actions">
           {anyIP && <button className="icon" title={t(hidden ? "Show IP address" : "Hide IP address")} aria-label={t(hidden ? "Show IP address" : "Hide IP address")} aria-pressed={hidden} onClick={toggleHidden}><Eye size={14} off={hidden} /></button>}
           <button className={"icon" + (busy ? " spin" : "")} title={t("Refresh routes, egress IP and IP attributes")} disabled={!running || busy} onClick={() => check(services, true)}><Refresh size={13} /></button>
         </span>
       </div>
-      {systemProxyOnly && !hintDismissed && <div className="banner warn ai-leak">
-        <Shield size={15} />
-        <div className="grow">{t("WebRTC sends UDP, which the system proxy doesn't carry, so websites can see your real IP. Apps that ignore the proxy look up names with the system's DNS.")}</div>
-        <button className="btn small" onClick={() => openSettings("tun", "leak-protection")}>{t("Leak Protection")}<ExternalLink size={11} /></button>
-        <button className="icon" title={t("Dismiss until next launch")} aria-label={t("Dismiss until next launch")} onClick={() => useStore.setState({ aiLeakHintDismissed: true })}><Close size={11} /></button>
-      </div>}
       <div className="list ai-checks">
         {services.map((s) => (
           <ServiceRow key={s} service={s} r={results[s]} running={running} hidden={hidden}
@@ -107,6 +101,26 @@ export function AIChecks() {
       </div>
     </>
   );
+}
+
+// With only the system proxy, what it can't carry leaks. A quiet shield by
+// the title says so; the explanation and the way out wait behind a click.
+function LeakHint() {
+  const t = useT();
+  const anchor = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  return <>
+    <button ref={anchor} className="icon ai-leak-btn" title={t("Your real IP may leak")} aria-label={t("Your real IP may leak")} aria-expanded={open} onClick={() => setOpen(!open)}>
+      <Shield size={13} />
+    </button>
+    <Popover anchor={anchor.current} open={open} onClose={() => setOpen(false)} width={300}>
+      <div className="ai-leak-pop">
+        <h3><Shield size={13} />{t("Your real IP may leak")}</h3>
+        <p>{t("WebRTC sends UDP, which the system proxy doesn't carry, so websites can see your real IP. Apps that ignore the proxy look up names with the system's DNS.")}</p>
+        <button className="btn small" onClick={() => { setOpen(false); openSettings("tun", "leak-protection"); }}>{t("Leak Protection")}<ExternalLink size={11} /></button>
+      </div>
+    </Popover>
+  </>;
 }
 
 function ServiceRow({ service, r, running, open, onOpen, hidden, onCheck }: {
@@ -179,7 +193,9 @@ function ServiceRow({ service, r, running, open, onOpen, hidden, onCheck }: {
         {result && <AIRouteDetails result={result} />}
         <div className="ai-hosts">
           <div className="note stagger" style={{ ["--i" as string]: hosts.length }}>
-            {t("Each check queries the service through the core for its egress IP. The check comes from ClashCube, so PROCESS-NAME rules apply only to the real apps.")}
+            {done && r.nodeEgress
+              ? t("This service's domains don't report an egress IP, so each node's is asked of Cloudflare through it. A node that routes by destination may show the service another address, and region availability isn't checked.")
+              : t("Each check queries the service through the core for its egress IP. The check comes from ClashCube, so PROCESS-NAME rules apply only to the real apps.")}
           </div>
         </div>
       </Fold>

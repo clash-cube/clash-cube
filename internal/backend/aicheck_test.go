@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -83,7 +84,9 @@ func TestAIRoutesThroughCore(t *testing.T) {
 		t.Skip("starts a core")
 	}
 	fake.reset()
+	var requests atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
 		fmt.Fprint(w, "fl=1\nip=203.0.113.9\nloc=HK\n")
 	}))
 	defer srv.Close()
@@ -156,5 +159,35 @@ rules:
 	s.hosts = []string{"r.test", "a.test"}
 	if check = aiCheck(ctx, c, s, n); len(check.Egress) != 1 || check.Egress[0].IP != "203.0.113.9" || check.Egress[0].Names != 1 {
 		t.Errorf("egress through a later name %+v", check.Egress)
+	}
+	// Services whose names don't answer the trace ask it through each node
+	// by name, once per node; DIRECT is muted with no unsupported list.
+	for _, service := range []string{"Google AI", "Meta AI"} {
+		s, err := aiServiceNamed(service)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.hosts = []string{"a.test", "r.test", "t.test"}
+		before := requests.Load()
+		got := aiCheck(ctx, c, s, n)
+		if !got.NodeEgress || got.Status != "direct" || got.Level != "muted" || !reflect.DeepEqual(got.Route.Hosts[1].Chain, []string{"REJECT"}) {
+			t.Errorf("%s result: %+v", service, got)
+		}
+		if len(got.Egress) != 1 {
+			t.Fatalf("%s egress %+v, want one node", service, got.Egress)
+		}
+		if e := got.Egress[0]; e.Node != "DIRECT" || e.Names != 2 || e.IP != "203.0.113.9" || e.Loc != "HK" || e.Unsupported || !reflect.DeepEqual(e.Chain, []string{"DIRECT", "Claude"}) {
+			t.Errorf("%s egress %+v", service, e)
+		}
+		if d := requests.Load() - before; d != 1 {
+			t.Errorf("%s sent %d trace requests, want 1", service, d)
+		}
+	}
+	// the core fetches only a trace, and only through a node it knows
+	if _, err := c.Trace(ctx, "nope", "http://a.test:"+port+"/cdn-cgi/trace"); err == nil {
+		t.Error("trace through an unknown proxy")
+	}
+	if _, err := c.Trace(ctx, "DIRECT", "http://a.test:"+port+"/other"); err == nil {
+		t.Error("trace of another path")
 	}
 }

@@ -13,6 +13,13 @@ export interface AICheck {
     "route": AIRoute;
 
     /**
+     * The addresses are each node's, asked of Cloudflare through it rather
+     * than of the service, which a node splitting by destination may not
+     * show it.
+     */
+    "nodeEgress": boolean;
+
+    /**
      * one per node the names leave by, the one most leave by first
      */
     "egress": AIEgress[] | null;
