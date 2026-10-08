@@ -1,6 +1,10 @@
 ClashCube for macOS 12 and later. This is a prerelease; please report issues with your macOS version and CPU architecture.
 
-### What's new in v0.1.6
+### What's new in v0.1.7
+
+- SOCKS5 port modules serve a selected node or group on a dedicated port, independently of routing rules and outbound mode. Use them on this Mac or the LAN, with an optional password, and copy them as a SOCKS5 URL, Clash node, or Surge node.
+- Port modules report listening status and offer a free port when another app occupies the configured one.
+- Popovers fit short windows, and switches inside forms no longer submit the form.
 
 - AI service checks no longer connect to AI domains. The core analyzes routing rules, while services sharing a node reuse one Cloudflare exit-IP lookup for three minutes. IP-based rules may still require DNS lookups.
 - IP attributes now come from IPLocate, with shared caching by exit IP. Missing attributes do not hide routing results, and ISP addresses are not assumed to be residential.
@@ -13,6 +17,9 @@ ClashCube for macOS 12 and later. This is a prerelease; please report issues wit
 
 ### 本次更新
 
+- 新增 SOCKS5 端口模块：为指定节点或组提供独立端口，不受路由规则和出站模式影响。支持本机或局域网访问、可选密码，并可复制为 SOCKS5 URL、Clash 节点或 Surge 节点。
+- 端口模块显示监听状态；端口被其他应用占用时，可选择空闲端口。
+- 修复弹出菜单超出较矮窗口，以及表单内开关触发表单提交的问题。
 - AI 服务检测不再连接 AI 域名：由内核分析路由规则，同一节点的各服务共用一次 Cloudflare 出口 IP 查询，缓存三分钟。IP 类规则仍可能需要 DNS 解析。
 - IP 属性改用 IPLocate，按出口 IP 共用缓存。属性查询失败不影响路由展示，运营商 IP 不再被推断为住宅 IP。
 - 支持自动更新：每 6 小时检查一次 GitHub（按流量计费的网络上不检查），在后台下载新版本，点“重启以更新”或退出时安装。替换前会用发布密钥签名的清单校验下载内容。可在“设置 → 通用 → 关于”中关闭。
