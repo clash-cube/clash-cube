@@ -97,6 +97,18 @@ core/runtime.yaml      实际交给 core 的配置（0600）
 - 前置节点按配置 ID 保存在 `route.upstream`，直连策略不使用它。启用时为当前模块生成独立节点和 provider 副本，副本通过隐藏的前置策略组拨号；原节点保持不变。前置节点从出口候选中排除，前置消失时隐藏组回退到 `REJECT`。provider 副本保留原有筛选和重命名，在其后添加私有名称和 `dialer-proxy`，HTTP 副本使用独立缓存并按原更新周期刷新。其他 `include-all` 组排除这些私有节点，节点选择界面也不把副本列为新的原始节点。
 - 模块按列表从上到下合并，每个的规则都前插，所以后面的优先。通用的“AI 服务”应放在 OpenAI、Claude 上方。
 
+### 3.2 模块种类
+服务分流和节点端口都是“由表单生成的模块”，统一实现 `modules.Kind`：`Check`、`Generate(profile, config)`（对着已合并到这一步的配置生成 YAML）、按配置 ID 复制或删除选择（`Only`、`CopyProfile`、`ForgetProfile`）。`Module` 上每种一个可空字段（`route`、`port`），绑定里类型完整，`modules.json` 无需迁移；`Module.Kind()` 返回设置的那一个，没有就是 YAML。`runtimecfg`、配置的复制和删除只通过接口调用。没有规则、顺序无关的种类（实现 `trailing()`）排在所有模块之后合并（`modules.Ordered`），这样能引用任何模块生成的策略组。前端对应 `components/modules/registry.ts`：每种一个 `ModuleKind`（行的说明、行右侧控件、编辑器、新建菜单条目、能否复制一份），列表本身不认识具体种类。表单都可以“以 YAML 编辑”（`ModuleBody` 按当前配置生成）。
+
+### 3.3 节点端口
+一个模块一个端口：把一个节点或策略组开成单独的 SOCKS5 端口，不经过规则和出站模式。节点按配置 ID 保存，当前配置没选就不开端口。
+- 生成 `listeners+` 里一个 `type: socks` 的 listener，名字为 `ClashCube port <端口>`（连接的 `inboundName`，行上据此统计连接数和速度）。`users` 总是写出：不设密码时是空列表，即不认证；否则 mihomo 会退回全局 `authentication` 和 `lan-allowed-ips`。
+- listener 的 `proxy` 只能引用顶层节点和策略组。provider 的节点、已不存在的节点，改为引用一个隐藏的 `ClashCube chain/port <端口>` 组（`include-all` + 精确名字 `filter` + `empty-fallback: REJECT`），没有匹配时拒绝连接，不会直连。
+- 监听 `127.0.0.1`（仅本机）或 `0.0.0.0`（局域网）。切到局域网时自动生成用户名和密码，可以手动关掉，关掉时界面警告。
+- 内核开不了 listener 只会记日志，不会拒绝配置，也不重试。所以保存前检查：同一配置下两个启用的端口不能重复，不能用 mixed 端口（设置里改 mixed 端口也反向检查）；新开的端口先在回环地址上不带 `SO_REUSEADDR` 试绑，避免被别处的 `0.0.0.0` 占用时误判为空闲。
+- 保存后仍可能被占用（重启、换配置时别的程序先占了）。每次启动和重载后，后端问内核 `/clashcube/listening`（`internal/core` 注册的路由，不改 fork）：内核遍历自己的文件描述符，找出有端口、没有对端的 TCP socket（darwin 没有 `SO_ACCEPTCONN`），即真正在监听的端口。内核在 API 就绪之后才开 listener，所以没开的端口 10 秒内每 0.5 秒再问一次。不在列表里的端口：试绑不上就是被别的程序占用（`lsof` 能看到时给出程序名），否则是没开启。结果放在 `State.Ports`，行上显示原因，分别给出“换一个空闲端口”和“重试”（重载会重新尝试开启失败的 listener）。`netstat` 由非终端进程启动时看不到其他进程的 socket，不能用。
+- 入口：模块页“新建模块 → SOCKS5 端口”，或代理页节点和策略组的右键菜单“用作 SOCKS5 端口…”。行上可以直接换节点，复制菜单给出地址、`socks5://` 链接、终端命令、Clash 和 Surge 节点写法；“复制一份”换下一个空闲端口。
+
 ## 4. 运行时行为
 
 - **启动**：加载设置 → 生成并校验 runtime.yaml → 拉起 core（上次是服务模式且 helper 可用时交给 helper）→ 等 `/version` 就绪后打开 WebSocket 流 → 恢复系统代理。启动时如果系统代理指向我们的端口但 core 没在运行，先清掉。

@@ -28,6 +28,7 @@ export type {
     Network,
     Node,
     Place,
+    PortState,
     ProxyEgress,
     Record,
     Refusal,

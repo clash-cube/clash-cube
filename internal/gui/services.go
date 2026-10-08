@@ -35,6 +35,11 @@ func (s *AppService) State() backend.State { return s.h.b.State() }
 func (s *AppService) Start() error         { return s.h.b.Start() }
 func (s *AppService) Stop() error          { return s.h.b.Stop() }
 func (s *AppService) Restart() error       { return s.h.b.Restart() }
+
+// Reload has the running core take its configuration again, which also
+// retries listeners it couldn't open.
+func (s *AppService) Reload() error { return s.h.b.Reload() }
+
 func (s *AppService) SetMode(mode string) error {
 	return s.h.b.SetMode(mode)
 }
@@ -103,6 +108,9 @@ func (s *AppService) OpenURL(url string) error { return s.h.app.Browser.OpenURL(
 
 // ProxyCommand is the shell export line for the mixed port.
 func (s *AppService) ProxyCommand() string { return proxyCommand("127.0.0.1") }
+
+// LANAddress is this Mac's LAN address, "" when it has none.
+func (s *AppService) LANAddress() string { return lanIP() }
 
 // LANProxyCommand is the same for this Mac's LAN address, for another
 // machine to use (Allow LAN must be on); "" when the Mac has none.
@@ -251,8 +259,8 @@ func (s *ProxyService) Groups() ([]Group, error) {
 	order = append(order, "GLOBAL")
 	made := map[string]string{}
 	for _, m := range modules.For(settings.Load().Profile, modules.List()) {
-		if m.Route != nil {
-			if g := m.Route.GroupIn(func(n string) bool { _, ok := all[n]; return ok }); g != "" {
+		if k, ok := m.Kind().(modules.Grouper); ok {
+			if g := k.GroupIn(func(n string) bool { _, ok := all[n]; return ok }); g != "" {
 				made[g] = m.ID
 			}
 		}
@@ -558,10 +566,14 @@ func (s *ProfileService) RouteRegions() []backend.RegionNodes { return s.h.b.Rou
 // RouteNodes is the running profile's nodes, for a route to pick from.
 func (s *ProfileService) RouteNodes() []backend.Node { return s.h.b.Nodes() }
 
-// RouteBody is the YAML a route makes, to open as a module of its own.
-func (s *ProfileService) RouteBody(r modules.Route) (string, error) {
-	return s.h.b.RouteBody(r)
+// ModuleBody is the YAML a module made from a kind generates over the
+// current profile, to open as a module of its own.
+func (s *ProfileService) ModuleBody(m modules.Module) (string, error) {
+	return s.h.b.ModuleBody(m)
 }
+
+// FreePort is the first port from from up that a new port module can take.
+func (s *ProfileService) FreePort(from int) int { return s.h.b.FreePort(from) }
 
 // Reveal shows a profile's file in Finder.
 func (s *ProfileService) Reveal(id string) error {

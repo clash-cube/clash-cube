@@ -305,67 +305,18 @@ func (r Route) Body(profile string, taken, declared func(string) bool) (string, 
 // Matches says whether the region takes the node of that name.
 func (r Region) Matches(name string) bool { return Route{Region: r.Key}.Takes("", name) }
 
-// CopyProfile gives a copy of profile from what from has: copies of its
-// own modules, and the nodes the global ones picked for it.
-func CopyProfile(from, to string) error {
-	ms := List()
-	var copies []Module
-	changed := false
-	for _, m := range ms {
-		if m.Profile == from {
-			c := m
-			c.ID, c.Profile = "", to
-			if r := m.Route; r != nil {
-				c.Route = r.only(from, to)
-			}
-			copies = append(copies, c)
-			continue
-		}
-		if r := m.Route; r != nil && m.Profile == "" {
-			if names, ok := r.Nodes[from]; ok {
-				r.Nodes[to] = append([]string{}, names...)
-				changed = true
-			}
-			if name, ok := r.Upstream[from]; ok {
-				r.Upstream[to] = name
-				changed = true
-			}
-		}
+// Generate is the route over the profile of that ID, against the
+// configuration it overlays. Only concrete top-level nodes can be named in
+// proxies; groups and provider nodes must not be mistaken for them.
+func (r *Route) Generate(id string, config map[string]any) (string, error) {
+	if r.Policy != "DIRECT" && r.Upstream[id] != "" {
+		return upstreamBody(id, *r, config)
 	}
-	if !changed && len(copies) == 0 {
-		return nil
-	}
-	return Save(append(ms, copies...))
+	have, top := Policies(config), declared(config)
+	return r.Body(id, func(n string) bool { return have[n] || Builtin[n] }, func(n string) bool { return top[n] })
 }
 
-// ForgetProfile drops a profile that is gone: its own modules, and the
-// nodes the global ones picked for it.
-func ForgetProfile(id string) error {
-	ms := List()
-	kept := ms[:0]
-	changed := false
-	for _, m := range ms {
-		if m.Profile == id {
-			changed = true
-			continue
-		}
-		if r := m.Route; r != nil {
-			_, nodes := r.Nodes[id]
-			_, upstream := r.Upstream[id]
-			delete(r.Nodes, id)
-			delete(r.Upstream, id)
-			changed = changed || nodes || upstream
-		}
-		kept = append(kept, m)
-	}
-	if !changed {
-		return nil
-	}
-	return Save(kept)
-}
-
-// only is a copy of r with the picks of profile from, as to's.
-func (r *Route) only(from, to string) *Route {
+func (r *Route) Only(from, to string) Kind {
 	c := *r
 	c.Nodes, c.Upstream = nil, nil
 	if names, ok := r.Nodes[from]; ok {
@@ -375,4 +326,25 @@ func (r *Route) only(from, to string) *Route {
 		c.Upstream = map[string]string{to: name}
 	}
 	return &c
+}
+
+func (r *Route) CopyProfile(from, to string) bool {
+	changed := false
+	if names, ok := r.Nodes[from]; ok {
+		r.Nodes[to] = append([]string{}, names...)
+		changed = true
+	}
+	if name, ok := r.Upstream[from]; ok {
+		r.Upstream[to] = name
+		changed = true
+	}
+	return changed
+}
+
+func (r *Route) ForgetProfile(id string) bool {
+	_, nodes := r.Nodes[id]
+	_, upstream := r.Upstream[id]
+	delete(r.Nodes, id)
+	delete(r.Upstream, id)
+	return nodes || upstream
 }

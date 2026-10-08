@@ -15,10 +15,15 @@ import (
 	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
-// RouteBody makes an editable module using the current profile's declared
-// nodes. Read the source rather than the running core: providers' nodes also
-// appear in the core API, but cannot be referenced directly in proxies.
-func (b *Backend) RouteBody(r modules.Route) (string, error) {
+// ModuleBody is the YAML a module made from a kind generates over the
+// current profile, to edit as a module of its own. Read the source rather
+// than the running core: providers' nodes also appear in the core API, but
+// cannot be referenced directly in proxies.
+func (b *Backend) ModuleBody(m modules.Module) (string, error) {
+	k := m.Kind()
+	if k == nil {
+		return m.Body, nil
+	}
 	id := settings.Load().Profile
 	p, ok := profiles.Get(id)
 	if !ok {
@@ -35,13 +40,20 @@ func (b *Backend) RouteBody(r modules.Route) (string, error) {
 	if config == nil {
 		config = map[string]any{}
 	}
-	// Include nodes added by YAML modules. Omit routes so their private chains
-	// do not become inputs and the route being edited cannot collide with itself.
+	// Include nodes added by YAML modules. Omit generated ones so their private
+	// chains do not become inputs and the module being edited cannot collide
+	// with itself; a trailing kind, laid after them, sees what the others made.
 	for _, mod := range modules.For(id, modules.List()) {
-		if mod.Route != nil {
-			continue
+		body := mod.Body
+		if mk := mod.Kind(); mk != nil {
+			if !modules.Trailing(k) || modules.Trailing(mk) {
+				continue
+			}
+			if body, err = mk.Generate(id, config); err != nil {
+				return "", err
+			}
 		}
-		v, err := modules.Parse(mod.Body)
+		v, err := modules.Parse(body)
 		if err != nil {
 			return "", err
 		}
@@ -49,7 +61,7 @@ func (b *Backend) RouteBody(r modules.Route) (string, error) {
 			return "", err
 		}
 	}
-	return runtimecfg.RouteBody(id, r, config)
+	return k.Generate(id, config)
 }
 
 // Node is one of the running profile's nodes, for a route to pick from.

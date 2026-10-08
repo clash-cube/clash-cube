@@ -172,9 +172,12 @@ select.input { padding-right: 6px; }
   background: var(--pop-bg);
   -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
   border-radius: 11px; box-shadow: var(--shadow); overflow: hidden;
+  /* never taller than the window; what doesn't fit scrolls */
+  max-height: calc(100vh - 16px);
   transform-origin: var(--ox, 24px) top;
   animation: pop-fade .18s ease-out, pop-in .42s var(--spring);
 }
+.pop > * { min-height: 0; overflow-y: auto; }
 .pop.up { transform-origin: var(--ox, 24px) bottom; --pop-dy: 6px; }
 @keyframes pop-fade { from { opacity: 0; } }
 @keyframes pop-in { from { transform: translateY(var(--pop-dy, -6px)) scale(.94); } }
@@ -821,6 +824,27 @@ select.input { padding-right: 6px; }
 .gm-list button:not(:disabled):hover .delay { background: rgba(255, 255, 255, .2); color: inherit; }
 .group-menu .mnote { padding: 4px 9px 5px; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
 .modules-empty .row.blank { justify-content: center; min-height: 40px; color: var(--accent); font-size: 12.5px; }
+/* a kind's entries in the add menu and the empty list */
+.msection { display: flex; flex-direction: column; }
+.menu.node-menu .mhead { padding: 6px 9px 2px; font-size: 11px; font-weight: 600; color: var(--muted); }
+/* a port: where it listens on its row, its choices in the form */
+.port-sub { display: flex; align-items: center; gap: 6px; }
+.port-sub .mono { font-family: var(--code); font-size: 11px; color: var(--fg-2); }
+.port-sub .badge { font-weight: 400; }
+.port-sub .live { font-variant-numeric: tabular-nums; }
+.port-editor .scope > .input.num { align-self: flex-start; height: 26px; }
+.port-editor .pick-note.err { color: var(--red); }
+.port-editor .row-inline { flex-direction: row; align-items: center; gap: 10px; min-height: 26px; }
+.port-editor .scope > .switch { align-self: flex-start; margin-top: 3px; }
+.port-editor .row-inline > .switch { margin-top: 0; }
+.port-auth { display: flex; align-items: center; gap: 8px; padding-bottom: 2px; }
+.port-auth .input { flex: 1; min-width: 0; max-width: 200px; height: 26px; font-family: var(--code); font-size: 12px; }
+.port-auth .link { padding: 0; font-size: 12px; color: var(--accent); background: none; white-space: nowrap; }
+.port-auth .link:hover { text-decoration: underline; }
+/* copy as a URL at a click; the arrow for the other forms */
+.copy-split { display: inline-flex; align-items: center; }
+.copy-split .icon.more { width: 14px; margin-left: -2px; }
+.copy-split .chev { transform: rotate(90deg); }
 
 /* a shortcut field, as macOS draws one: the keys in a pill, or a prompt */
 .hotkey { display: flex; align-items: center; gap: 6px; position: relative; }

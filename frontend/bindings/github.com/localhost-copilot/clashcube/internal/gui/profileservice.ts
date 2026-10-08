@@ -40,6 +40,13 @@ export function Edit(id: string, name: string, interval: number): $CancellablePr
 }
 
 /**
+ * FreePort is the first port from from up that a new port module can take.
+ */
+export function FreePort($from: number): $CancellablePromise<number> {
+    return $Call.ByID(4265621106, $from);
+}
+
+/**
  * ImportFile asks for a YAML file and imports it; an empty profile when the
  * user cancelled.
  */
@@ -53,6 +60,14 @@ export function ImportURL(url: string, name: string, interval: number): $Cancell
 
 export function List(): $CancellablePromise<profiles$0.Profile[] | null> {
     return $Call.ByID(115986899);
+}
+
+/**
+ * ModuleBody is the YAML a module made from a kind generates over the
+ * current profile, to open as a module of its own.
+ */
+export function ModuleBody(m: modules$0.Module): $CancellablePromise<string> {
+    return $Call.ByID(4264260127, m);
 }
 
 /**
@@ -93,13 +108,6 @@ export function Remove(id: string): $CancellablePromise<void> {
  */
 export function Reveal(id: string): $CancellablePromise<void> {
     return $Call.ByID(1405930734, id);
-}
-
-/**
- * RouteBody is the YAML a route makes, to open as a module of its own.
- */
-export function RouteBody(r: modules$0.Route): $CancellablePromise<string> {
-    return $Call.ByID(59422244, r);
 }
 
 /**

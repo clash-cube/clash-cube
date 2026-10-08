@@ -21,6 +21,15 @@ runtime config is built; read it before larger changes.
   `core/runtime.yaml`, and every start or reload runs `core -t` on it first.
   If the core rejects it, the previous config stays.
 
+## Module kinds
+
+Modules made from a form (a route, a port) implement `modules.Kind`
+(`internal/modules/kind.go`); the frontend has a matching `ModuleKind` in
+`frontend/src/components/modules/`. To add a kind: a Go type implementing
+`Kind`, a pointer field on `Module` plus a case in `Module.Kind`/`withKind`/
+`kinds`, then a `ModuleKind` file listed in `registry.ts`. Don't add
+`if m.Route != nil` style branches elsewhere. See `docs/design.md` §3.2.
+
 ## mihomo is a submodule of a fork
 
 - `third_party/mihomo` is `Demogorgon314/mihomo` on branch

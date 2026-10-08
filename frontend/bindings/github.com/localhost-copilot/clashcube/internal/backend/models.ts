@@ -603,6 +603,25 @@ export interface Place {
 }
 
 /**
+ * PortState is how a port module's port came up in the running core. The
+ * core only logs a listener it can't open and goes on, so it is asked which
+ * ports it really holds (/clashcube/listening).
+ */
+export interface PortState {
+    "port": number;
+
+    /**
+     * "open", "taken" (by another program) or "closed"
+     */
+    "status": string;
+
+    /**
+     * the program holding a taken port, when known
+     */
+    "holder"?: string;
+}
+
+/**
  * ProxyEgress is where proxied traffic leaves: the address Cloudflare sees
  * a request through the core come from, and the chain it took.
  */
@@ -730,6 +749,11 @@ export interface State {
      * the last configuration refused, until one is taken
      */
     "refusal"?: Refusal | null;
+
+    /**
+     * how the port modules' ports came up (portstate.go)
+     */
+    "ports": PortState[] | null;
 
     /**
      * updating the app itself (appupdate.go)

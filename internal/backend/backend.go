@@ -48,6 +48,8 @@ type State struct {
 	Network     Network `json:"network"`
 	// the last configuration refused, until one is taken
 	Refusal *Refusal `json:"refusal,omitempty"`
+	// how the port modules' ports came up (portstate.go)
+	Ports []PortState `json:"ports"`
 	// updating the app itself (appupdate.go)
 	Update AppUpdate `json:"update"`
 }
@@ -110,6 +112,9 @@ type Backend struct {
 	profileRead profileStamp
 	// the last configuration refused, until one is taken (runtimeview.go)
 	refusal *Refusal
+	// portstate.go
+	ports   []PortState
+	portGen int
 
 	// usage.go
 	usage     *usage.Store
@@ -192,7 +197,7 @@ func (b *Backend) State() State {
 	s := settings.Load()
 	st, errText := b.core.Status()
 	b.mu.Lock()
-	busy, lost, refusal := b.busy, b.proxyLost, b.refusal
+	busy, lost, refusal, ports := b.busy, b.proxyLost, b.refusal, b.ports
 	b.mu.Unlock()
 	name := ""
 	if p, ok := profiles.Get(s.Profile); ok {
@@ -203,7 +208,7 @@ func (b *Backend) State() State {
 		Mode: s.Mode, SystemProxy: s.SystemProxy, ProxyLost: lost && s.SystemProxy, Tun: s.Tun, TunStack: s.TunStack,
 		ServiceMode: s.ServiceMode, MixedPort: s.MixedPort,
 		Profile: s.Profile, ProfileName: name, Busy: busy, Network: b.network(s),
-		Refusal: refusal, Update: b.AppUpdate(),
+		Refusal: refusal, Update: b.AppUpdate(), Ports: append([]PortState{}, ports...),
 	}
 }
 
@@ -217,6 +222,7 @@ func (b *Backend) coreChanged() {
 	st, _ := b.core.Status()
 	if st != coremgr.Running {
 		b.stopStreams()
+		b.forgetPorts()
 		if st == coremgr.Crashed {
 			go b.releaseProxy()
 			_, errText := b.core.Status()
@@ -293,6 +299,7 @@ func (b *Backend) start() error {
 		return err
 	}
 	b.startStreams()
+	b.watchPorts()
 	if settings.Load().SystemProxy {
 		if err := b.applyProxy(true); err != nil {
 			log.Println("system proxy:", err)
@@ -363,6 +370,7 @@ func (b *Backend) reload() error {
 	err := c.ReloadConfigs(ctx, appdir.RuntimeConfig())
 	if err == nil {
 		b.aiEgress.clear()
+		b.watchPorts()
 	}
 	return err
 }
@@ -485,6 +493,16 @@ func (b *Backend) PatchSettings(fn func(*settings.Settings)) (settings.Settings,
 	after, err := settings.Update(fn)
 	if err != nil {
 		return after, err
+	}
+	// the mixed port can't take a port module's port, which the core
+	// would then hold for the wrong listener
+	if after.MixedPort != before.MixedPort {
+		for _, m := range modules.List() {
+			if m.Port != nil && m.Enabled && m.Port.Port == after.MixedPort {
+				after, _ = settings.Update(func(s *settings.Settings) { s.MixedPort = before.MixedPort })
+				return after, fmt.Errorf("port %d is used by the module %s", m.Port.Port, m.Name)
+			}
+		}
 	}
 	b.emitState()
 	if coreSettings(before) != coreSettings(after) {
@@ -672,6 +690,9 @@ func (b *Backend) restoreRuntime() {
 // configuration the core refuses restores the previous modules.
 func (b *Backend) SetModules(ms []modules.Module) error {
 	before := modules.List()
+	if err := checkPorts(before, ms); err != nil {
+		return err
+	}
 	if err := modules.Save(ms); err != nil {
 		return err
 	}

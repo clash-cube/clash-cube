@@ -21,6 +21,34 @@ export interface Module {
      * for each profile (runtimecfg), so its group's name never clashes
      */
     "route"?: Route | null;
+
+    /**
+     * a node or group served on a SOCKS5 port of its own
+     */
+    "port"?: Port | null;
+}
+
+/**
+ * Port is a module that serves one node or group on a SOCKS5 port of its
+ * own: what connects there leaves by it, whatever the rules and the mode
+ * say. The node is named per profile, since a name belongs to one
+ * subscription; a profile with none picked gets no port.
+ */
+export interface Port {
+    "port": number;
+
+    /**
+     * a Listens address; "" is the first
+     */
+    "listen"?: string;
+
+    /**
+     * node or group, by profile ID
+     */
+    "target"?: { [_ in string]?: string } | null;
+    "udp": boolean;
+    "user"?: string;
+    "pass"?: string;
 }
 
 /**

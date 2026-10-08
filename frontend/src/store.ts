@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { Events } from "@wailsio/runtime";
 import { App, Profiles, Settings, type State, type Profile, type ImportRequest, type SettingsT, type Log, type Event, type LatencySample } from "./api";
+import type { Module } from "../bindings/github.com/localhost-copilot/clashcube/internal/modules/models";
 import { translate as t } from "./i18n";
 import { toast, toastError } from "./components/Toast";
 
@@ -35,6 +36,8 @@ type Store = {
   proxiesTarget: string | null;
   // a rule the rules page shows next, scrolled to and open
   rulesTarget: { type: string; payload: string } | null;
+  // a new module the modules page opens next in its editor
+  moduleDraft: Module | null;
   setView: (v: View) => void;
   refreshSettings: () => Promise<void>;
   clearLogs: () => void;
@@ -61,6 +64,7 @@ export const useStore = create<Store>((set) => ({
   settingsTarget: null,
   proxiesTarget: null,
   rulesTarget: null,
+  moduleDraft: null,
   refreshSettings: async () => set({ settings: await Settings.Get() }),
   clearLogs: () => set({ logs: [] }),
   clearEvents: () => { App.ClearEvents(); set({ events: [] }); },

@@ -717,7 +717,7 @@ rules:
 	}
 	// Conversion to editable YAML uses the same concrete-node list as runtime
 	// generation, so fixed picks are readable even with a provider present.
-	body, err := b.RouteBody(r)
+	body, err := b.ModuleBody(modules.Module{Route: &r})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -735,7 +735,7 @@ rules:
 		if err := b.SetModules([]modules.Module{{Name: "Google", Enabled: true, Route: &r}}); err != nil {
 			t.Fatal(err)
 		}
-		body, err := b.RouteBody(r)
+		body, err := b.ModuleBody(modules.Module{Route: &r})
 		if err != nil {
 			t.Fatal(err)
 		}

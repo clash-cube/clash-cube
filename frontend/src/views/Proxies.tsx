@@ -5,9 +5,11 @@ import { useGroups } from "../useGroups";
 import { Fold } from "../components/Fold";
 import { Segmented } from "../components/Segmented";
 import { toast } from "../components/Toast";
+import { Popover, Menu, type Point } from "../components/Popover";
+import { openPortDraft } from "../components/modules/port";
 import { Bolt, Chevron, Columns, Refresh, Rows, Search, Sort } from "../components/Icons";
 import { ago, bytes, delayClass, fmtDelay, nodeLabel } from "../format";
-import type { Group, Member, Provider } from "../api";
+import { App, type Group, type Member, type Provider } from "../api";
 import { startCore } from "../actions";
 import { reveal } from "../reveal";
 
@@ -28,6 +30,9 @@ export function Proxies() {
   const [twoCols, setTwoCols] = useState(() => { try { return localStorage.getItem("proxies.columns") !== "1"; } catch { return true; } });
   const [box, width] = useWidth();
   const [q, setQ] = useState("");
+  // a node's or group's context menu
+  const [menu, setMenu] = useState<{ name: string; point: Point } | null>(null);
+  const onMenu = (name: string, point: Point) => setMenu({ name, point });
   // while searching every match is open; a card folded then stays folded
   // only until the query changes
   const [folded, setFolded] = useState<Record<string, boolean>>({});
@@ -135,6 +140,7 @@ export function Proxies() {
               onTestOne={testOne}
               testing={testing}
               flash={flash}
+              onMenu={onMenu}
             />
           ),
         }))} />
@@ -153,10 +159,17 @@ export function Proxies() {
               onTestOne={testOne}
               testing={testing}
               testKey={pkey(p)}
+              onMenu={onMenu}
             />
           ),
         }))} />
       )}
+      <Popover anchor={null} point={menu?.point} open={!!menu} onClose={() => setMenu(null)}>
+        {menu && <Menu close={() => setMenu(null)} items={[
+          ...(menu.name !== "GLOBAL" ? [{ label: t("Serve on a SOCKS5 port…"), onClick: () => openPortDraft(menu.name) }] : []),
+          { label: t("Copy name"), onClick: () => App.CopyText(nodeLabel(menu.name)).then(() => toast(t("Copied"))) },
+        ]} />}
+      </Popover>
     </div>
   );
 }
@@ -195,16 +208,17 @@ function useWidth() {
   return [ref, width] as const;
 }
 
-export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne, testing, flash, compact, marked }: {
+export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne, testing, flash, compact, marked, onMenu }: {
   g: Group; open: boolean; toggle: () => void; sorted: boolean;
   onSelect: (name: string) => void; onTest: () => void; onTestOne: (name: string) => void;
   testing: Record<string, boolean>; flash: string; compact?: boolean; marked?: boolean;
+  onMenu?: (name: string, at: Point) => void;
 }) {
   const t = useT();
   const now = (g.members ?? []).find((m) => m.name === g.now);
   return (
     <div className={"group" + (open ? " open" : "") + (marked ? " marked" : "")} data-group={g.name}>
-      <div className="group-head" onClick={toggle}>
+      <div className="group-head" onClick={toggle} onContextMenu={onMenu && ((e) => { e.preventDefault(); onMenu(g.name, { x: e.clientX, y: e.clientY }); })}>
         <Chevron className={"chev" + (open ? " open" : "")} />
         <div className="who">
           <div className="name">{g.name}<span className="gtype">{g.type}</span>{g.module && <span className="gtype">{t("Module")}</span>}</div>
@@ -214,7 +228,7 @@ export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne
         <button className={"icon" + (testing[g.name] ? " zap" : "")} title={t("Test")} onClick={(e) => { e.stopPropagation(); onTest(); }}><Bolt size={14} /></button>
       </div>
       <Fold open={open}>
-        <NodeGrid members={g.members} sorted={sorted} now={g.now} selectable={g.type === "Selector"} flashKey={flash.startsWith(g.name + "/") ? flash.slice(g.name.length + 1) : ""} onSelect={onSelect} onTestOne={onTestOne} testing={testing} compact={compact} />
+        <NodeGrid members={g.members} sorted={sorted} now={g.now} selectable={g.type === "Selector"} flashKey={flash.startsWith(g.name + "/") ? flash.slice(g.name.length + 1) : ""} onSelect={onSelect} onTestOne={onTestOne} testing={testing} compact={compact} onMenu={onMenu} />
       </Fold>
     </div>
   );
@@ -222,10 +236,10 @@ export function GroupCard({ g, open, toggle, sorted, onSelect, onTest, onTestOne
 
 // A provider's nodes, under a head that says how many, when it was fetched
 // and how much of the subscription is used, with a test and an update.
-function ProviderCard({ p, open, toggle, sorted, onTest, onUpdate, onTestOne, testing, testKey }: {
+function ProviderCard({ p, open, toggle, sorted, onTest, onUpdate, onTestOne, testing, testKey, onMenu }: {
   p: Provider; open: boolean; toggle: () => void; sorted: boolean;
   onTest: () => void; onUpdate: () => void; onTestOne: (name: string) => void;
-  testing: Record<string, boolean>; testKey: string;
+  testing: Record<string, boolean>; testKey: string; onMenu?: (name: string, at: Point) => void;
 }) {
   const t = useT();
   const members = p.members ?? [];
@@ -264,16 +278,16 @@ function ProviderCard({ p, open, toggle, sorted, onTest, onUpdate, onTestOne, te
         <button className={"icon" + (testing[testKey] ? " zap" : "")} title={t("Test")} onClick={(e) => { e.stopPropagation(); onTest(); }}><Bolt size={14} /></button>
       </div>
       <Fold open={open}>
-        <NodeGrid members={members} sorted={sorted} selectable={false} onTestOne={onTestOne} testing={testing} />
+        <NodeGrid members={members} sorted={sorted} selectable={false} onTestOne={onTestOne} testing={testing} onMenu={onMenu} />
       </Fold>
     </div>
   );
 }
 
-function NodeGrid({ members: ms, sorted, now, selectable, flashKey, onSelect, onTestOne, testing, compact }: {
+function NodeGrid({ members: ms, sorted, now, selectable, flashKey, onSelect, onTestOne, testing, compact, onMenu }: {
   members?: Member[] | null; sorted: boolean; now?: string; selectable: boolean; flashKey?: string;
   onSelect?: (name: string) => void; onTestOne: (name: string) => void;
-  testing: Record<string, boolean>; compact?: boolean;
+  testing: Record<string, boolean>; compact?: boolean; onMenu?: (name: string, at: Point) => void;
 }) {
   const t = useT();
   const members = useMemo(() => {
@@ -291,6 +305,7 @@ function NodeGrid({ members: ms, sorted, now, selectable, flashKey, onSelect, on
           style={{ ["--i" as string]: Math.min(i, 24) }}
           // with nothing to select (a provider's nodes), a click tests
           onClick={(e) => (e.altKey || !onSelect ? onTestOne(m.name) : selectable && m.name !== now && onSelect(m.name))}
+          onContextMenu={onMenu && ((e) => { e.preventDefault(); onMenu(m.name, { x: e.clientX, y: e.clientY }); })}
           title={nodeLabel(m.name) + "\n" + (onSelect ? "⌥-click: " + t("test this node only") : t("Click to test this node"))}
         >
           <span className="nname">{nodeLabel(m.name)}</span>

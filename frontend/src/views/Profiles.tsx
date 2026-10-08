@@ -7,7 +7,7 @@ import { toast, toastError } from "../components/Toast";
 import { Globe, File, More, Plus, Refresh } from "../components/Icons";
 import { ago, bytes } from "../format";
 import { Segmented } from "../components/Segmented";
-import { Modules } from "../components/Modules";
+import { Modules } from "../components/modules";
 import { RefusalBanner, RuntimeConfig } from "../components/RuntimeConfig";
 
 const TABS = ["profiles", "modules", "merged"] as const;
@@ -26,6 +26,8 @@ export function Profiles() {
   const [tab, setTab] = useState<Tab>(TABS.find((x) => "#" + x === location.hash) ?? "profiles");
   // bumped by the banner's Show, to open the refusal again
   const [focus, setFocus] = useState(0);
+  const moduleDraft = useStore((s) => s.moduleDraft);
+  useEffect(() => { if (moduleDraft) setTab("modules"); }, [moduleDraft]);
 
   useEffect(() => {
     if (pendingImport && !importAt) {

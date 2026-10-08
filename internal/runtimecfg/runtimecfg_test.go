@@ -186,3 +186,26 @@ func TestLayers(t *testing.T) {
 		t.Errorf("last layer\n%s\nwant\n%s", layers[len(layers)-1].Body, want)
 	}
 }
+
+// A port is laid after every other module, so it can serve a route's
+// group listed below it, and adds to the profile's listeners.
+func TestPortModuleLaidLast(t *testing.T) {
+	profile := []byte("proxies:\n  - {name: n, type: socks5, server: localhost, port: 1}\nlisteners:\n  - {name: own, type: http, port: 18080}\n")
+	port := modules.Port{Port: 17891, Target: map[string]string{"p": "Google"}}
+	route := modules.Route{Service: "Google", Policy: "select"}
+	b, err := Build("p", profile, settings.Defaults(), Controller{}, nil, []modules.Module{
+		{Name: "port", Enabled: true, Port: &port},
+		{Name: "Google", Enabled: true, Route: &route},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := yaml.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	ls := m["listeners"].([]any)
+	if len(ls) != 2 || ls[0].(map[string]any)["name"] != "own" || ls[1].(map[string]any)["proxy"] != "Google" {
+		t.Errorf("listeners = %v", ls)
+	}
+}

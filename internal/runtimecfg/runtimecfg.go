@@ -68,10 +68,10 @@ func buildSteps(id string, profile []byte, s settings.Settings, ctl Controller, 
 		m = map[string]any{}
 	}
 	step("", m)
-	for _, mod := range modules.For(id, mods) {
+	for _, mod := range modules.Ordered(modules.For(id, mods)) {
 		body := mod.Body
-		if mod.Route != nil {
-			b, err := RouteBody(id, *mod.Route, m)
+		if k := mod.Kind(); k != nil {
+			b, err := k.Generate(id, m)
 			if err != nil {
 				return nil, fmt.Errorf("module %s: %w", mod.Name, err)
 			}
@@ -146,26 +146,6 @@ func buildSteps(id string, profile []byte, s settings.Settings, ctl Controller, 
 	return yaml.Marshal(m)
 }
 
-// RouteBody generates a route against the configuration it will overlay.
-// Only concrete top-level nodes can be referenced through proxies; groups and
-// provider nodes must not be mistaken for directly declared nodes.
-func RouteBody(id string, r modules.Route, config map[string]any) (string, error) {
-	if r.Policy != "DIRECT" && r.Upstream[id] != "" {
-		return upstreamBody(id, r, config)
-	}
-	have := policies(config)
-	declared := map[string]bool{}
-	nodes, _ := config["proxies"].([]any)
-	for _, node := range nodes {
-		if node, ok := node.(map[string]any); ok {
-			if name, ok := node["name"].(string); ok {
-				declared[name] = true
-			}
-		}
-	}
-	return r.Body(id, func(n string) bool { return have[n] || builtin[n] }, func(n string) bool { return declared[n] })
-}
-
 // stunRule rejects STUN over UDP. A node without UDP makes mihomo skip
 // its rule and go on matching, which can end at DIRECT and show WebRTC
 // this Mac's address; rejected, WebRTC falls back to TURN over TCP.
@@ -215,8 +195,7 @@ func guard(m, tun map[string]any, s settings.Settings) {
 	}
 }
 
-// The policies every profile has.
-var builtin = map[string]bool{"DIRECT": true, "REJECT": true, "REJECT-DROP": true, "PASS": true, "COMPATIBLE": true}
+var builtin = modules.Builtin
 
 // userRules is the user's rules that the profile can take: one naming a
 // policy it doesn't have (added under another profile) would fail the
@@ -235,21 +214,7 @@ func userRules(m map[string]any, user []userrules.Rule) []any {
 	return out
 }
 
-// policies is the names of m's proxies and groups.
-func policies(m map[string]any) map[string]bool {
-	have := map[string]bool{}
-	for _, k := range []string{"proxies", "proxy-groups"} {
-		list, _ := m[k].([]any)
-		for _, p := range list {
-			if p, ok := p.(map[string]any); ok {
-				if name, ok := p["name"].(string); ok {
-					have[name] = true
-				}
-			}
-		}
-	}
-	return have
-}
+func policies(m map[string]any) map[string]bool { return modules.Policies(m) }
 
 func setDefault(m map[string]any, k string, v any) {
 	if _, ok := m[k]; !ok {

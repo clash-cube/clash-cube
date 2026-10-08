@@ -32,6 +32,8 @@ type Module struct {
 	// a service sent through a policy: the body is made from it, again
 	// for each profile (runtimecfg), so its group's name never clashes
 	Route *Route `json:"route,omitempty"`
+	// a node or group served on a SOCKS5 port of its own
+	Port *Port `json:"port,omitempty"`
 }
 
 // Owned is the keys the app sets itself: a module's are overridden (the
@@ -60,8 +62,11 @@ func (m Module) Check() error {
 	if strings.TrimSpace(m.Name) == "" {
 		return errors.New("a module needs a name")
 	}
-	if m.Route != nil {
-		if err := m.Route.Check(); err != nil {
+	if m.kinds() > 1 {
+		return fmt.Errorf("%s: a module is made from one kind", strings.TrimSpace(m.Name))
+	}
+	if k := m.Kind(); k != nil {
+		if err := k.Check(); err != nil {
 			return fmt.Errorf("%s: %w", strings.TrimSpace(m.Name), err)
 		}
 		return nil
@@ -128,13 +133,16 @@ func Save(ms []Module) error {
 			return err
 		}
 		ms[i].Name = strings.TrimSpace(ms[i].Name)
-		if r := ms[i].Route; r != nil {
-			ms[i].Body, _ = r.Body("", nil, nil)
+		if k := ms[i].Kind(); k != nil {
+			ms[i].Body, _ = k.Generate("", nil)
 		}
 		if ms[i].ID == "" || seen[ms[i].ID] {
 			ms[i].ID = newID()
 		}
 		seen[ms[i].ID] = true
+	}
+	if err := checkPorts(ms); err != nil {
+		return err
 	}
 	mu.Lock()
 	defer mu.Unlock()

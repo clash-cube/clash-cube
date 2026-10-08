@@ -11,6 +11,8 @@ export function Switch({ on, onChange, busy, disabled, label }: { on: boolean; o
   const shown = pending ?? on;
   return (
     <button
+      // never a form's submit, which a button in a form is by default
+      type="button"
       role="switch"
       aria-checked={shown}
       aria-busy={pending !== null}

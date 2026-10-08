@@ -153,6 +153,13 @@ export function HidePanel(): $CancellablePromise<void> {
 }
 
 /**
+ * LANAddress is this Mac's LAN address, "" when it has none.
+ */
+export function LANAddress(): $CancellablePromise<string> {
+    return $Call.ByID(3569093204);
+}
+
+/**
  * LANProxyCommand is the same for this Mac's LAN address, for another
  * machine to use (Allow LAN must be on); "" when the Mac has none.
  */
@@ -180,6 +187,14 @@ export function ProxyEgress(): $CancellablePromise<backend$0.ProxyEgress> {
 
 export function Quit(): $CancellablePromise<void> {
     return $Call.ByID(1311964722);
+}
+
+/**
+ * Reload has the running core take its configuration again, which also
+ * retries listeners it couldn't open.
+ */
+export function Reload(): $CancellablePromise<void> {
+    return $Call.ByID(212240984);
 }
 
 export function Restart(): $CancellablePromise<void> {

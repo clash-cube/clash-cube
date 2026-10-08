@@ -499,3 +499,14 @@ func (c *Client) ClosedConnections(ctx context.Context) ([]Connection, error) {
 	err := c.req(ctx, http.MethodGet, "/clashcube/closed", nil, &v)
 	return v.Connections, err
 }
+
+// Listening is the TCP ports the core really listens on (internal/core's
+// /clashcube/listening): mihomo only logs a listener it can't open. An
+// older core doesn't serve it, and answers 404.
+func (c *Client) Listening(ctx context.Context) ([]int, error) {
+	var v struct {
+		Ports []int `json:"ports"`
+	}
+	err := c.req(ctx, http.MethodGet, "/clashcube/listening", nil, &v)
+	return v.Ports, err
+}

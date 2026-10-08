@@ -145,7 +145,7 @@ rules: ['MATCH,REJECT']
 		t.Fatal("request bypassed exit")
 	}
 	// Exporting to YAML must preserve the same chain and remain loadable.
-	exported, err := b.RouteBody(r)
+	exported, err := b.ModuleBody(modules.Module{Route: &r})
 	if err != nil {
 		t.Fatal(err)
 	}
