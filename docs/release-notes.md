@@ -1,6 +1,10 @@
 ClashCube for macOS 12 and later. This is a prerelease; please report issues with your macOS version and CPU architecture.
 
-### What's new in v0.1.7
+### What's new in v0.1.8
+
+- Nodes no longer show as timed out after a configuration reload. Reloading reset the DNS connections that the new health checks were still using, so every node whose server is a domain failed at once and stayed timed out until the next check, up to five minutes later. The core now retries those lookups.
+- A port or route module saved as YAML can go back to its form; the form's choices are kept with the YAML.
+- The node menu is wider, keeps its search fixed while the list scrolls, opens at the chosen node, and can be used with the arrow keys and Return.
 
 - SOCKS5 port modules serve a selected node or group on a dedicated port, independently of routing rules and outbound mode. Use them on this Mac or the LAN, with an optional password, and copy them as a SOCKS5 URL, Clash node, or Surge node.
 - Port modules report listening status and offer a free port when another app occupies the configured one.
@@ -17,6 +21,9 @@ ClashCube for macOS 12 and later. This is a prerelease; please report issues wit
 
 ### 本次更新
 
+- 修复重载配置后节点显示“超时”的问题：重载时内核会重置 DNS 连接，打断正在进行的健康检查，导致所有以域名为服务器地址的节点同时失败，并且在下次检查前（最长 5 分钟）一直显示超时。内核现在会重试这些查询。
+- 以 YAML 保存的端口或分流模块可以返回表单编辑，原来的表单选择会随 YAML 一起保留。
+- 节点菜单加宽，搜索框固定在顶部，打开时定位到当前节点，并支持方向键和回车选择。
 - 新增 SOCKS5 端口模块：为指定节点或组提供独立端口，不受路由规则和出站模式影响。支持本机或局域网访问、可选密码，并可复制为 SOCKS5 URL、Clash 节点或 Surge 节点。
 - 端口模块显示监听状态；端口被其他应用占用时，可选择空闲端口。
 - 修复弹出菜单超出较矮窗口，以及表单内开关触发表单提交的问题。
