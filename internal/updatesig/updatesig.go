@@ -158,7 +158,7 @@ func sliceHash(b []byte) ([]byte, error) {
 		return nil, errors.New("code signature is not at the end")
 	}
 	c := bytes.Clone(b[:sigOff])
-	clear(c[sigCmd+12 : sigCmd+16])  // datasize
+	clear(c[sigCmd+12 : sigCmd+16])   // datasize
 	clear(c[linkCmd+32 : linkCmd+40]) // vmsize
 	clear(c[linkCmd+48 : linkCmd+56]) // filesize
 	h := sha256.Sum256(c)

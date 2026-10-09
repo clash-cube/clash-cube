@@ -326,6 +326,9 @@ func (b *Backend) start() error {
 // The controller starts before listeners. Do not claim a usable core or set
 // the system proxy until this process really owns the mixed port.
 func (b *Backend) waitMixedPort(ctx context.Context, port int) error {
+	if port <= 0 { // no mixed port configured: nothing to wait for
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	ticker := time.NewTicker(50 * time.Millisecond)
