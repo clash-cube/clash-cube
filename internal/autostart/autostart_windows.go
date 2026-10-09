@@ -10,6 +10,9 @@ const runKey = `Software\Microsoft\Windows\CurrentVersion\Run`
 const approvedKey = `Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run`
 const name = "ClashCube"
 
+// LoginArg marks a launch from the Run key, so the app starts in the tray.
+const LoginArg = "--login"
+
 func Enabled() bool {
 	k, err := registry.OpenKey(registry.CURRENT_USER, runKey, registry.QUERY_VALUE)
 	if err != nil {
@@ -45,7 +48,7 @@ func Set(on bool) error {
 	if err != nil {
 		return err
 	}
-	if err := k.SetStringValue(name, `"`+exe+`"`); err != nil {
+	if err := k.SetStringValue(name, `"`+exe+`" `+LoginArg); err != nil {
 		return err
 	}
 	if a, err := registry.OpenKey(registry.CURRENT_USER, approvedKey, registry.SET_VALUE); err == nil {

@@ -13,6 +13,9 @@ import (
 
 const label = "com.localhost-copilot.clashcube"
 
+// LoginArg is Windows'; the LaunchAgent starts the app without arguments.
+const LoginArg = "--login"
+
 func record() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, "Library", "LaunchAgents", label+".plist")

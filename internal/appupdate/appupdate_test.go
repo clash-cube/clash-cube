@@ -132,7 +132,7 @@ func TestDownloadChecksum(t *testing.T) {
 
 func TestVersions(t *testing.T) {
 	for _, c := range []struct {
-		a, b string
+		a, b  string
 		newer bool
 	}{
 		{"0.2.0", "v0.1.4", true},

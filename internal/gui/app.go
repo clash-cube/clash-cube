@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -117,8 +118,8 @@ func Run(version string) error {
 		return fmt.Errorf("init: %w", err)
 	}
 	s = settings.Load()
-	if os.Getenv("CLASHCUBE_HOME") == "" && s.LaunchAtLogin != autostart.Enabled() {
-		_ = setLaunchAtLogin(s.LaunchAtLogin)
+	if os.Getenv("CLASHCUBE_HOME") == "" {
+		syncLaunchAtLogin(&s)
 	}
 
 	h.panel = h.app.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -245,7 +246,8 @@ func Run(version string) error {
 		case "menu":
 			time.AfterFunc(2500*time.Millisecond, func() { application.InvokeAsync(h.tray.OpenMenu) })
 		default:
-			if runtime.GOOS == "windows" {
+			// Opened by hand, the tray icon is easy to miss; at login, stay there.
+			if runtime.GOOS == "windows" && !slices.Contains(os.Args[1:], autostart.LoginArg) {
 				h.showMain("")
 			}
 		}
@@ -266,6 +268,22 @@ func startView() string {
 }
 
 func setLaunchAtLogin(on bool) error { return autostart.Set(on) }
+
+// syncLaunchAtLogin makes the system's login item match the settings. On
+// Windows the user can also turn it off in Task Manager, which wins; an
+// entry that stays on is rewritten, for a moved executable or an older
+// entry without autostart.LoginArg.
+func syncLaunchAtLogin(s *settings.Settings) {
+	on := autostart.Enabled()
+	switch {
+	case runtime.GOOS == "windows" && s.LaunchAtLogin && !on:
+		if next, err := settings.Update(func(s *settings.Settings) { s.LaunchAtLogin = false }); err == nil {
+			*s = next
+		}
+	case s.LaunchAtLogin != on, runtime.GOOS == "windows" && on:
+		_ = setLaunchAtLogin(s.LaunchAtLogin)
+	}
+}
 
 // rememberSize keeps the window's size once a resize settles.
 func (h *host) rememberSize() {

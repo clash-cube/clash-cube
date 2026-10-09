@@ -460,6 +460,26 @@ func keys[V any](m map[string]V) []string {
 	return k
 }
 
+// Without a mixed port (0 in the settings, none in the profile) the core
+// still starts: there is no port to wait for.
+func TestStartWithoutMixedPort(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts a core")
+	}
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
+	if _, err := settings.Update(func(s *settings.Settings) { s.MixedPort = 0; s.AutoStart = false }); err != nil {
+		t.Fatal(err)
+	}
+	b := New("test", "test", []byte(second), nopSink{make(chan State, 64)})
+	if err := b.Init(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(b.Shutdown)
+	if err := b.Start(); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+}
+
 // A user rule reaches the running core ahead of the profile's; one the
 // core refuses (a GEOIP code it has no database for is fine, so use an
 // invalid CIDR) is not kept, and the previous rules stay.

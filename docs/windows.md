@@ -15,13 +15,13 @@ git submodule update --init --recursive
 
 产物为 `bin/clashcube-windows-amd64.exe` / `bin/clashcube-windows-arm64.exe`，包含前端、mihomo、Wintun 和 Windows 图标/清单。脚本使用固定版本的 go-winres，生成普通用户权限、Per Monitor V2 DPI、长路径资源。`-Dev` 保留开发工具，`-SkipFrontend` 复用已构建的前端。
 
-Windows CI 构建两个架构，在 amd64 上运行测试。macOS 构建命令保持原样。
+Windows CI 构建两个架构，在 amd64 上运行测试；`ci.yml` 在 macOS 上检查格式、bindings 并运行测试。macOS 构建命令保持原样。
 
 ## 平台行为
 
 - 数据放在 `%APPDATA%\ClashCube`，仍可用 `CLASHCUBE_HOME` 隔离开发数据。相同数据目录只允许一个 GUI 实例。
 - 系统代理使用当前用户的 WinINet LAN 设置，同时设置 HTTP、HTTPS、SOCKS 和绕过列表，并通知应用刷新；不修改 WinHTTP 机器代理。IPv4 CIDR 绕过项转换为等价通配符，IPv6 CIDR 会明确拒绝。关闭时仅清理由本应用接管的代理。
-- 登录启动使用当前用户的 Run 注册表项，识别任务管理器禁用状态。开发实例指定 `CLASHCUBE_HOME` 时不自动同步登录启动项。
+- 登录启动使用当前用户的 Run 注册表项，带 `--login` 参数启动时只留在托盘，不打开主窗口；手动打开时显示主窗口。在任务管理器中禁用后，应用会同步关闭该设置，而不是重新启用。开发实例指定 `CLASHCUBE_HOME` 时不自动同步登录启动项。
 - 主窗口使用 Windows 原生标题栏，隐藏内容区域中重复的 Logo 和名称。托盘支持左右键、面板、菜单和深浅色图标，内核运行时显示 R/G/D 模式角标；点击动画尚未实现。速度显示在托盘提示中。程序选择器列出进程路径，Windows 暂用默认应用图标。
 - 推荐全局快捷键为 Ctrl+Alt+Shift 加字母；复制终端代理命令使用 PowerShell 语法。配置文件由记事本打开，位置由文件资源管理器显示。
 - 网络变化、出口接口、端口占用和延迟使用 Windows API。Wi-Fi 名称读取受 Windows 定位权限控制；保存网络列表目前仅包含已连接的网络。计费网络状态由 Network List Manager 提供。
