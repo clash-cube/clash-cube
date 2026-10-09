@@ -40,10 +40,11 @@ export function ModuleEditor({ module, converted, onBack, onCancel, onSave }: {
   // a new one starts at its name, or at the example to fill in
   useEffect(() => { if (!module.id) setTimeout(() => (module.name ? bodyRef.current : nameRef.current)?.focus(), 60); }, []);
   const dirty = converted || name.trim() !== module.name || body !== module.body;
-  // going back drops the YAML's own edits, so a changed one asks first
+  // going back drops the YAML's own edits, so a changed one asks first;
+  // a saved one may have been edited before, so it always asks
   const [armed, setArmed] = useState(false);
   useEffect(() => { if (!armed) return; const id = setTimeout(() => setArmed(false), 3000); return () => clearTimeout(id); }, [armed]);
-  const back = () => (body === module.body || armed ? onBack!(name.trim() || module.name) : setArmed(true));
+  const back = () => ((converted && body === module.body) || armed ? onBack!(name.trim() || module.name) : setArmed(true));
   const submit = async () => {
     if (busy || pending || !name.trim() || problem) return;
     setBusy(true);
@@ -95,7 +96,9 @@ export const yamlKind: ModuleKind = {
   id: "yaml",
   is: () => true,
   Summary,
-  Editor: ({ module, onCancel, onSave }) => <ModuleEditor module={module} onCancel={onCancel} onSave={onSave} />,
+  // YAML saved from a kind's form can go back to it, made as it was then
+  Editor: ({ module, onCancel, onSave }) => <ModuleEditor module={module} onCancel={onCancel} onSave={onSave}
+    onBack={module.was ? (name) => onSave({ ...module.was!, id: module.id, name, enabled: module.enabled, profile: module.profile, body: "", was: null }).catch(toastError) : undefined} />,
   useNew: (mods) => {
     const t = useT();
     const [templates, setTemplates] = useState<Template[]>([]);

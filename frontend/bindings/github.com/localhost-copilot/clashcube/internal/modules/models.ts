@@ -26,6 +26,12 @@ export interface Module {
      * a node or group served on a SOCKS5 port of its own
      */
     "port"?: Port | null;
+
+    /**
+     * for YAML taken from a kind's form, the kind it was: going back to the
+     * form restores it, dropping the YAML
+     */
+    "was"?: Module | null;
 }
 
 /**

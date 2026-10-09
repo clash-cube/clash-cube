@@ -119,3 +119,30 @@ func TestOrderedPutsTrailingLast(t *testing.T) {
 		t.Errorf("order = %v", names)
 	}
 }
+
+func TestWasKeepsTheForm(t *testing.T) {
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
+	port := &Module{Name: "old", Body: "x: 1", Port: &Port{Port: 7891, Target: map[string]string{"a": "x"}}}
+	if err := Save([]Module{{Name: "yaml", Body: "a: 1", Was: port}}); err != nil {
+		t.Fatal(err)
+	}
+	m := List()[0]
+	if m.Kind() != nil || m.Was == nil || m.Was.Port == nil || m.Was.Port.Port != 7891 || m.Was.Name != "" || m.Was.Body != "" {
+		t.Fatalf("got %+v, was %+v", m, m.Was)
+	}
+	if err := CopyProfile("a", "b"); err != nil || List()[0].Was.Port.Target["b"] != "x" {
+		t.Errorf("copy: %v %+v", err, List()[0].Was.Port)
+	}
+	if err := ForgetProfile("a"); err != nil || List()[0].Was.Port.Target["a"] != "" {
+		t.Errorf("forget: %v %+v", err, List()[0].Was.Port)
+	}
+	for _, bad := range []Module{
+		{Name: "both", Port: &Port{Port: 1, Target: map[string]string{"a": "x"}}, Was: port},
+		{Name: "empty", Body: "a: 1", Was: &Module{}},
+		{Name: "nested", Body: "a: 1", Was: &Module{Port: port.Port, Was: port}},
+	} {
+		if Save([]Module{bad}) == nil {
+			t.Errorf("%s saved", bad.Name)
+		}
+	}
+}

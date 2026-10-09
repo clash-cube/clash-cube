@@ -50,6 +50,7 @@ func Ordered(ms []Module) []Module {
 }
 
 // Kind is the kind the module is made from, nil for one written as YAML.
+// A YAML module's Was is not its kind: it is what going back would make.
 func (m Module) Kind() Kind {
 	switch {
 	case m.Route != nil:
@@ -70,6 +71,14 @@ func (m Module) withKind(k Kind) Module {
 		m.Port = k
 	}
 	return m
+}
+
+// wasKind is the kind a YAML module was taken from, nil for none.
+func (m Module) wasKind() Kind {
+	if m.Was == nil {
+		return nil
+	}
+	return m.Was.Kind()
 }
 
 // kinds counts how many kinds m is made from; more than one is refused.
@@ -97,11 +106,19 @@ func CopyProfile(from, to string) error {
 			if k != nil {
 				c = c.withKind(k.Only(from, to))
 			}
+			if w := m.Was; w != nil {
+				was := w.withKind(w.Kind().Only(from, to))
+				c.Was = &was
+			}
 			copies = append(copies, c)
 			continue
 		}
-		if k != nil && m.Profile == "" && k.CopyProfile(from, to) {
-			changed = true
+		if m.Profile == "" {
+			for _, k := range []Kind{k, m.wasKind()} {
+				if k != nil && k.CopyProfile(from, to) {
+					changed = true
+				}
+			}
 		}
 	}
 	if !changed && len(copies) == 0 {
@@ -121,8 +138,10 @@ func ForgetProfile(id string) error {
 			changed = true
 			continue
 		}
-		if k := m.Kind(); k != nil && k.ForgetProfile(id) {
-			changed = true
+		for _, k := range []Kind{m.Kind(), m.wasKind()} {
+			if k != nil && k.ForgetProfile(id) {
+				changed = true
+			}
 		}
 		kept = append(kept, m)
 	}

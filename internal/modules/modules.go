@@ -34,6 +34,9 @@ type Module struct {
 	Route *Route `json:"route,omitempty"`
 	// a node or group served on a SOCKS5 port of its own
 	Port *Port `json:"port,omitempty"`
+	// for YAML taken from a kind's form, the kind it was: going back to the
+	// form restores it, dropping the YAML
+	Was *Module `json:"was,omitempty"`
 }
 
 // Owned is the keys the app sets itself: a module's are overridden (the
@@ -66,10 +69,16 @@ func (m Module) Check() error {
 		return fmt.Errorf("%s: a module is made from one kind", strings.TrimSpace(m.Name))
 	}
 	if k := m.Kind(); k != nil {
+		if m.Was != nil {
+			return fmt.Errorf("%s: only YAML is taken from a form", strings.TrimSpace(m.Name))
+		}
 		if err := k.Check(); err != nil {
 			return fmt.Errorf("%s: %w", strings.TrimSpace(m.Name), err)
 		}
 		return nil
+	}
+	if m.Was != nil && (m.Was.kinds() != 1 || m.Was.Was != nil) {
+		return fmt.Errorf("%s: a module's form is one kind", strings.TrimSpace(m.Name))
 	}
 	if _, err := Parse(m.Body); err != nil {
 		return fmt.Errorf("%s: %w", strings.TrimSpace(m.Name), err)
@@ -135,6 +144,10 @@ func Save(ms []Module) error {
 		ms[i].Name = strings.TrimSpace(ms[i].Name)
 		if k := ms[i].Kind(); k != nil {
 			ms[i].Body, _ = k.Generate("", nil)
+		}
+		if w := ms[i].Was; w != nil {
+			was := Module{}.withKind(w.Kind())
+			ms[i].Was = &was
 		}
 		if ms[i].ID == "" || seen[ms[i].ID] {
 			ms[i].ID = newID()

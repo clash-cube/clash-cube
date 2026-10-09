@@ -98,7 +98,7 @@ core/runtime.yaml      实际交给 core 的配置（0600）
 - 模块按列表从上到下合并，每个的规则都前插，所以后面的优先。通用的“AI 服务”应放在 OpenAI、Claude 上方。
 
 ### 3.2 模块种类
-服务分流和节点端口都是“由表单生成的模块”，统一实现 `modules.Kind`：`Check`、`Generate(profile, config)`（对着已合并到这一步的配置生成 YAML）、按配置 ID 复制或删除选择（`Only`、`CopyProfile`、`ForgetProfile`）。`Module` 上每种一个可空字段（`route`、`port`），绑定里类型完整，`modules.json` 无需迁移；`Module.Kind()` 返回设置的那一个，没有就是 YAML。`runtimecfg`、配置的复制和删除只通过接口调用。没有规则、顺序无关的种类（实现 `trailing()`）排在所有模块之后合并（`modules.Ordered`），这样能引用任何模块生成的策略组。前端对应 `components/modules/registry.ts`：每种一个 `ModuleKind`（行的说明、行右侧控件、编辑器、新建菜单条目、能否复制一份），列表本身不认识具体种类。表单都可以“以 YAML 编辑”（`ModuleBody` 按当前配置生成）。
+服务分流和节点端口都是“由表单生成的模块”，统一实现 `modules.Kind`：`Check`、`Generate(profile, config)`（对着已合并到这一步的配置生成 YAML）、按配置 ID 复制或删除选择（`Only`、`CopyProfile`、`ForgetProfile`）。`Module` 上每种一个可空字段（`route`、`port`），绑定里类型完整，`modules.json` 无需迁移；`Module.Kind()` 返回设置的那一个，没有就是 YAML。`runtimecfg`、配置的复制和删除只通过接口调用。没有规则、顺序无关的种类（实现 `trailing()`）排在所有模块之后合并（`modules.Ordered`），这样能引用任何模块生成的策略组。前端对应 `components/modules/registry.ts`：每种一个 `ModuleKind`（行的说明、行右侧控件、编辑器、新建菜单条目、能否复制一份），列表本身不认识具体种类。表单都可以“以 YAML 编辑”（`ModuleBody` 按当前配置生成）；保存后的 YAML 模块在 `was` 里留着原来的表单选择（只留种类字段），可以“返回表单编辑”换回原来的模块，丢掉 YAML。`was` 里的选择和种类一样随配置复制、删除。
 
 ### 3.3 节点端口
 一个模块一个端口：把一个节点或策略组开成单独的 SOCKS5 端口，不经过规则和出站模式。节点按配置 ID 保存，当前配置没选就不开端口。

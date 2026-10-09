@@ -110,10 +110,10 @@ export function NodeSelect({ value, nodes, groups, none, placeholder, title, ali
 }
 
 // asYAML is the YAML module a kind's module makes over the profile in
-// use, to go on editing freely.
+// use, to go on editing freely. It keeps the kind it was, to go back to.
 export async function asYAML(m: Module): Promise<Module> {
   const body = await P.ModuleBody(m);
-  return { id: m.id, name: m.name, enabled: m.enabled, profile: m.profile, body };
+  return { id: m.id, name: m.name, enabled: m.enabled, profile: m.profile, body, was: m };
 }
 
 // FormProps is a kind's form: form is its state, kept while the YAML it
