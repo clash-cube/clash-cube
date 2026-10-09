@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useT } from "../../i18n";
 import { Profiles as P } from "../../api";
 import type { Module } from "../../../bindings/github.com/localhost-copilot/clashcube/internal/modules/models";
@@ -59,7 +59,8 @@ export function NodePicker({ group, onPick }: { group: Group; onPick: (name: str
 
 // NodeSelect chooses one of the profile's nodes, or groups when given:
 // from a menu with each node's latency, searched when long. none labels
-// the choice of nothing; without it there is none.
+// the choice of nothing; without it there is none. It opens at the
+// choice made; the arrow keys move through what is shown and Enter takes it.
 export function NodeSelect({ value, nodes, groups, none, placeholder, title, align, onChange }: {
   value: string; nodes: Node[] | null; groups?: string[]; none?: string; placeholder?: string; title: string; align?: "start" | "end";
   onChange: (name: string) => void;
@@ -67,13 +68,44 @@ export function NodeSelect({ value, nodes, groups, none, placeholder, title, ali
   const t = useT();
   const [at, setAt] = useState<HTMLElement | null>(null);
   const [query, setQuery] = useState("");
+  const [active, setActive] = useState(-1);
+  const listRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const now = nodes?.find((n) => n.name === value);
   const gone = !!value && !!nodes && !now && !groups?.includes(value);
   const match = (name: string) => !query || name.toLowerCase().includes(query.toLowerCase());
   const shown = (nodes ?? []).filter((n) => match(n.name));
   const shownGroups = (groups ?? []).filter(match);
+  const searching = (nodes?.length ?? 0) + (groups?.length ?? 0) > 8;
+  // every choice shown, in order, as the keys move through them
+  const choices = [...(none !== undefined && !query ? [""] : []), ...shown.map((n) => n.name), ...shownGroups];
   const choose = (name: string) => { setAt(null); setQuery(""); if (name !== value) onChange(name); };
   const close = () => { setAt(null); setQuery(""); };
+  // opened, the choice made is in view and the keys start from it
+  useEffect(() => {
+    if (!at) return;
+    setActive(choices.indexOf(value));
+    if (!searching) menuRef.current?.focus();
+    requestAnimationFrame(() => listRef.current?.querySelector(".on")?.scrollIntoView({ block: "center" }));
+  }, [at]);
+  // searching keys from the first match
+  useEffect(() => { if (at && query) setActive(choices.length ? 0 : -1); }, [query]);
+  useEffect(() => { listRef.current?.querySelector(".act")?.scrollIntoView({ block: "nearest" }); }, [active]);
+  const key = (e: React.KeyboardEvent) => {
+    const d = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+    if (d) { e.preventDefault(); setActive((i) => Math.max(0, Math.min(choices.length - 1, i + d))); return; }
+    if (e.key === "Enter") { e.preventDefault(); const c = choices[active] ?? choices[0]; if (c !== undefined) choose(c); }
+  };
+  const item = (name: string, label: ReactNode, delay?: number) => {
+    const i = choices.indexOf(name);
+    return (
+      <button type="button" key={(delay === undefined && name ? "g:" : "") + name} className={(name === value ? "on" : "") + (i === active ? " act" : "")}
+        onMouseMove={() => i !== active && setActive(i)} onClick={() => choose(name)}>
+        <span className="nname">{label}</span>
+        {delay !== undefined && <span className={"delay " + delayClass(delay)}>{fmtDelay(delay, t)}</span>}
+      </button>
+    );
+  };
   return (
     <>
       <button type="button" className={"node-pick" + (value ? "" : " unset") + (gone ? " warn" : "") + (at ? " on" : "")} disabled={nodes === null && !value}
@@ -84,25 +116,18 @@ export function NodeSelect({ value, nodes, groups, none, placeholder, title, ali
           : now && now.delay !== 0 && <span className={"delay " + delayClass(now.delay)}>{fmtDelay(now.delay, t)}</span>}
         <Chevron size={10} className="chev" />
       </button>
-      <Popover anchor={at} open={!!at} onClose={close} align={align} width={280}>
-        <div className="menu node-menu upstream-menu" onClick={(e) => e.stopPropagation()}>
-          {(nodes?.length ?? 0) + (groups?.length ?? 0) > 8 && <label className="search"><Search size={13} /><input autoFocus placeholder={t("Search nodes")} value={query} onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); const first = shown[0]?.name ?? shownGroups[0]; if (first) choose(first); } }} /></label>}
-          {none !== undefined && !query && <><button type="button" className={value ? "" : "on"} onClick={() => choose("")}><span className="nname">{none}</span></button><hr /></>}
-          {groups && shown.length > 0 && <div className="mhead">{t("Nodes")}</div>}
-          {shown.map((n) => (
-            <button type="button" key={n.name} className={n.name === value ? "on" : ""} onClick={() => choose(n.name)}>
-              <span className="nname">{n.name}</span>
-              <span className={"delay " + delayClass(n.delay)}>{fmtDelay(n.delay, t)}</span>
-            </button>
-          ))}
-          {shownGroups.length > 0 && <div className="mhead">{t("Groups")}</div>}
-          {shownGroups.map((g) => (
-            <button type="button" key={"g:" + g} className={g === value ? "on" : ""} onClick={() => choose(g)}>
-              <span className="nname">{g}</span>
-            </button>
-          ))}
-          {nodes === null && <div className="mnote">{t("Start the core to list the profile's nodes.")}</div>}
+      <Popover anchor={at} open={!!at} onClose={close} align={align} width={340}>
+        <div ref={menuRef} tabIndex={-1} className="menu node-menu node-select" onClick={(e) => e.stopPropagation()} onKeyDown={key}>
+          {searching && <label className="search"><Search size={13} /><input autoFocus placeholder={t("Search nodes")} value={query} onChange={(e) => setQuery(e.target.value)} /></label>}
+          <div ref={listRef} className="ns-list" onMouseLeave={() => setActive(-1)}>
+            {none !== undefined && !query && <>{item("", none)}<hr /></>}
+            {groups && shown.length > 0 && <div className="mhead">{t("Nodes")}</div>}
+            {shown.map((n) => item(n.name, n.name, n.delay))}
+            {shownGroups.length > 0 && <div className="mhead">{t("Groups")}</div>}
+            {shownGroups.map((g) => item(g, g))}
+            {nodes !== null && query && !choices.length && <div className="mnote">{t("No matching nodes")}</div>}
+            {nodes === null && <div className="mnote">{t("Start the core to list the profile's nodes.")}</div>}
+          </div>
         </div>
       </Popover>
     </>

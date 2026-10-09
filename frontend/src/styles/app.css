@@ -772,9 +772,23 @@ select.input { padding-right: 6px; }
 .route-path b { font-weight: 500; color: var(--fg-2); }
 .route-path .sep { color: var(--faint); }
 .route-path.err { color: var(--red); }
-.upstream-menu .search { position: sticky; top: -5px; z-index: 1; min-width: 0; height: 28px; margin: -5px -5px 4px; padding: 0 14px; border: 0; border-bottom: 1px solid var(--line-2); border-radius: 0; background: var(--pop-bg); box-shadow: none; }
-.upstream-menu .search:focus-within { box-shadow: none; }
-.upstream-menu .mnote { padding: 6px 9px; font-size: 12px; color: var(--muted); }
+/* a node to choose: the search stays put over the list that scrolls; the
+   row the pointer or the arrow keys are on is lit, not each one hovered */
+.menu.node-select { max-height: 360px; overflow: hidden; padding: 0; outline: none; }
+.node-select .search { flex: none; min-width: 0; height: 34px; padding: 0 14px; border: 0; border-bottom: 1px solid var(--line-2); border-radius: 0; background: none; box-shadow: none; }
+.node-select .search:focus-within { box-shadow: none; }
+.node-select .ns-list { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 5px; scroll-padding: 5px; }
+.node-select .ns-list::-webkit-scrollbar { width: 10px; }
+.node-select .ns-list::-webkit-scrollbar-track { background: transparent; margin: 4px 0; }
+.node-select .ns-list::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 999px; background: color-mix(in srgb, var(--fg) 14%, transparent) padding-box; min-height: 32px; }
+.node-select .ns-list::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--fg) 30%, transparent); }
+.node-select button { flex: none; }
+.node-select button:hover { background: none; color: inherit; }
+.node-select button.act { background: var(--accent); color: var(--accent-fg); }
+.node-select button.act .delay { background: rgba(255, 255, 255, .2); color: inherit; }
+.node-select .delay.fail { background: none; }
+.node-select .mhead { padding: 6px 9px 3px; }
+.node-select .mnote { padding: 8px 9px; font-size: 12px; color: var(--muted); }
 .pick-list { max-height: 216px; overflow-y: auto; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--line-2); padding: 3px; }
 .pick-row { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: 6px; font-size: 12.5px; transition: background .1s; }
 .pick-row:hover { background: var(--card-2); }

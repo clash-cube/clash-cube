@@ -53,7 +53,7 @@ const zh: Record<string, string> = {
   "Click again to close {n}": "再次点击关闭 {n} 条", "Filter": "筛选", "View": "视图", "Group by": "分组", "Protocol": "协议",
   "Clear filters": "清除筛选", "Start the core to see connections.": "启动内核后即可查看连接。",
   "Connections through the core appear here.": "经过内核的连接会显示在这里。",
-  "Search connections": "搜索连接", "No matching connections": "没有匹配的连接",
+  "Search connections": "搜索连接", "No matching connections": "没有匹配的连接", "No matching nodes": "没有匹配的节点",
   "Sort by": "排序方式", "Start time": "开始时间", "Download speed": "下载速度", "Upload speed": "上传速度",
   "Downloaded": "累计下载", "Uploaded": "累计上传", "Ascending": "升序", "Descending": "降序",
   "Status": "状态", "Close details": "关闭详情",
