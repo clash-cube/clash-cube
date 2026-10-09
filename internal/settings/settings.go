@@ -98,7 +98,7 @@ func Defaults() Settings {
 		Mode:           "rule",
 		MixedPort:      7890,
 		LogLevel:       "info",
-		TunStack:       "mixed",
+		TunStack:       "mips",
 		ICMPForwarding: true,
 		UnifiedDelay:   true,
 		Bypass: []string{

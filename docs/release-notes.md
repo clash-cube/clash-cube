@@ -1,16 +1,14 @@
 ClashCube for macOS 12 and later and Windows 10/11. This is a prerelease; please report issues with your OS version and CPU architecture.
 
-### What's new in v0.1.9
+### What's new in v0.1.10
 
-- Windows desktop support for amd64 and arm64, including the tray, system proxy, login startup, global shortcuts, and network inspection. Enhanced Mode uses a UAC-authorized helper for the current app session.
-- Windows login startup stays in the tray instead of opening the main window. Disabling startup in Task Manager is now respected.
-- The core starts correctly when no mixed port is configured, on both macOS and Windows.
+- Updated mihomo to v1.19.29-openconnect.10, including upstream fixes that preserve fake-IP allocations across configuration reloads and prevent abandoned DoH dials from piling up, plus TUN, WireGuard, and OpenConnect updates.
+- MIPS is now the default TUN stack for new settings. Existing saved stack choices are preserved.
 
 ### 本次更新
 
-- 新增 Windows 桌面支持，提供 amd64 和 arm64 版本，支持托盘、系统代理、登录启动、全局快捷键和网络信息。增强模式通过 UAC 授权助手，仅在当前应用会话内运行。
-- 修复 Windows 登录启动时打开主窗口的问题，现在只留在托盘；在任务管理器中禁用启动后，应用会尊重该选择。
-- 修复未配置 mixed 端口时内核无法启动的问题，适用于 macOS 和 Windows。
+- 更新 mihomo 至 v1.19.29-openconnect.10，包含配置重载时保留 fake-IP 分配状态、避免已放弃的 DoH 拨号堆积等上游修复，以及 TUN、WireGuard 和 OpenConnect 更新。
+- 新设置默认使用 MIPS TUN 协议栈，已保存的协议栈选择保持不变。
 
 ### Downloads
 
