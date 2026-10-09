@@ -19,6 +19,12 @@ env:
   MACOSX_DEPLOYMENT_TARGET: "12.0"
 
 tasks:
+  windows:
+    summary: Build a Windows desktop executable (PowerShell, Go and pnpm required)
+    platforms: [windows]
+    cmds:
+      - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows.ps1
+
   deps:
     summary: Fetch the mihomo submodule and frontend packages
     cmds:

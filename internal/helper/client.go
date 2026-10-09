@@ -12,14 +12,6 @@ import (
 	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
 )
 
-func dial(sock string) (*net.UnixConn, error) {
-	c, err := net.DialTimeout("unix", sock, 2*time.Second)
-	if err != nil {
-		return nil, err
-	}
-	return c.(*net.UnixConn), nil
-}
-
 func call(sock string, req Request) (Response, error) {
 	return callWithin(sock, req, 5*time.Second)
 }
@@ -75,7 +67,7 @@ type Runner struct {
 	Test_ func(home, config string) error
 
 	mu   sync.Mutex
-	conn *net.UnixConn
+	conn net.Conn
 	done chan error
 }
 

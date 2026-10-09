@@ -1,11 +1,14 @@
 package gui
 
 import (
+	"crypto/sha256"
 	"embed"
 	"fmt"
 	"io/fs"
 	"log"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -14,6 +17,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 
+	"github.com/localhost-copilot/clashcube/internal/appdir"
 	"github.com/localhost-copilot/clashcube/internal/autostart"
 	"github.com/localhost-copilot/clashcube/internal/backend"
 	"github.com/localhost-copilot/clashcube/internal/core"
@@ -49,10 +53,14 @@ type host struct {
 	menu  *trayMenu
 	keys  *shortcuts
 
-	panelHeight int
-	closing     atomic.Bool // a full-screen main window leaving it, to hide after
-	importMu    sync.Mutex
-	imports     []profiles.ImportRequest
+	panelHeight    int
+	closing        atomic.Bool // a full-screen main window leaving it, to hide after
+	mainReady      chan struct{}
+	mainReadyOnce  sync.Once
+	panelReady     chan struct{}
+	panelReadyOnce sync.Once
+	importMu       sync.Mutex
+	imports        []profiles.ImportRequest
 
 	trayMu           sync.Mutex
 	trayOn           bool
@@ -62,35 +70,56 @@ type host struct {
 
 // Run starts the GUI.
 func Run(version string) error {
-	h := &host{}
+	h := &host{mainReady: make(chan struct{}), panelReady: make(chan struct{})}
 	h.keys = &shortcuts{h: h, set: map[string]string{}}
 	h.b = backend.New(version, core.Version(), defaultYAML, sink{h})
-	if err := h.b.Init(); err != nil {
-		return fmt.Errorf("init: %w", err)
-	}
 	s := settings.Load()
-	if s.LaunchAtLogin != autostart.Enabled() {
-		_ = setLaunchAtLogin(s.LaunchAtLogin)
+	var instance *application.SingleInstanceOptions
+	if runtime.GOOS == "windows" {
+		root, _ := filepath.Abs(appdir.Root())
+		id := sha256.Sum256([]byte(strings.ToLower(root)))
+		instance = &application.SingleInstanceOptions{
+			UniqueID: fmt.Sprintf("clashcube-%x", id[:16]),
+			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
+				application.InvokeAsync(func() {
+					if h.main != nil {
+						h.showMain("")
+					}
+				})
+			},
+		}
 	}
 
 	assets, _ := fs.Sub(dist, "dist")
 	h.app = application.New(application.Options{
-		Name:        "ClashCube",
-		Description: "A menu bar app for mihomo",
+		Name:           "ClashCube",
+		Icon:           trayIcon,
+		SingleInstance: instance,
+		Description:    "A menu bar app for mihomo",
 		Services: []application.Service{
 			application.NewService(&AppService{h}),
 			application.NewService(&ProxyService{h: h}),
 			application.NewService(&ProfileService{h}),
 			application.NewService(&SettingsService{h}),
 		},
-		Assets: application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
-		Mac:    application.MacOptions{ActivationPolicy: dockPolicy(s.Dock == "always")},
+		Assets:  application.AssetOptions{Handler: application.AssetFileServerFS(assets)},
+		Mac:     application.MacOptions{ActivationPolicy: dockPolicy(s.Dock == "always")},
+		Windows: application.WindowsOptions{WebviewUserDataPath: filepath.Join(appdir.Root(), "webview")},
 		OnShutdown: func() {
 			h.b.Shutdown()
 			h.installOnQuit()
 		},
 		ErrorHandler: func(err error) { log.Println("clashcube:", err) },
 	})
+	// Acquire the instance lock before touching shared settings or launching
+	// background work; a second Windows instance simply raises the first.
+	if err := h.b.Init(); err != nil {
+		return fmt.Errorf("init: %w", err)
+	}
+	s = settings.Load()
+	if os.Getenv("CLASHCUBE_HOME") == "" && s.LaunchAtLogin != autostart.Enabled() {
+		_ = setLaunchAtLogin(s.LaunchAtLogin)
+	}
 
 	h.panel = h.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Name:            "panel",
@@ -111,6 +140,13 @@ func Run(version string) error {
 		},
 	})
 	h.panelHeight = panelStart
+	if runtime.GOOS == "windows" {
+		h.panel.OnWindowEvent(events.Windows.WebViewNavigationCompleted, func(*application.WindowEvent) {
+			h.panelReadyOnce.Do(func() { close(h.panelReady) })
+		})
+	} else {
+		close(h.panelReady)
+	}
 
 	width, height := 900, 620
 	if len(s.Window) == 2 && s.Window[0] >= 680 && s.Window[1] >= 460 {
@@ -133,6 +169,13 @@ func Run(version string) error {
 		BackgroundColour: application.NewRGB(244, 244, 246),
 	})
 	h.rememberSize()
+	if runtime.GOOS == "windows" {
+		h.main.OnWindowEvent(events.Windows.WebViewNavigationCompleted, func(*application.WindowEvent) {
+			h.mainReadyOnce.Do(func() { close(h.mainReady) })
+		})
+	} else {
+		close(h.mainReady)
+	}
 	// closing the window keeps the app in the menu bar
 	h.main.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		e.Cancel()
@@ -161,7 +204,7 @@ func Run(version string) error {
 	})
 
 	h.tray = h.app.SystemTray.New()
-	h.tray.SetTemplateIcon(trayIconOff)
+	setTrayIcon(h.tray, trayIconOff)
 	h.tray.SetTooltip("ClashCube")
 	h.menu = newTrayMenu(h)
 	h.tray.SetMenu(h.app.NewMenu()) // replaced by the first rebuild
@@ -169,12 +212,16 @@ func Run(version string) error {
 	// from the panel, so HideOnFocusLost wouldn't hide it
 	h.tray.OnRightClick(func() {
 		h.tray.HideWindow()
+		if runtime.GOOS == "windows" {
+			h.menu.tracking(true)
+			defer h.menu.tracking(false)
+		}
 		h.tray.OpenMenu()
 	})
 	h.tray.AttachWindow(h.panel).WindowOffset(6)
 	h.tray.OnClick(func() {
 		trayPlay()
-		h.tray.ToggleWindow()
+		h.showPanel(true)
 	})
 
 	h.app.Event.OnApplicationEvent(events.Common.SystemDidWake, func(*application.ApplicationEvent) {
@@ -184,7 +231,9 @@ func Run(version string) error {
 		h.receiveImportLink(e.Context().URL())
 	})
 	h.app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(*application.ApplicationEvent) {
-		h.startNotifications()
+		if settings.Load().Notify {
+			application.InvokeAsync(h.startNotifications)
+		}
 		h.menu.refresh()
 		h.keys.apply()
 		go h.b.Boot()
@@ -192,9 +241,13 @@ func Run(version string) error {
 		case "main":
 			h.showMain("")
 		case "panel":
-			h.tray.ShowWindow()
+			h.showPanel(false)
 		case "menu":
 			time.AfterFunc(2500*time.Millisecond, func() { application.InvokeAsync(h.tray.OpenMenu) })
+		default:
+			if runtime.GOOS == "windows" {
+				h.showMain("")
+			}
 		}
 	})
 	return h.app.Run()
@@ -235,6 +288,13 @@ func (h *host) rememberSize() {
 }
 
 func (h *host) showMain(view string) {
+	select {
+	case <-h.mainReady:
+	default:
+		// As in magpie, wait for WebView2's first navigation, not ApplicationStarted.
+		go func() { <-h.mainReady; application.InvokeAsync(func() { h.showMain(view) }) }()
+		return
+	}
 	h.closing.Store(false)
 	h.panel.Hide()
 	if view != "" {
@@ -244,6 +304,19 @@ func (h *host) showMain(view string) {
 	h.main.Show()
 	h.main.Focus()
 	activateApp()
+}
+
+func (h *host) showPanel(toggle bool) {
+	select {
+	case <-h.panelReady:
+		if toggle {
+			h.tray.ToggleWindow()
+		} else {
+			h.tray.ShowWindow()
+		}
+	default:
+		go func() { <-h.panelReady; application.InvokeAsync(func() { h.showPanel(toggle) }) }()
+	}
 }
 
 func (h *host) hideMain() {
@@ -306,7 +379,7 @@ func (h *host) stateChanged(st backend.State) {
 			return
 		}
 		if changed {
-			h.tray.SetTemplateIcon(icon)
+			setTrayIcon(h.tray, icon)
 		}
 		setTray(on, up, down, letter)
 		if h.menu != nil {

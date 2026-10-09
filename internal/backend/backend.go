@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -144,6 +145,15 @@ func (b *Backend) Init() error {
 		return err
 	}
 	s := settings.Load()
+	// Windows elevation lasts only for the GUI session. Never start a local
+	// unprivileged core with a TUN setting carried over from yesterday.
+	if runtime.GOOS == "windows" && (s.Tun || s.ServiceMode) {
+		var err error
+		s, err = settings.Update(func(s *settings.Settings) { s.Tun = false; s.ServiceMode = false })
+		if err != nil {
+			return err
+		}
+	}
 	if len(profiles.List()) == 0 {
 		p, err := profiles.AddDefault(b.DefaultYAML)
 		if err != nil {
@@ -298,6 +308,11 @@ func (b *Backend) start() error {
 	if err := b.core.Start(ctx); err != nil {
 		return err
 	}
+	if err := b.waitMixedPort(ctx, settings.Load().MixedPort); err != nil {
+		_ = b.core.Stop()
+		b.reportCrash(err)
+		return err
+	}
 	b.startStreams()
 	b.watchPorts()
 	if settings.Load().SystemProxy {
@@ -306,6 +321,34 @@ func (b *Backend) start() error {
 		}
 	}
 	return nil
+}
+
+// The controller starts before listeners. Do not claim a usable core or set
+// the system proxy until this process really owns the mixed port.
+func (b *Backend) waitMixedPort(ctx context.Context, port int) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		c := b.core.Client()
+		if c == nil {
+			return errors.New("core stopped before the mixed port opened")
+		}
+		ports, err := c.Listening(ctx)
+		if err == nil {
+			for _, listening := range ports {
+				if listening == port {
+					return nil
+				}
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("core did not open mixed port %d: %w", port, ctx.Err())
+		case <-ticker.C:
+		}
+	}
 }
 
 // reportCrash records a failure before the core ran (a bad config).

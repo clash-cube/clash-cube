@@ -4,10 +4,12 @@ go 1.25.0
 
 require (
 	github.com/dlclark/regexp2 v1.12.0
+	github.com/go-ole/go-ole v1.3.0
 	github.com/metacubex/chi v0.1.1
 	github.com/metacubex/http v0.1.7
 	github.com/metacubex/mihomo v0.0.0
 	github.com/oschwald/maxminddb-golang v1.12.0
+	github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55
 	github.com/wailsapp/wails/v3 v3.0.0-beta.27
 	go.uber.org/automaxprocs v1.6.0
 	go.yaml.in/yaml/v3 v3.0.5
@@ -40,7 +42,6 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/gaukas/godicttls v0.0.4 // indirect
-	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
@@ -133,7 +134,6 @@ require (
 	github.com/smallstep/pkcs7 v0.1.1 // indirect
 	github.com/stangelandcl/ppmd v0.1.1 // indirect
 	github.com/tailscale/certstore v0.1.1-0.20260409135935-3638fb84b77d // indirect
-	github.com/tailscale/go-winio v0.0.0-20231025203758-c4f33415bf55 // indirect
 	github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a // indirect
 	github.com/tailscale/peercred v0.0.0-20250107143737-35a0c7bd7edc // indirect
 	github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923 // indirect

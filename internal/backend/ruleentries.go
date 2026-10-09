@@ -202,6 +202,11 @@ func providerPath(p providerSchema) (string, error) {
 		path = filepath.Join("rules", hex.EncodeToString(sum[:]))
 	}
 	if !filepath.IsAbs(path) {
+		// Windows drive-relative and root-relative paths are not absolute,
+		// but joining them to home would change which file the user named.
+		if !filepath.IsLocal(path) {
+			return "", fmt.Errorf("%s is outside the core's home", p.Path)
+		}
 		path = filepath.Join(home, path)
 	}
 	path = filepath.Clean(path)

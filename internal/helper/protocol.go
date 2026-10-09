@@ -8,13 +8,6 @@
 // sending {"op":"stop"} on it, stops the core.
 package helper
 
-const (
-	Label      = "com.localhost-copilot.clashcube.helper"
-	SocketPath = "/var/run/clashcube-helper.sock"
-	BinaryPath = "/Library/PrivilegedHelperTools/" + Label
-	PlistPath  = "/Library/LaunchDaemons/" + Label + ".plist"
-)
-
 type Request struct {
 	Op     string `json:"op"` // version | start | stop | update
 	Home   string `json:"home,omitempty"`

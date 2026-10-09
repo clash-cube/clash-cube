@@ -6,7 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os/exec"
+
 	"regexp"
 	"strings"
 	"sync"
@@ -125,7 +125,7 @@ func boundGetter(ifIndex int) func(ctx context.Context, u string) string {
 	d := &net.Dialer{Control: func(_, _ string, rc syscall.RawConn) error {
 		var serr error
 		err := rc.Control(func(fd uintptr) {
-			serr = syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_BOUND_IF, ifIndex)
+			serr = bindInterface(fd, ifIndex)
 		})
 		return errors.Join(err, serr)
 	}}
@@ -149,40 +149,4 @@ func boundGetter(ifIndex int) func(ctx context.Context, u string) string {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return string(body)
 	}
-}
-
-var interfaceRe = regexp.MustCompile(`interface:\s*(\S+)`)
-
-// physicalInterface is the interface the router is reached through; under
-// TUN the default route is the tunnel, but the gateway stays on the LAN.
-func physicalInterface() string {
-	gw := gateway()
-	if gw == "" {
-		return ""
-	}
-	out, err := exec.Command("/sbin/route", "-n", "get", gw).Output()
-	if err != nil {
-		return ""
-	}
-	if m := interfaceRe.FindSubmatch(out); m != nil && !strings.HasPrefix(string(m[1]), "utun") {
-		return string(m[1])
-	}
-	return ""
-}
-
-var hardwarePortRe = regexp.MustCompile(`\(Hardware Port: ([^,]+), Device: ([^)]+)\)`)
-
-// serviceOf is the network service on a device, as System Settings names
-// it ("Wi-Fi"); "" when none is.
-func serviceOf(device string) string {
-	out, err := exec.Command("/usr/sbin/networksetup", "-listnetworkserviceorder").Output()
-	if err != nil {
-		return ""
-	}
-	for _, m := range hardwarePortRe.FindAllStringSubmatch(string(out), -1) {
-		if m[2] == device {
-			return m[1]
-		}
-	}
-	return ""
 }

@@ -1,3 +1,5 @@
+//go:build darwin
+
 // Package sysproxy sets macOS's system proxy on every enabled network
 // service, through networksetup (which an admin user may run without root).
 package sysproxy

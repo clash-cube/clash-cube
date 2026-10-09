@@ -51,7 +51,7 @@ func served(profile string, ms []modules.Module) []modules.Port {
 // is enough to find a holder and asks the firewall nothing.
 func portFree(port int) bool {
 	lc := net.ListenConfig{Control: func(_, _ string, c syscall.RawConn) error {
-		return c.Control(func(fd uintptr) { _ = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 0) })
+		return c.Control(func(fd uintptr) { _ = exclusivePort(fd) })
 	}}
 	l, err := lc.Listen(context.Background(), "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
 	if err != nil {

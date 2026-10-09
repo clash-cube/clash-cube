@@ -116,7 +116,7 @@ function RouteEditor({ module, form, onCancel, onSave, onYAML }: FormProps<Route
   const tickable = shown.map((n) => n.name).filter((n) => n !== upstream && !picks.includes(n));
   return (
     <form className="module-editor route-editor stagger" onSubmit={(e) => { e.preventDefault(); submit(); }}
-      onKeyDown={(e) => { if (e.key === "s" && e.metaKey) { e.preventDefault(); submit(); } if (e.key === "Escape") onCancel(); }}>
+      onKeyDown={(e) => { if (e.key === "s" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } if (e.key === "Escape") onCancel(); }}>
       <input className="input" placeholder={t("Module name")} value={name} onChange={(e) => setName(e.target.value)} />
       <div className="field">
         <span className="label">{t("Goes")}</span>

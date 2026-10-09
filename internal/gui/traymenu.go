@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -98,25 +99,49 @@ func detail(left, right string) string {
 }
 
 // badge's kind is accent, good, ok, bad or none.
-func badge(kind, text string) string { return "\x01" + kind + "\x02" + text }
+func badge(kind, text string) string {
+	if runtime.GOOS == "windows" {
+		return text
+	}
+	return "\x01" + kind + "\x02" + text
+}
 
-func withIcon(path, name string) string { return "\x03" + path + "\x04" + name }
+func withIcon(path, name string) string {
+	if runtime.GOOS == "windows" {
+		return name
+	}
+	return "\x03" + path + "\x04" + name
+}
 
 // keyed gives a row its shortcut as Surge shows it: the key drawn as the
 // row's detail, and held by a hidden twin. A real key equivalent would get
 // a column of its own, which pushes every row's detail away from the
 // submenu arrows.
 func keyed(menu *application.Menu, it *application.MenuItem, key string, click func(*application.Context)) {
+	if runtime.GOOS == "windows" {
+		it.SetAccelerator("Ctrl+" + key).OnClick(click)
+		return
+	}
 	it.SetLabel(detail(it.Label(), "⌘ "+key)).OnClick(click)
 	menu.Add(it.Label()).SetAccelerator("CmdOrCtrl+" + key).SetHidden(true).OnClick(click)
 }
 
 // subtitled gives a row a second line under its title, in a smaller
 // secondary font, as Surge's outbound modes have.
-func subtitled(title, sub string) string { return title + "\x06" + sub }
+func subtitled(title, sub string) string {
+	if runtime.GOOS == "windows" {
+		return title
+	}
+	return title + "\x06" + sub
+}
 
 // stay marks a row whose click leaves the menu up, to watch what it does.
-func stay(label string) string { return "\x05" + label }
+func stay(label string) string {
+	if runtime.GOOS == "windows" {
+		return label
+	}
+	return "\x05" + label
+}
 
 // delayBadge is a node's latency as Surge's benchmark shows it. An untested
 // node's is blank but holds the room, so delays coming in while the menu

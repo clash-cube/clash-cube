@@ -4,7 +4,7 @@
 
 # ClashCube
 
-**为 [mihomo](https://github.com/MetaCubeX/mihomo) 打造的原生质感 macOS 菜单栏客户端。**
+**为 [mihomo](https://github.com/MetaCubeX/mihomo) 打造的 macOS 菜单栏与 Windows 托盘客户端。**
 单一可执行文件，内核随应用编译，每份配置生效前都先经过校验。
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
@@ -17,6 +17,8 @@
 <img src="docs/images/hero.png" alt="ClashCube 主窗口与菜单栏面板" width="100%">
 
 </div>
+
+Windows 10/11（amd64/arm64）的构建方法和平台差异见 [Windows 支持说明](docs/windows.md)。Windows TUN 使用每会话独立授权的提权助手，应用更新通过发布页手动下载。
 
 ## 为什么选择 ClashCube
 

@@ -4,12 +4,21 @@ package appdir
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
-// Root is ~/Library/Application Support/ClashCube, or $CLASHCUBE_HOME.
+// Root is the platform's per-user ClashCube data directory, or CLASHCUBE_HOME.
 func Root() string {
 	if d := os.Getenv("CLASHCUBE_HOME"); d != "" {
 		return d
+	}
+	if runtime.GOOS == "windows" {
+		d, err := os.UserConfigDir()
+		if err == nil {
+			return filepath.Join(d, "ClashCube")
+		}
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, "AppData", "Roaming", "ClashCube")
 	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, "Library", "Application Support", "ClashCube")

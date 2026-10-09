@@ -3,7 +3,7 @@ package backend
 import (
 	"context"
 	"os"
-	"os/exec"
+
 	"strings"
 	"time"
 
@@ -107,16 +107,6 @@ func (b *Backend) watch() {
 // primaryNetwork is the primary interface and its router, as
 // "en0 192.168.1.1"; "" when offline. A tunnel (TUN's) is not a network
 // change, so it reads as the network under it.
-func primaryNetwork() string {
-	cmd := exec.Command("/usr/sbin/scutil")
-	cmd.Stdin = strings.NewReader("show State:/Network/Global/IPv4\n")
-	out, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-	return parseNetwork(string(out))
-}
-
 func parseNetwork(out string) string {
 	var iface, router string
 	for _, l := range strings.Split(out, "\n") {

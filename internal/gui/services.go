@@ -5,7 +5,8 @@ import (
 	"errors"
 	"net"
 	"os"
-	"os/exec"
+	"runtime"
+
 	"slices"
 	"sort"
 	"strconv"
@@ -124,6 +125,9 @@ func (s *AppService) LANProxyCommand() string {
 func proxyCommand(host string) string {
 	p := itoa(settings.Load().MixedPort)
 	addr := "http://" + host + ":" + p
+	if runtime.GOOS == "windows" {
+		return "$env:https_proxy='" + addr + "'; $env:http_proxy='" + addr + "'; $env:all_proxy='socks5://" + host + ":" + p + "'"
+	}
 	return "export https_proxy=" + addr + " http_proxy=" + addr + " all_proxy=socks5://" + host + ":" + p
 }
 
@@ -154,7 +158,7 @@ func (s *AppService) RunningApps() []App { return runningApps() }
 func (s *AppService) ChooseApp() (App, error) {
 	path, err := s.h.app.Dialog.OpenFile().
 		SetTitle("Choose an app").
-		SetDirectory("/Applications").
+		SetDirectory(appsDirectory()).
 		CanChooseFiles(true).
 		PromptForSingleSelection()
 	if err != nil || path == "" {
@@ -171,7 +175,7 @@ func (s *AppService) ChooseApp() (App, error) {
 func (s *AppService) Events() []backend.Event { return s.h.b.Events() }
 func (s *AppService) ClearEvents()            { s.h.b.ClearEvents() }
 
-func (s *AppService) RevealData() error { return exec.Command("open", appdir.Root()).Run() }
+func (s *AppService) RevealData() error { return openPath(appdir.Root(), false, false) }
 
 // Group is a proxy group with its members, in the profile's order.
 type Group struct {
@@ -581,7 +585,7 @@ func (s *ProfileService) Reveal(id string) error {
 	if !ok {
 		return errors.New("no such profile")
 	}
-	return exec.Command("open", "-R", p.Path()).Run()
+	return openPath(p.Path(), true, false)
 }
 
 // RuntimeConfig is the configuration the core was last given, and the
@@ -600,7 +604,7 @@ func (s *ProfileService) OpenInEditor(id string) error {
 	if _, err := os.Stat(p.Path()); err != nil {
 		return err
 	}
-	return exec.Command("open", "-t", p.Path()).Run()
+	return openPath(p.Path(), false, true)
 }
 
 // SettingsService is the app's settings.

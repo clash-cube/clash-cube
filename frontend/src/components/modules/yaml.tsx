@@ -53,7 +53,7 @@ export function ModuleEditor({ module, converted, onBack, onCancel, onSave }: {
   };
   return (
     <form className="module-editor stagger" onSubmit={(e) => { e.preventDefault(); submit(); }}
-      onKeyDown={(e) => { if (e.key === "s" && e.metaKey) { e.preventDefault(); submit(); } if (e.key === "Escape") onCancel(); }}>
+      onKeyDown={(e) => { if (e.key === "s" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } if (e.key === "Escape") onCancel(); }}>
       <input ref={nameRef} className="input" placeholder={t("Module name")} value={name} onChange={(e) => setName(e.target.value)} />
       <textarea ref={bodyRef} className="input" aria-label={t("Module YAML")} aria-invalid={!!problem} aria-describedby="module-yaml-status" placeholder={EXAMPLE} rows={Math.min(18, Math.max(8, body.split("\n").length + 1))} value={body} spellCheck={false}
         onChange={(e) => setBody(e.target.value)}

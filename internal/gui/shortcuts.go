@@ -2,6 +2,8 @@ package gui
 
 import (
 	"log"
+	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -36,7 +38,7 @@ func (s *shortcuts) apply() map[string]string {
 	gs := s.h.app.GlobalShortcut
 	for a, k := range s.set {
 		if want[a] != k {
-			_ = gs.Unregister(k)
+			_ = gs.Unregister(nativeShortcut(k))
 			delete(s.set, a)
 		}
 	}
@@ -46,7 +48,7 @@ func (s *shortcuts) apply() map[string]string {
 			continue
 		}
 		action := a
-		if err := gs.Register(k, func() { s.run(action) }); err != nil {
+		if err := gs.Register(nativeShortcut(k), func() { s.run(action) }); err != nil {
 			log.Printf("shortcut %s for %s: %v", k, a, err)
 			failed[a] = err.Error()
 			continue
@@ -54,6 +56,14 @@ func (s *shortcuts) apply() map[string]string {
 		s.set[a] = k
 	}
 	return failed
+}
+
+// Keep stored shortcuts portable; Wails calls the Windows key Super.
+func nativeShortcut(k string) string {
+	if runtime.GOOS == "windows" {
+		return strings.ReplaceAll(k, "Cmd+", "Super+")
+	}
+	return k
 }
 
 // pause lifts every shortcut while one is recorded, and puts them back.
@@ -69,7 +79,7 @@ func (s *shortcuts) run(action string) {
 	st := h.b.State()
 	switch action {
 	case "panel":
-		application.InvokeAsync(h.tray.ToggleWindow)
+		application.InvokeAsync(func() { h.showPanel(true) })
 	case "main":
 		application.InvokeAsync(func() {
 			if h.main.IsVisible() && h.main.IsFocused() {
