@@ -3,7 +3,6 @@ package gui
 import (
 	"context"
 	"log"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,6 +23,9 @@ var (
 // startNotifications readies the notification centre. It needs a bundle
 // (bin/ClashCube.app); a bare binary goes without, which isn't an error.
 func (h *host) startNotifications() {
+	if notifier != nil {
+		return
+	}
 	n := notifications.New()
 	if err := n.ServiceStartup(context.Background(), application.ServiceOptions{}); err != nil {
 		log.Println("notifications:", err)
@@ -41,6 +43,7 @@ func (h *host) notify(e backend.Event) {
 	if !settings.Load().Notify {
 		return
 	}
+	application.InvokeSync(h.startNotifications)
 	if notifier == nil {
 		scriptNotify(eventText(e))
 		return
@@ -66,23 +69,6 @@ func (h *host) notify(e backend.Event) {
 		Body:     body,
 		ThreadID: e.Kind,
 	}); err != nil {
-		log.Println("notify:", err)
-	}
-}
-
-// scriptNotify posts a notification through osascript, for when the
-// notification centre won't take ours: it refuses an ad-hoc signed app
-// ("Notifications are not allowed for this application") without asking,
-// and a bare binary has no bundle. The notification is Script Editor's, so
-// a click doesn't open the app. The text goes in as arguments, never as
-// script.
-func scriptNotify(title, body string) {
-	err := exec.Command("/usr/bin/osascript",
-		"-e", "on run argv",
-		"-e", "display notification (item 2 of argv) with title (item 1 of argv)",
-		"-e", "end run",
-		title, body).Run()
-	if err != nil {
 		log.Println("notify:", err)
 	}
 }

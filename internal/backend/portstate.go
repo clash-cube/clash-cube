@@ -2,10 +2,9 @@ package backend
 
 import (
 	"context"
-	"os/exec"
+
 	"reflect"
-	"strconv"
-	"strings"
+
 	"time"
 
 	"github.com/localhost-copilot/clashcube/internal/modules"
@@ -40,18 +39,6 @@ func portStates(listening []int, ps []modules.Port, free func(int) bool, holder 
 		out = append(out, st)
 	}
 	return out
-}
-
-// portHolder names the program listening on port, "" when lsof can't see
-// it (another user's, such as root's).
-func portHolder(port int) string {
-	out, _ := exec.Command("/usr/sbin/lsof", "-nP", "-iTCP:"+strconv.Itoa(port), "-sTCP:LISTEN", "-Fc").Output()
-	for _, line := range strings.Split(string(out), "\n") {
-		if name, ok := strings.CutPrefix(line, "c"); ok && name != "" {
-			return name
-		}
-	}
-	return ""
 }
 
 // watchPorts finds out how the ports came up after the core started or

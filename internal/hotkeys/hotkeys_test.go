@@ -2,6 +2,7 @@ package hotkeys
 
 import (
 	"errors"
+	"runtime"
 	"testing"
 )
 
@@ -38,7 +39,7 @@ func TestCheck(t *testing.T) {
 		t.Error("an unknown action accepted")
 	}
 	// the screenshot shortcut, on by default
-	if _, err := Check("panel", "shift+cmd+3", nil); !errors.As(err, &p) || p.Text != "macOS uses this shortcut" {
+	if _, err := Check("panel", "shift+cmd+3", nil); runtime.GOOS == "darwin" && (!errors.As(err, &p) || p.Text != "macOS uses this shortcut") {
 		t.Errorf("⇧⌘3: %v", err)
 	}
 }

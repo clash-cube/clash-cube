@@ -1,8 +1,10 @@
 # Notes for coding agents
 
-ClashCube is a macOS menu bar app for mihomo: Go + Wails v3 (beta) + React/TS.
+ClashCube is a macOS menu bar and Windows tray app for mihomo: Go + Wails v3 (beta) + React/TS.
 `docs/design.md` explains the architecture, the security model and how the
 runtime config is built; read it before larger changes.
+Windows-specific build steps, per-session UAC helper and limitations are in
+`docs/windows.md`. Keep native implementations in platform-specific files.
 
 ## Architecture in brief
 
@@ -55,6 +57,10 @@ wails3 task install       # app, then quit/replace/reopen ~/Applications/ClashCu
 go test ./internal/...    # backend/helper tests start real cores
 cd frontend && npx tsc    # type check
 ```
+
+On Windows, use `./scripts/build-windows.ps1` (or `wails3 task windows`),
+with `-Arch arm64` for ARM64. It sets `CGO_ENABLED=0` and generates Windows
+resources; the macOS tasks' CGO flags must not be used for Windows builds.
 
 - After changing an exported method of a Wails service, or a type it returns,
   regenerate the bindings with `wails3 task bindings`. They are committed.

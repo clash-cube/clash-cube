@@ -21,7 +21,9 @@ code, .mono { font-family: var(--code); font-size: 11.5px; }
 /* ---- header ---------------------------------------------------------- */
 .top { display: flex; align-items: center; gap: 8px; height: 50px; padding: 2px 12px 0 96px; flex: none; position: relative; --wails-draggable: drag; }
 .top .seg, .top button, .top .pill-status { --wails-draggable: no-drag; }
+[data-platform="windows"] .top { padding-left: 12px; }
 .brand { display: flex; align-items: center; gap: 7px; font-weight: 600; letter-spacing: .01em; }
+[data-platform="windows"] .top .brand { display: none; }
 .brand .logo { width: 18px; height: 18px; color: var(--fg); display: inline-flex; }
 /* a light once round the cube, clockwise, left, top, right, as the tray
    icon's: each face lights fast and fades slow, and the light ends home on

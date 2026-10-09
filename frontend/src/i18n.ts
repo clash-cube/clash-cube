@@ -3,6 +3,16 @@ import { useStore } from "./store";
 // Chinese, keyed by the English: a missing entry shows the
 // English rather than a key.
 const zh: Record<string, string> = {
+  "File Explorer": "文件资源管理器", "Finder": "访达",
+  "Asks for administrator permission for this session": "为本次会话请求管理员授权",
+  "Alt-click: use this computer's LAN address": "按住 Alt 点击：使用此电脑的局域网地址",
+  "Checks every 6 hours. Download Windows updates from the release page.": "每 6 小时检查一次。Windows 更新请从发布页面下载。",
+  "Show speed in the tray tooltip": "在托盘提示中显示速度",
+  "TUN runs in a separate elevated process. Windows asks for permission once per app session; the helper exits with the app.": "TUN 由独立的提权进程运行。每次启动应用后首次使用时，Windows 会请求授权；退出应用时助手一同退出。",
+  "Core runs as administrator": "内核以管理员身份运行",
+  "Authorize and turn on TUN": "授权并开启 TUN", "End elevated session": "结束提权会话",
+  "Not authorized": "未授权", "Authorized": "已授权",
+  "Ctrl+Alt+Shift and a letter: P panel, M window, O mode, S system proxy, E enhanced mode. Only the empty ones are filled.": "Ctrl+Alt+Shift 加字母：P 面板、M 主窗口、O 模式、S 系统代理、E 增强模式。只填充未设置的项。",
   "ClashCube": "ClashCube",
   "Network rules": "网络规则", "Network rule": "网络规则", "Changed by hand": "已手动更改", "Apply rules by network": "按网络自动设置",
   "Set the profile, mode, system proxy and groups for each network. Leaving a network returns to the other networks' rule; a change made by hand lasts until the network changes.": "为每个网络设定配置、出站模式、系统代理和策略组。离开某个网络时回到“其他网络”的设置；手动更改在换网前一直有效。",

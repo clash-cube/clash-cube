@@ -15,7 +15,6 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
@@ -294,7 +293,9 @@ func (l *LocalRunner) Test(home, config string) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, exe, "core", "-t", "-d", home, "-f", config).CombinedOutput()
+	cmd := exec.CommandContext(ctx, exe, "core", "-t", "-d", home, "-f", config)
+	configureProcess(cmd)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return errors.New(lastMeaningful(string(out), err))
 	}
@@ -324,7 +325,7 @@ func (l *LocalRunner) Start(home, config string, ctl runtimecfg.Controller, outp
 	}
 	cmd := exec.Command(exe, "core", "-d", home, "-f", config, "-ext-ctl", ctl.Addr)
 	cmd.Env = append(os.Environ(), "CLASHCUBE_SECRET="+ctl.Secret, "CLASHCUBE_WATCH_STDIN=1")
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	configureProcess(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err
@@ -332,6 +333,9 @@ func (l *LocalRunner) Start(home, config string, ctl runtimecfg.Controller, outp
 	pr, pw := io.Pipe()
 	cmd.Stdout, cmd.Stderr = pw, pw
 	if err := cmd.Start(); err != nil {
+		stdin.Close()
+		pr.Close()
+		pw.Close()
 		return nil, err
 	}
 	go func() {
@@ -364,13 +368,13 @@ func (l *LocalRunner) Stop() error {
 	if cmd == nil {
 		return nil
 	}
-	_ = cmd.Process.Signal(syscall.SIGTERM)
+	// EOF also works on Windows, where os.Process.Signal cannot send SIGTERM.
+	_ = keep.Close()
 	select {
 	case <-done:
 	case <-time.After(3 * time.Second):
 		_ = cmd.Process.Kill()
 		<-done
 	}
-	_ = keep.Close()
 	return nil
 }

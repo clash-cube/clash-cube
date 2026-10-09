@@ -1,5 +1,7 @@
 # ClashCube 设计文档
 
+Windows 的构建、平台行为和按会话提权模型见 [windows.md](windows.md)。下文的 LaunchDaemon、AppKit 和应用 bundle 描述针对 macOS。
+
 只记录从代码里不容易看出来的东西：架构上的取舍、安全边界、配置生成规则，以及几处行为约定。界面细节以代码为准。
 
 ## 1. 架构

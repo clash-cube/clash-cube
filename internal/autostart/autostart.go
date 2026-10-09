@@ -1,3 +1,5 @@
+//go:build darwin
+
 // Package autostart opens ClashCube at login through a LaunchAgent, which
 // (unlike SMAppService) needs no signed bundle.
 package autostart

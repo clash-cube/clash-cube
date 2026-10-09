@@ -1,3 +1,4 @@
+import { isWindows } from "../platform";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Hotkeys } from "../components/Hotkeys";
 import { useT } from "../i18n";
@@ -97,15 +98,15 @@ export function Settings() {
         <Section title={t("General")}>
           <Row label={t("Start core when the app opens")}><Switch on={s.autoStart} onChange={(v) => patch({ autoStart: v })} /></Row>
           <Row label={t("Open at login")}><Switch on={s.launchAtLogin} onChange={(v) => patch({ launchAtLogin: v })} /></Row>
-          <Row label={t("Show speed in the menu bar")}><Switch on={s.traySpeed} onChange={(v) => patch({ traySpeed: v })} /></Row>
+          <Row label={t(isWindows ? "Show speed in the tray tooltip" : "Show speed in the menu bar")}><Switch on={s.traySpeed} onChange={(v) => patch({ traySpeed: v })} /></Row>
           <Row label={t("Notifications")} sub={t("Core errors, failed updates, the system proxy taken by another app, and network rules applied")}><Switch on={s.notify} onChange={(v) => patch({ notify: v })} /></Row>
-          <Row label={t("Show in Dock")}>
+          {!isWindows && <Row label={t("Show in Dock")}>
             <select className="input" value={s.dock} onChange={(e) => patch({ dock: e.target.value })}>
               <option value="window">{t("While the window is open")}</option>
               <option value="always">{t("Always")}</option>
               <option value="never">{t("Never")}</option>
             </select>
-          </Row>
+          </Row>}
         </Section>
 
         <Section title={t("Global connections")}>
@@ -136,7 +137,7 @@ export function Settings() {
 
         <Section title={t("About")}>
           <UpdateRow />
-          <Row label={t("Check for updates automatically")} sub={t("Every 6 hours, not on metered networks. A new version is downloaded and installed when ClashCube restarts.")} wrap>
+          <Row label={t("Check for updates automatically")} sub={t(isWindows ? "Checks every 6 hours. Download Windows updates from the release page." : "Every 6 hours, not on metered networks. A new version is downloaded and installed when ClashCube restarts.")} wrap>
             <Switch on={s.autoUpdateApp} onChange={(v) => patch({ autoUpdateApp: v })} />
           </Row>
           <Row label={t("mihomo")}><span className="mono muted">{state?.coreVersion}</span></Row>
@@ -211,10 +212,10 @@ export function Settings() {
             <ActionButton label={t("Clear")} busyLabel={t("Clearing…")} disabled={state?.core !== "running"} onClick={() => run(Proxy.FlushDNS(), t("DNS cache cleared"))} />
           </Row>
           <GeoRow running={state?.core === "running"} />
-          <Row label={t("Copy shell export command")} sub={t("⌥-click: use this Mac's LAN address")}>
+          <Row label={t("Copy shell export command")} sub={t(isWindows ? "Alt-click: use this computer's LAN address" : "⌥-click: use this Mac's LAN address")}>
             <button className="btn small" onClick={(e) => copyCommand(e.altKey)}>{t("Copy")}</button>
           </Row>
-          <Row label={t("Open data folder")}><button className="btn small" onClick={() => run(App.RevealData())}>Finder</button></Row>
+          <Row label={t("Open data folder")}><button className="btn small" onClick={() => run(App.RevealData())}>{t(isWindows ? "File Explorer" : "Finder")}</button></Row>
         </Section>
       </>}
     </div>
@@ -232,7 +233,7 @@ function CoreStatus() {
   const running = core === "running";
   const busy = !!state.busy || core === "starting" || core === "stopping";
   const sub = running
-    ? [`mihomo ${state.coreVersion}`, state.serviceMode ? t("Core runs as root") : t("Core runs as you"), `127.0.0.1:${state.mixedPort}`].join(" · ")
+    ? [`mihomo ${state.coreVersion}`, state.serviceMode ? t(isWindows ? "Core runs as administrator" : "Core runs as root") : t("Core runs as you"), `127.0.0.1:${state.mixedPort}`].join(" · ")
     : core === "crashed" ? t("Core stopped with an error") : t("Proxies, DNS and the tools below need the core running");
   return (
     <>
@@ -384,7 +385,7 @@ function UpdateRow() {
     source: t("Built from source; updates itself only as a release"),
     downloading: u.total ? t("Downloading {version}… {pct}%", { version: u.latest ?? "", pct }) : t("Downloading {version}…", { version: u.latest ?? "" }),
     ready: t("Version {version} is ready", { version: u.latest ?? "" }),
-    available: u.stuck ? t("Version {version} is out. Move ClashCube to Applications to update it here.", { version: u.latest ?? "" }) : t("Version {version} is out", { version: u.latest ?? "" }),
+    available: !isWindows && u.stuck ? t("Version {version} is out. Move ClashCube to Applications to update it here.", { version: u.latest ?? "" }) : t("Version {version} is out", { version: u.latest ?? "" }),
     installed: t("Version {version} is installed and opens next time", { version: u.latest ?? "" }),
     error: t("Couldn't update: {error}", { error: u.error ?? "" }),
   }[u.state] ?? "";
@@ -417,17 +418,17 @@ function ServiceModeRow() {
     setBusy(false);
     load();
   };
-  const status = !hs ? "" : !hs.installed ? t("Not installed") : !hs.current ? t("Needs update") : t("Installed");
+  const status = !hs ? "" : !hs.installed ? t(isWindows ? "Not authorized" : "Not installed") : !hs.current ? t("Needs update") : t(isWindows ? "Authorized" : "Installed");
   return (
     <div className="row service">
       <div className="who">
         <div className="name">{t("Privileged helper")}<span className={"badge" + (hs?.installed && hs.current ? "" : " muted")}>{status}</span></div>
-        <div className="sub wrap">{t("Runs the core as root through a LaunchDaemon, which TUN needs. macOS asks for an administrator password once.")}</div>
-        {hs?.enabled && <div className="sub wrap">{hs.active ? t("Core runs as root") : t("Core runs as you")} · {t("The root core reads its configuration from your user folder, so programs running as you can influence it.")}</div>}
+        <div className="sub wrap">{t(isWindows ? "TUN runs in a separate elevated process. Windows asks for permission once per app session; the helper exits with the app." : "Runs the core as root through a LaunchDaemon, which TUN needs. macOS asks for an administrator password once.")}</div>
+        {hs?.enabled && <div className="sub wrap">{hs.active ? t(isWindows ? "Core runs as administrator" : "Core runs as root") : t("Core runs as you")} · {t("The root core reads its configuration from your user folder, so programs running as you can influence it.")}</div>}
       </div>
       <div className="end">
-        {(!hs?.installed || !hs.current || !hs.enabled) && <button className="btn small primary" disabled={busy} onClick={() => act(hs?.installed && !hs.current ? App.EnableServiceMode() : App.SetTun(true))}>{hs?.installed && !hs.current ? t("Update") : t("Install and turn on TUN")}</button>}
-        {hs?.installed && <button className="btn small danger" disabled={busy} onClick={() => act(App.DisableServiceMode(true))}>{t("Uninstall")}</button>}
+        {(!hs?.installed || !hs.current || !hs.enabled) && <button className="btn small primary" disabled={busy} onClick={() => act(hs?.installed && !hs.current ? App.EnableServiceMode() : App.SetTun(true))}>{hs?.installed && !hs.current ? t("Update") : t(isWindows ? "Authorize and turn on TUN" : "Install and turn on TUN")}</button>}
+        {hs?.installed && <button className="btn small danger" disabled={busy} onClick={() => act(App.DisableServiceMode(true))}>{t(isWindows ? "End elevated session" : "Uninstall")}</button>}
       </div>
     </div>
   );

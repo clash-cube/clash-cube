@@ -194,7 +194,7 @@ function PortEditor({ module, form, onCancel, onSave, onYAML }: FormProps<PortFo
   const setListen = (listen: string) => setP(listen === LAN && !p.user ? { ...p, listen, user: "clashcube", pass: password() } : { ...p, listen });
   return (
     <form className="module-editor route-editor port-editor stagger" onSubmit={(e) => { e.preventDefault(); submit(); }}
-      onKeyDown={(e) => { if (e.key === "s" && e.metaKey) { e.preventDefault(); submit(); } if (e.key === "Escape") onCancel(); }}>
+      onKeyDown={(e) => { if (e.key === "s" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } if (e.key === "Escape") onCancel(); }}>
       <input className="input" placeholder={t("Module name")} value={shownName} onChange={(e) => { setNamed(true); setName(e.target.value); }} />
       <div className="field">
         <span className="label">{t("Node")}</span>

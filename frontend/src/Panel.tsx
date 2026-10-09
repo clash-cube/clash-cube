@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useStore, type Sample } from "./store";
 import { useT } from "./i18n";
+import { isWindows } from "./platform";
 import { App, Profiles, Proxy, Settings, type ClientRate } from "./api";
 import { usePoll } from "./usePoll";
 import { Segmented } from "./components/Segmented";
@@ -109,7 +110,7 @@ export function Panel() {
             </div>
             <div className="row">
               <span className={"ic" + (state?.tun ? " on" : "")}><Shield size={14} /></span>
-              <div className="who"><div className="name">{t("Enhanced Mode")}</div>{!state?.serviceMode && <div className="sub">{t("Installs a privileged helper on first use")}</div>}</div>
+              <div className="who"><div className="name">{t("Enhanced Mode")}</div>{!state?.serviceMode && <div className="sub">{t(isWindows ? "Asks for administrator permission for this session" : "Installs a privileged helper on first use")}</div>}</div>
               <Switch on={!!state?.tun} onChange={setTun} />
             </div>
             {state?.network.match && (

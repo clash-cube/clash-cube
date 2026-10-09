@@ -4,7 +4,7 @@
 
 # ClashCube
 
-**A native-feeling macOS menu bar app for [mihomo](https://github.com/MetaCubeX/mihomo).**
+**A macOS menu bar and Windows tray app for [mihomo](https://github.com/MetaCubeX/mihomo).**
 One binary, the core compiled in, every config checked before it goes live.
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
@@ -17,6 +17,8 @@ English · [简体中文](README.zh-CN.md)
 <img src="docs/images/hero.png" alt="ClashCube main window and menu bar panel" width="100%">
 
 </div>
+
+Windows 10/11 builds (amd64/arm64): see [Windows build and platform notes](docs/windows.md). Windows TUN uses a separate UAC-elevated helper for each app session; app updates are downloaded manually.
 
 ## Why ClashCube
 

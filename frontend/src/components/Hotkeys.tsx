@@ -3,6 +3,7 @@ import { useT } from "../i18n";
 import { Settings as S } from "../api";
 import type { Hotkey } from "../../bindings/github.com/localhost-copilot/clashcube/internal/gui/models";
 import { Close } from "./Icons";
+import { isWindows } from "../platform";
 import { errText, toast } from "./Toast";
 
 const ACTIONS: Record<string, [string, string]> = {
@@ -21,6 +22,7 @@ const KEY_GLYPH: Record<string, string> = {
 };
 export function glyphs(keys: string) {
   if (!keys) return "";
+  if (isWindows) return keys.replace(/Option/g, "Alt").replace(/Cmd/g, "Win");
   const parts = keys.split("+");
   const key = parts.pop()!;
   return parts.map((m) => GLYPH[m] ?? m).join("") + (KEY_GLYPH[key] ?? key);
@@ -72,7 +74,7 @@ export function Hotkeys() {
         <div className="row hotkeys-recommend">
           <div className="who">
             <div className="name">{t("Use recommended shortcuts")}</div>
-            <div className="sub">{t("⌃⌥⌘ and a letter: P panel, M window, O mode, S system proxy, E enhanced mode. Only the empty ones are filled.")}</div>
+            <div className="sub">{t(isWindows ? "Ctrl+Alt+Shift and a letter: P panel, M window, O mode, S system proxy, E enhanced mode. Only the empty ones are filled." : "⌃⌥⌘ and a letter: P panel, M window, O mode, S system proxy, E enhanced mode. Only the empty ones are filled.")}</div>
           </div>
           <div className="end"><button className="btn small" disabled={filling} onClick={recommend}>{t("Use")}</button></div>
         </div>

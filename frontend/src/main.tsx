@@ -7,6 +7,9 @@ import { boot } from "./store";
 import { MainWindow } from "./MainWindow";
 import { Panel } from "./Panel";
 import { Toasts } from "./components/Toast";
+import { isWindows } from "./platform";
+
+document.documentElement.dataset.platform = isWindows ? "windows" : "macos";
 
 const panel = new URLSearchParams(location.search).get("mode") === "panel";
 
