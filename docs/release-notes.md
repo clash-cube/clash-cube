@@ -1,14 +1,16 @@
 ClashCube for macOS 12 and later and Windows 10/11. This is a prerelease; please report issues with your OS version and CPU architecture.
 
-### What's new in v0.1.10
+### What's new in v0.1.11
 
-- Updated mihomo to v1.19.29-openconnect.10, including upstream fixes that preserve fake-IP allocations across configuration reloads and prevent abandoned DoH dials from piling up, plus TUN, WireGuard, and OpenConnect updates.
-- MIPS is now the default TUN stack for new settings. Existing saved stack choices are preserved.
+- On macOS, add a rule for the current webpage directly from the menu bar when using Safari or a Chromium browser. The first use may request browser automation permission; Firefox is not supported.
+- Create temporary rules for quick exceptions. They appear on the Rules page and are cleared when the profile is switched or updated.
+- Updated mihomo to openconnect-support commit 61beae9e, including platform test and OpenConnect CI adjustments.
 
 ### 本次更新
 
-- 更新 mihomo 至 v1.19.29-openconnect.10，包含配置重载时保留 fake-IP 分配状态、避免已放弃的 DoH 拨号堆积等上游修复，以及 TUN、WireGuard 和 OpenConnect 更新。
-- 新设置默认使用 MIPS TUN 协议栈，已保存的协议栈选择保持不变。
+- macOS 可从菜单栏直接为 Safari 或 Chromium 浏览器中的当前网页添加规则。首次使用可能请求浏览器自动化权限；暂不支持 Firefox。
+- 支持添加临时规则，方便快速设置例外；规则页可查看和删除，切换或更新配置后自动清除。
+- 更新 mihomo 至 openconnect-support 分支的 61beae9e，包含平台测试和 OpenConnect CI 调整。
 
 ### Downloads
 
