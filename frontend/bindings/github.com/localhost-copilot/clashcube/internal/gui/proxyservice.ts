@@ -25,6 +25,13 @@ import * as userrules$0 from "../userrules/models.js";
 import * as $models from "./models.js";
 
 /**
+ * AddTempRule puts a temporary rule first.
+ */
+export function AddTempRule(r: userrules$0.Rule): $CancellablePromise<void> {
+    return $Call.ByID(555889169, r);
+}
+
+/**
  * AddUserRule puts a rule first.
  */
 export function AddUserRule(r: userrules$0.Rule): $CancellablePromise<void> {
@@ -135,10 +142,25 @@ export function SetCityGeo(on: boolean): $CancellablePromise<backend$0.CityGeoIn
 }
 
 /**
+ * SetTempRules replaces them; the core takes them at once.
+ */
+export function SetTempRules(rs: userrules$0.Rule[] | null): $CancellablePromise<void> {
+    return $Call.ByID(3183893147, rs);
+}
+
+/**
  * SetUserRules replaces them; the core takes them at once.
  */
 export function SetUserRules(rs: userrules$0.Rule[] | null): $CancellablePromise<void> {
     return $Call.ByID(3372887460, rs);
+}
+
+/**
+ * TempRules is the rules added for now only, ahead of the saved ones; a
+ * profile switch or update drops them.
+ */
+export function TempRules(): $CancellablePromise<userrules$0.Rule[] | null> {
+    return $Call.ByID(2753390755);
 }
 
 /**

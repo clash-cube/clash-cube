@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -84,3 +85,9 @@ func appAt(path string) (App, bool) {
 	}
 	return App{Name: filepath.Base(path), Executable: path}, true
 }
+
+// Reading a browser's address needs AppleScript; Windows has no
+// "Add Rule for Current Webpage".
+func frontBrowser() string              { return "" }
+func browserURL(string) (string, error) { return "", errors.New("not supported") }
+func hideApp()                          {}

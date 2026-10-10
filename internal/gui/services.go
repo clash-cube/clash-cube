@@ -486,6 +486,16 @@ func (s *ProxyService) SetUserRules(rs []userrules.Rule) error { return s.h.b.Se
 // AddUserRule puts a rule first.
 func (s *ProxyService) AddUserRule(r userrules.Rule) error { return s.h.b.AddRule(r) }
 
+// TempRules is the rules added for now only, ahead of the saved ones; a
+// profile switch or update drops them.
+func (s *ProxyService) TempRules() []userrules.Rule { return s.h.b.TempRules() }
+
+// SetTempRules replaces them; the core takes them at once.
+func (s *ProxyService) SetTempRules(rs []userrules.Rule) error { return s.h.b.SetTempRules(rs) }
+
+// AddTempRule puts a temporary rule first.
+func (s *ProxyService) AddTempRule(r userrules.Rule) error { return s.h.b.AddTempRule(r) }
+
 // ProfileService is the profiles.
 type ProfileService struct{ h *host }
 

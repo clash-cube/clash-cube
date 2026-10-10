@@ -67,8 +67,9 @@ resources; the macOS tasks' CGO flags must not be used for Windows builds.
 - Run development instances with their own home and port, never on the user's
   real data directory: `CLASHCUBE_HOME=/tmp/mbhome ./bin/clashcube`. Set
   `mixedPort` in that home to something other than 7890.
-- Debug switches: `CLASHCUBE_SHOW=main|panel|menu` opens a window or the tray
-  menu at start. `CLASHCUBE_VIEW=proxies` (or `settings#tun`, or `globe` for global
+- Debug switches: `CLASHCUBE_SHOW=main|panel|menu|webpage` opens a window, the
+  tray menu or the webpage rule window (for a sample address) at start.
+  `CLASHCUBE_VIEW=proxies` (or `settings#tun`, or `globe` for global
   connections) picks the page.
   `CLASHCUBE_UPDATE_FEED=<url of an update.json>` checks for app updates there
   instead of GitHub; sign a test manifest with `scripts/signhelper -manifest`.

@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -128,6 +129,10 @@ type Backend struct {
 	// appupdate.go
 	upd       appUpdater
 	installMu sync.Mutex // one install at a time
+
+	// rules added for now only, ahead of the saved ones; a profile switch
+	// or update drops them (Surge's temporary rules)
+	tempRules []userrules.Rule
 }
 
 func New(version, coreVersion string, defaultYAML []byte, sink Sink) *Backend {
@@ -274,7 +279,7 @@ func (b *Backend) writeRuntime(fresh bool) error {
 			return err
 		}
 	}
-	err = runtimecfg.Write(appdir.RuntimeConfig(), p.ID, body, s, ctl, userrules.List(), modules.List())
+	err = runtimecfg.Write(appdir.RuntimeConfig(), p.ID, body, s, ctl, b.rules(), modules.List())
 	if err != nil && strings.HasPrefix(err.Error(), "profile: ") {
 		b.refuseProfile(p.Path(), err)
 	}
@@ -626,7 +631,11 @@ func (b *Backend) useProfile(id string) error {
 	if _, err := settings.Update(func(s *settings.Settings) { s.Profile = id }); err != nil {
 		return err
 	}
+	temp := b.dropTempRules()
 	if err := b.reload(); err != nil {
+		b.mu.Lock()
+		b.tempRules = temp
+		b.mu.Unlock()
 		_, _ = settings.Update(func(s *settings.Settings) { s.Profile = before })
 		_ = b.writeRuntime(false) // what a crash restart would read
 		b.emitState()
@@ -648,6 +657,7 @@ func (b *Backend) emitProfiles() {
 func (b *Backend) ProfileChanged(id string) {
 	b.emitProfiles()
 	if id != "" && id == settings.Load().Profile {
+		b.dropTempRules()
 		if err := b.Reload(); err != nil {
 			log.Println("reload:", err)
 			b.event("profile", "error", "The updated profile was refused, the previous one stays: {error}", map[string]string{"error": err.Error()}, true)
@@ -770,4 +780,60 @@ func (b *Backend) AddRule(r userrules.Rule) error {
 		return err
 	}
 	return b.SetRules(userrules.Added(userrules.List(), r))
+}
+
+// TempRules is the rules added for now only, first matched first.
+func (b *Backend) TempRules() []userrules.Rule {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return slices.Clone(b.tempRules)
+}
+
+// AddTempRule puts r first, ahead of the saved rules, without saving it.
+func (b *Backend) AddTempRule(r userrules.Rule) error {
+	if err := r.Check(); err != nil {
+		return err
+	}
+	return b.SetTempRules(userrules.Added(b.TempRules(), r))
+}
+
+// SetTempRules replaces the temporary rules and has the core take them;
+// rules the core refuses are not kept.
+func (b *Backend) SetTempRules(rs []userrules.Rule) error {
+	for _, r := range rs {
+		if err := r.Check(); err != nil {
+			return err
+		}
+	}
+	b.mu.Lock()
+	before := b.tempRules
+	b.tempRules = slices.Clone(rs)
+	b.mu.Unlock()
+	if err := b.Reload(); err != nil {
+		b.mu.Lock()
+		b.tempRules = before
+		b.mu.Unlock()
+		b.restoreRuntime()
+		return err
+	}
+	return nil
+}
+
+// dropTempRules forgets the temporary rules, returning them.
+func (b *Backend) dropTempRules() []userrules.Rule {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	rs := b.tempRules
+	b.tempRules = nil
+	return rs
+}
+
+// rules is the temporary rules, then the saved ones.
+func (b *Backend) rules() []userrules.Rule {
+	rs := userrules.List()
+	temp := b.TempRules()
+	for i := len(temp) - 1; i >= 0; i-- {
+		rs = userrules.Added(rs, temp[i])
+	}
+	return rs
 }

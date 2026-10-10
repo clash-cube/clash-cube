@@ -19,5 +19,6 @@ export type {
     Member,
     Patch,
     Provider,
-    Recommended
+    Recommended,
+    Webpage
 } from "./models.js";

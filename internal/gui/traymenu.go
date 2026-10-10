@@ -44,10 +44,12 @@ type trayMenu struct {
 	measured  time.Time
 	measuring bool
 	testing   map[string]backend.LatencyEvent // active tests from any surface
+	browser   string                          // the browser in front as the menu opened, or ""
 
 	// the rows that change while the menu shows; main thread only
 	qualityItem *application.MenuItem
 	clientItems []*application.MenuItem
+	webpageItem *application.MenuItem
 	nodes       map[string][]nodeRow             // group → its nodes' rows
 	tests       map[string]*application.MenuItem // group → its "Test Latency" row
 }
@@ -371,7 +373,15 @@ func (m *trayMenu) tracking(open bool) {
 		go m.sample(m.stop)
 	}
 	retest := open && m.last.Core == "running" && time.Since(m.measured) > 30*time.Second
+	if open {
+		m.browser = frontBrowser()
+	}
+	browser, webpage := m.browser, m.webpageItem
 	m.mu.Unlock()
+	if open && webpage != nil {
+		webpage.SetEnabled(browser != "")
+		styleTrayMenu()
+	}
 	if retest {
 		go m.measure()
 	}
@@ -534,6 +544,19 @@ func (m *trayMenu) rebuild() {
 		}
 		id := md.id
 		om.AddRadio(subtitled(tr(md.en, md.cn), tr(md.subEN, md.subCN)), st.Mode == id).OnClick(m.run("mode", func() error { return b.SetMode(id) }))
+	}
+	// for the page in the browser in front, which the menu takes as it opens
+	m.webpageItem = nil
+	if runtime.GOOS == "darwin" {
+		m.webpageItem = menu.Add(tr("Add Rule for Current Webpage…", "为当前网页添加规则…")).SetEnabled(false)
+		m.webpageItem.OnClick(func(*application.Context) {
+			m.mu.Lock()
+			browser := m.browser
+			m.mu.Unlock()
+			if browser != "" {
+				go m.h.addWebpageRule(browser)
+			}
+		})
 	}
 
 	// proxy groups

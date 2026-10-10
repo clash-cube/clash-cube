@@ -18,6 +18,7 @@
 		<key>CFBundleURLSchemes</key><array><string>clash</string><string>clashmeta</string></array>
 		<key>CFBundleTypeRole</key><string>Viewer</string>
 	</dict></array>
+	<key>NSAppleEventsUsageDescription</key><string>ClashCube reads the address of the page in front to add a rule for it.</string>
 	<key>NSHighResolutionCapable</key><true/>
 	<key>NSLocationUsageDescription</key><string>ClashCube uses location permission to read the Wi-Fi name and switch to your chosen configuration.</string>
 	<key>NSLocationWhenInUseUsageDescription</key><string>ClashCube uses location permission to read the Wi-Fi name and switch to your chosen configuration.</string>

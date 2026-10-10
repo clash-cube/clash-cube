@@ -16,7 +16,6 @@ import (
 	"github.com/localhost-copilot/clashcube/internal/profiles"
 	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
 	"github.com/localhost-copilot/clashcube/internal/settings"
-	"github.com/localhost-copilot/clashcube/internal/userrules"
 )
 
 // Refusal is the last configuration the core, or the merge before it,
@@ -69,7 +68,7 @@ func (b *Backend) layers() []runtimecfg.Layer {
 	if err != nil {
 		return nil
 	}
-	l, _ := runtimecfg.Layers(p.ID, body, s, b.core.Controller(), userrules.List(), modules.List())
+	l, _ := runtimecfg.Layers(p.ID, body, s, b.core.Controller(), b.rules(), modules.List())
 	return l
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Proxy, type Connection, type UserRule } from "../api";
 import { useT } from "../i18n";
 import { Popover, type Point } from "./Popover";
@@ -29,9 +29,60 @@ export function suggestions(c: Connection): UserRule[] {
 
 const BUILTIN = ["DIRECT", "REJECT"];
 
+// usePolicies is what a rule can send to: the groups, then the built-ins.
+export function usePolicies() {
+  const { groups } = useGroups();
+  return useMemo(() => [...(groups ?? []).filter((g) => g.name !== "GLOBAL").map((g) => g.name), ...BUILTIN], [groups]);
+}
+
+// RuleFields edits a rule: the suggested ones to pick from, the type, the
+// value, with a process picked from the running programs, and the policy.
+export function RuleFields({ rule, setRule, choices = [], policies, input }: {
+  rule: UserRule;
+  setRule: (r: UserRule) => void;
+  choices?: UserRule[];
+  policies: string[];
+  input?: React.Ref<HTMLInputElement>;
+}) {
+  const t = useT();
+  const [types, setTypes] = useState<string[]>([]);
+  const [picking, setPicking] = useState(false);
+  useEffect(() => { Proxy.RuleTypes().then((r) => setTypes(r ?? [])).catch(() => {}); }, []);
+  return <>
+    {choices.length > 1 && (
+      <div className="rule-choices">
+        {choices.map((c) => (
+          <button type="button" key={c.type + c.payload} className={"chip" + (c.type === rule.type && c.payload === rule.payload ? " on" : "")}
+            onClick={() => setRule({ ...rule, type: c.type, payload: c.payload })}>
+            <span className="rtype">{c.type}</span>{c.payload}
+          </button>
+        ))}
+      </div>
+    )}
+    <label>{t("Type")}
+      <select className="input" value={rule.type} onChange={(e) => setRule({ ...rule, type: e.target.value })}>
+        {(types.length ? types : [rule.type]).map((ty) => <option key={ty} value={ty}>{ty}</option>)}
+      </select>
+    </label>
+    <label>{t("Value")}
+      <span className="value-row">
+        <input ref={input} className="input mono" value={rule.payload} onChange={(e) => setRule({ ...rule, payload: e.target.value })} />
+        {isProcessType(rule.type) && <button type="button" className={"btn" + (picking ? " on" : "")} aria-pressed={picking} onClick={() => setPicking(!picking)}>{t("Pick…")}</button>}
+      </span>
+    </label>
+    {isProcessType(rule.type) && picking && <AppPicker onPick={(a) => { setRule({ ...rule, payload: processPayload(rule.type, a) }); setPicking(false); }} />}
+    {rule.type === "PROCESS-NAME" && <div className="hint">{t("Matches the executable's name. Helpers of an app have their own names; PROCESS-PATH-REGEX with the app picked covers them all.")}</div>}
+    <label>{t("Policy")}
+      <select className="input" value={rule.policy} onChange={(e) => setRule({ ...rule, policy: e.target.value })}>
+        {policies.includes(rule.policy) || !rule.policy ? null : <option value={rule.policy}>{rule.policy}</option>}
+        {policies.map((p) => <option key={p} value={p}>{p}</option>)}
+      </select>
+    </label>
+  </>;
+}
+
 // A popover to add a rule ahead of the profile's, or with onSave to edit
-// one: the type and value prefilled from what it was opened on, the policy
-// picked from the groups, a process picked from the running programs.
+// one: the type and value prefilled from what it was opened on.
 export function RuleEditor({ anchor, point, onClose, initial, choices = [], onSave }: {
   anchor: HTMLElement | null;
   point?: Point | null;
@@ -41,20 +92,17 @@ export function RuleEditor({ anchor, point, onClose, initial, choices = [], onSa
   onSave?: (r: UserRule) => Promise<void>;
 }) {
   const t = useT();
-  const { groups } = useGroups();
-  const [types, setTypes] = useState<string[]>([]);
+  const policies = usePolicies();
   const [rule, setRule] = useState<UserRule>({ type: "DOMAIN-SUFFIX", payload: "", policy: "" });
   const [busy, setBusy] = useState(false);
-  const [picking, setPicking] = useState(false);
+  const [opened, setOpened] = useState(0);
   const input = useRef<HTMLInputElement>(null);
-  const policies = useMemo(() => [...(groups ?? []).filter((g) => g.name !== "GLOBAL").map((g) => g.name), ...BUILTIN], [groups]);
 
-  useEffect(() => { Proxy.RuleTypes().then((r) => setTypes(r ?? [])).catch(() => {}); }, []);
   useEffect(() => {
     if (!anchor && !point) return;
+    setOpened((n) => n + 1);
     const start = initial ?? choices[0] ?? { type: "DOMAIN-SUFFIX", payload: "", policy: "" };
     setRule({ ...start, policy: start.policy || policies[0] || "DIRECT" });
-    setPicking(false);
     setTimeout(() => input.current?.focus(), 60);
   }, [anchor, point]);
   useEffect(() => { if (!rule.policy && policies.length) setRule((r) => ({ ...r, policy: policies[0] })); }, [policies]);
@@ -78,35 +126,8 @@ export function RuleEditor({ anchor, point, onClose, initial, choices = [], onSa
     <Popover anchor={anchor} point={point} open={!!(anchor || point)} onClose={onClose} align="end" width={360}>
       <form className="pop-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <h3>{t(onSave ? "Edit rule" : "Add rule")}</h3>
-        {choices.length > 1 && (
-          <div className="rule-choices">
-            {choices.map((c) => (
-              <button type="button" key={c.type + c.payload} className={"chip" + (c.type === rule.type && c.payload === rule.payload ? " on" : "")}
-                onClick={() => setRule((r) => ({ ...r, type: c.type, payload: c.payload }))}>
-                <span className="rtype">{c.type}</span>{c.payload}
-              </button>
-            ))}
-          </div>
-        )}
-        <label>{t("Type")}
-          <select className="input" value={rule.type} onChange={(e) => setRule({ ...rule, type: e.target.value })}>
-            {(types.length ? types : [rule.type]).map((ty) => <option key={ty} value={ty}>{ty}</option>)}
-          </select>
-        </label>
-        <label>{t("Value")}
-          <span className="value-row">
-            <input ref={input} className="input mono" value={rule.payload} onChange={(e) => setRule({ ...rule, payload: e.target.value })} />
-            {isProcessType(rule.type) && <button type="button" className={"btn" + (picking ? " on" : "")} aria-pressed={picking} onClick={() => setPicking(!picking)}>{t("Pick…")}</button>}
-          </span>
-        </label>
-        {isProcessType(rule.type) && picking && <AppPicker onPick={(a) => { setRule({ ...rule, payload: processPayload(rule.type, a) }); setPicking(false); }} />}
-        {rule.type === "PROCESS-NAME" && <div className="hint">{t("Matches the executable's name. Helpers of an app have their own names; PROCESS-PATH-REGEX with the app picked covers them all.")}</div>}
-        <label>{t("Policy")}
-          <select className="input" value={rule.policy} onChange={(e) => setRule({ ...rule, policy: e.target.value })}>
-            {policies.includes(rule.policy) || !rule.policy ? null : <option value={rule.policy}>{rule.policy}</option>}
-            {policies.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </label>
+        {/* remounted on each opening, so a picker left open closes */}
+        <RuleFields key={opened} rule={rule} setRule={setRule} choices={choices} policies={policies} input={input} />
         <div className="hint">{t("Goes ahead of the profile's rules and stays across profile updates.")}</div>
         <div className="foot">
           <button type="button" className="btn" onClick={onClose}>{t("Cancel")}</button>

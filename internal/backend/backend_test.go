@@ -521,6 +521,28 @@ func TestUserRules(t *testing.T) {
 	if rules, _ = c.Rules(context.Background()); len(rules) != 2 {
 		t.Errorf("core rules = %+v", rules)
 	}
+
+	// a temporary rule goes first and isn't saved; it wins over a saved
+	// one for the same host, and an update of the profile drops it
+	if err := b.AddTempRule(userrules.Rule{Type: "DOMAIN-SUFFIX", Payload: "example.com", Policy: "REJECT"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.AddTempRule(userrules.Rule{Type: "DOMAIN", Payload: "a.test", Policy: "DIRECT"}); err != nil {
+		t.Fatal(err)
+	}
+	if rules, _ = c.Rules(context.Background()); len(rules) != 3 || rules[0].Payload != "a.test" || rules[1].Payload != "example.com" || rules[1].Proxy != "REJECT" {
+		t.Fatalf("rules with temporary ones = %+v", rules)
+	}
+	if got := userrules.List(); len(got) != 1 || got[0].Policy != "DIRECT" {
+		t.Errorf("saved rules = %v", got)
+	}
+	if b.AddTempRule(userrules.Rule{Type: "IP-CIDR", Payload: "not-a-cidr", Policy: "DIRECT"}) == nil || len(b.TempRules()) != 2 {
+		t.Errorf("a broken temporary rule kept: %v", b.TempRules())
+	}
+	b.ProfileChanged(settings.Load().Profile)
+	if rules, _ = c.Rules(context.Background()); len(b.TempRules()) != 0 || len(rules) != 2 || rules[0].Proxy != "DIRECT" {
+		t.Errorf("after a profile update: temp %v, rules %+v", b.TempRules(), rules)
+	}
 }
 
 // A module is taken at once; one the core refuses is not kept, whether the

@@ -167,6 +167,14 @@ export function LANProxyCommand(): $CancellablePromise<string> {
     return $Call.ByID(3327025741);
 }
 
+/**
+ * OpenAutomationSettings opens the pane where ClashCube may be let ask
+ * browsers for their page.
+ */
+export function OpenAutomationSettings(): $CancellablePromise<void> {
+    return $Call.ByID(3020918775);
+}
+
 export function OpenURL(url: string): $CancellablePromise<void> {
     return $Call.ByID(3602974294, url);
 }
@@ -260,4 +268,11 @@ export function Stop(): $CancellablePromise<void> {
  */
 export function Usage($from: string, to: string, hour: number): $CancellablePromise<usage$0.Report> {
     return $Call.ByID(3971713940, $from, to, hour);
+}
+
+/**
+ * Webpage is the page the rule window is for.
+ */
+export function Webpage(): $CancellablePromise<$models.Webpage> {
+    return $Call.ByID(1717023366);
 }

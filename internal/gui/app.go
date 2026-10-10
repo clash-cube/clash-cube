@@ -62,6 +62,7 @@ type host struct {
 	panelReadyOnce sync.Once
 	importMu       sync.Mutex
 	imports        []profiles.ImportRequest
+	webpage        webpageRule
 
 	trayMu           sync.Mutex
 	trayOn           bool
@@ -245,6 +246,9 @@ func Run(version string) error {
 			h.showPanel(false)
 		case "menu":
 			time.AfterFunc(2500*time.Millisecond, func() { application.InvokeAsync(h.tray.OpenMenu) })
+		case "webpage":
+			const sample = "https://news.example.co.uk/2026/10/story"
+			h.showWebpageRule(Webpage{URL: sample, Rules: webpageRules(sample)})
 		default:
 			// Opened by hand, the tray icon is easy to miss; at login, stay there.
 			if runtime.GOOS == "windows" && !slices.Contains(os.Args[1:], autostart.LoginArg) {

@@ -119,7 +119,7 @@ export async function boot() {
     return { latency };
   })).catch(() => {});
   Events.On("navigate", (e) => useStore.setState({ view: e.data as View }));
-  if (new URLSearchParams(location.search).get("mode") !== "panel") {
+  if (new URLSearchParams(location.search).get("mode") === null) {
     // Subscribe before draining so a cold-start link cannot fall between the
     // initial read and the event listener. Serialize drains to preserve order.
     let draining = Promise.resolve();

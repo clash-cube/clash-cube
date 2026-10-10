@@ -40,7 +40,18 @@ export function Rules() {
   const [mine, setMine] = useState<UserRule[]>([]);
   const [addAt, setAddAt] = useState<HTMLElement | null>(null);
   const [editing, setEditing] = useState<{ i: number; at: HTMLElement } | null>(null);
-  const loadMine = () => Proxy.UserRules().then((r) => setMine(r ?? [])).catch(() => {});
+  // rules added for now only (from the tray's "Add Rule for Current
+  // Webpage"), ahead of the saved ones
+  const [temp, setTemp] = useState<UserRule[]>([]);
+  const loadMine = () => {
+    Proxy.UserRules().then((r) => setMine(r ?? [])).catch(() => {});
+    Proxy.TempRules().then((r) => setTemp(r ?? [])).catch(() => {});
+  };
+  const dropTemp = async (i: number) => {
+    const before = temp;
+    setTemp(temp.filter((_, j) => j !== i));
+    try { await Proxy.SetTempRules(before.filter((_, j) => j !== i)); } catch (e) { setTemp(before); toastError(e); }
+  };
   useEffect(() => { loadMine(); }, [profile, busy]);
   const saveMine = async (next: UserRule[]) => {
     const before = mine;
@@ -117,6 +128,21 @@ export function Rules() {
         <span>{t("My rules")}</span>
         <button className="btn small" onClick={(e) => setAddAt(addAt ? null : e.currentTarget)}><Plus size={12} />{t("Add rule…")}</button>
       </div>
+      {temp.length > 0 && (
+        <div className="list table rules mine">
+          {temp.map((r, i) => (
+            <div className="trow" key={r.type + r.payload} title={t("Not saved: goes when the profile is switched or updated")}>
+              <span className="cell idx"><span className="rtype temp">{t("Temp")}</span></span>
+              <span className="cell"><span className="rtype">{r.type}</span></span>
+              <RulePayload r={r} />
+              <PolicyRoute policy={r.policy} nowOf={nowOf} />
+              <span className="cell r actions">
+                <button className="icon" title={t("Delete")} onClick={() => dropTemp(i)}><Close size={12} /></button>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       {mine.length === 0 ? (
         <div className="list user-rules-empty">{t("Rules you add here, or from a connection, go ahead of the profile's and stay across updates.")}</div>
       ) : (

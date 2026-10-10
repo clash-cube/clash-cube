@@ -6,17 +6,18 @@ import "./styles/panel.css";
 import { boot } from "./store";
 import { MainWindow } from "./MainWindow";
 import { Panel } from "./Panel";
+import { WebpageRule } from "./WebpageRule";
 import { Toasts } from "./components/Toast";
 import { isWindows } from "./platform";
 
 document.documentElement.dataset.platform = isWindows ? "windows" : "macos";
 
-const panel = new URLSearchParams(location.search).get("mode") === "panel";
+const mode = new URLSearchParams(location.search).get("mode");
 
 boot().finally(() => {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
-      {panel ? <Panel /> : <MainWindow />}
+      {mode === "panel" ? <Panel /> : mode === "webpage" ? <WebpageRule /> : <MainWindow />}
       <Toasts />
     </React.StrictMode>,
   );
