@@ -854,6 +854,16 @@ select.input { padding-right: 6px; }
 .port-editor .row-inline { flex-direction: row; align-items: center; gap: 10px; min-height: 26px; }
 .port-editor .scope > .switch { align-self: flex-start; margin-top: 3px; }
 .port-editor .row-inline > .switch { margin-top: 0; }
+/* only these programs: the programs in the form */
+.apps-list { display: flex; flex-direction: column; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--line-2); padding: 3px; max-height: 216px; overflow-y: auto; }
+.apps-row { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 4px 0 8px; border-radius: 6px; font-size: 12.5px; animation: pop-fade .15s ease-out; }
+.apps-row:hover { background: var(--card-2); }
+.apps-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apps-row .kind { flex: none; font-size: 11.5px; color: var(--muted); }
+.apps-row .icon { width: 20px; height: 20px; flex: none; }
+.apps-editor .field .label { width: 56px; }
+.apps-editor .add-app { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; }
+.apps-editor .hint.warn { color: var(--amber); white-space: normal; }
 .port-auth { display: flex; align-items: center; gap: 8px; padding-bottom: 2px; }
 .port-auth .input { flex: 1; min-width: 0; max-width: 200px; height: 26px; font-family: var(--code); font-size: 12px; }
 .port-auth .link { padding: 0; font-size: 12px; color: var(--accent); background: none; white-space: nowrap; }

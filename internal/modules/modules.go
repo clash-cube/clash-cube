@@ -34,6 +34,8 @@ type Module struct {
 	Route *Route `json:"route,omitempty"`
 	// a node or group served on a SOCKS5 port of its own
 	Port *Port `json:"port,omitempty"`
+	// the only programs proxied, everything else direct
+	Apps *Apps `json:"apps,omitempty"`
 	// for YAML taken from a kind's form, the kind it was: going back to the
 	// form restores it, dropping the YAML
 	Was *Module `json:"was,omitempty"`
@@ -155,6 +157,9 @@ func Save(ms []Module) error {
 		seen[ms[i].ID] = true
 	}
 	if err := checkPorts(ms); err != nil {
+		return err
+	}
+	if err := checkApps(ms); err != nil {
 		return err
 	}
 	mu.Lock()

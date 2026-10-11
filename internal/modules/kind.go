@@ -28,8 +28,9 @@ type Grouper interface {
 }
 
 // Trailing says whether k adds nothing whose place in the order matters
-// (no rules), so it is laid over the profile after every other module and
-// can name what any of them made, such as a route's group.
+// (no rules, or rules that replace all others), so it is laid over the
+// profile after every other module and can name what any of them made,
+// such as a route's group.
 func Trailing(k Kind) bool {
 	_, ok := k.(interface{ trailing() })
 	return ok
@@ -57,18 +58,22 @@ func (m Module) Kind() Kind {
 		return m.Route
 	case m.Port != nil:
 		return m.Port
+	case m.Apps != nil:
+		return m.Apps
 	}
 	return nil
 }
 
 // withKind is m made from k instead.
 func (m Module) withKind(k Kind) Module {
-	m.Route, m.Port = nil, nil
+	m.Route, m.Port, m.Apps = nil, nil, nil
 	switch k := k.(type) {
 	case *Route:
 		m.Route = k
 	case *Port:
 		m.Port = k
+	case *Apps:
+		m.Apps = k
 	}
 	return m
 }
@@ -84,7 +89,7 @@ func (m Module) wasKind() Kind {
 // kinds counts how many kinds m is made from; more than one is refused.
 func (m Module) kinds() int {
 	n := 0
-	for _, set := range []bool{m.Route != nil, m.Port != nil} {
+	for _, set := range []bool{m.Route != nil, m.Port != nil, m.Apps != nil} {
 		if set {
 			n++
 		}

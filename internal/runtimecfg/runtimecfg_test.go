@@ -140,6 +140,11 @@ func TestGuard(t *testing.T) {
 	if r := m["rules"].([]any); len(r) != 2 || r[0] != stunRule {
 		t.Errorf("rules = %v", r)
 	}
+	s.BlockQUIC = true
+	if r := build(t, "rules: [\"MATCH,DIRECT\"]", s)["rules"].([]any); len(r) != 3 || r[0] != stunRule || r[1] != quicRule {
+		t.Errorf("rules with QUIC blocked = %v", r)
+	}
+	s.BlockQUIC = false
 
 	// IPv6 on, or no TUN: nothing to route, ipv6 is the user's
 	s.IPv6 = true
@@ -207,5 +212,31 @@ func TestPortModuleLaidLast(t *testing.T) {
 	ls := m["listeners"].([]any)
 	if len(ls) != 2 || ls[0].(map[string]any)["name"] != "own" || ls[1].(map[string]any)["proxy"] != "Google" {
 		t.Errorf("listeners = %v", ls)
+	}
+}
+
+// Proxying only some programs replaces the profile's rules and those of
+// modules listed after it; the user's rules and the guards still go first.
+func TestAppsModule(t *testing.T) {
+	profile := []byte("proxies:\n  - {name: n, type: socks5, server: localhost, port: 1}\nrules: [\"DOMAIN,a.com,n\", \"MATCH,n\"]\n")
+	apps := modules.Apps{Apps: []modules.App{{Type: "PROCESS-NAME", Payload: "claude"}}, Target: map[string]string{"p": "Google"}}
+	route := modules.Route{Service: "Google", Policy: "select"}
+	s := settings.Defaults()
+	s.BlockSTUN, s.BlockQUIC = true, true
+	user := []userrules.Rule{{Type: "DOMAIN", Payload: "x.com", Policy: "n"}}
+	b, err := Build("p", profile, s, Controller{}, user, []modules.Module{
+		{Name: "apps", Enabled: true, Apps: &apps},
+		{Name: "Google", Enabled: true, Route: &route},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m struct{ Rules []string }
+	if err := yaml.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{stunRule, quicRule, "DOMAIN,x.com,n", "PROCESS-NAME,claude,Google", "MATCH,DIRECT"}
+	if strings.Join(m.Rules, "\n") != strings.Join(want, "\n") {
+		t.Errorf("rules = %v, want %v", m.Rules, want)
 	}
 }

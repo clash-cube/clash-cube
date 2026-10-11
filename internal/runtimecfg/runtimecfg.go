@@ -138,13 +138,25 @@ func buildSteps(id string, profile []byte, s settings.Settings, ctl Controller, 
 		m["rules"] = append(pre, own...)
 		step("rules", m)
 	}
+	var guards []any
 	if s.BlockSTUN {
+		guards = append(guards, stunRule)
+	}
+	if s.BlockQUIC {
+		guards = append(guards, quicRule)
+	}
+	if len(guards) > 0 {
 		own, _ := m["rules"].([]any)
-		m["rules"] = append([]any{stunRule}, own...)
+		m["rules"] = append(guards, own...)
 		step("settings", m)
 	}
 	return yaml.Marshal(m)
 }
+
+// quicRule rejects QUIC (HTTP/3 over UDP 443). Like STUN, it would go on
+// to a later rule, possibly DIRECT, at a node without UDP; rejected,
+// browsers fall back to TCP, which every node carries.
+const quicRule = "AND,((NETWORK,UDP),(DST-PORT,443)),REJECT"
 
 // stunRule rejects STUN over UDP. A node without UDP makes mihomo skip
 // its rule and go on matching, which can end at DIRECT and show WebRTC

@@ -18,7 +18,7 @@ const TABS = ["general", "network", "rules", "tun", "core"] as const;
 type Tab = (typeof TABS)[number];
 
 // the settings the core runs with: changing one reloads it (PatchSettings)
-const CORE_KEYS = new Set<string>(["mixedPort", "allowLan", "ipv6", "unifiedDelay", "logLevel", "tunStack", "icmpForwarding", "findProcess", "guardIPv6", "guardDNS", "blockSTUN", "dnsRespectRules"]);
+const CORE_KEYS = new Set<string>(["mixedPort", "allowLan", "ipv6", "unifiedDelay", "logLevel", "tunStack", "icmpForwarding", "findProcess", "guardIPv6", "guardDNS", "blockSTUN", "blockQUIC", "dnsRespectRules"]);
 // the core settings being applied now, for their rows to say so
 const Applying = createContext<ReadonlySet<string>>(new Set());
 
@@ -193,6 +193,9 @@ export function Settings() {
           </Row>
           <Row field="blockSTUN" label={t("Block STUN over UDP")} sub={t("A node without UDP lets WebRTC go direct. Rejected, WebRTC falls back to relays over TCP; some video calls may connect slower or fail.")} wrap>
             <Switch on={s.blockSTUN} onChange={(v) => patch({ blockSTUN: v })} />
+          </Row>
+          <Row field="blockQUIC" label={t("Block QUIC")} sub={t("Rejects UDP to port 443, so browsers use HTTP/2 over TCP, which every node carries. A node without UDP would otherwise let QUIC go out by a later rule, possibly direct.")} wrap>
+            <Switch on={s.blockQUIC} onChange={(v) => patch({ blockQUIC: v })} />
           </Row>
           <Row field="dnsRespectRules" label={t("Look up names along the rules")} sub={t("The core's DNS queries go out through the policy their domain matches, so domestic DNS servers don't see the domains you proxy. Lookups get slower.")} wrap>
             <Switch on={s.dnsRespectRules} onChange={(v) => patch({ dnsRespectRules: v })} />

@@ -87,6 +87,7 @@ export interface Patch {
     "guardIPv6"?: boolean | null;
     "guardDNS"?: boolean | null;
     "blockSTUN"?: boolean | null;
+    "blockQUIC"?: boolean | null;
     "dnsRespectRules"?: boolean | null;
     "unifiedDelay"?: boolean | null;
     "bypass"?: string[] | null;

@@ -63,12 +63,14 @@ export interface Settings {
      * Leak protection (runtimecfg). GuardIPv6 routes IPv6 into the TUN
      * even with IPv6 off; GuardDNS makes the core answer every lookup;
      * BlockSTUN rejects STUN over UDP, which WebRTC would send direct when
-     * a node has no UDP; DNSRespectRules sends the core's own lookups the
-     * way the rules send their domains.
+     * a node has no UDP; BlockQUIC rejects QUIC so browsers use TCP;
+     * DNSRespectRules sends the core's own lookups the way the rules send
+     * their domains.
      */
     "guardIPv6": boolean;
     "guardDNS": boolean;
     "blockSTUN": boolean;
+    "blockQUIC": boolean;
     "dnsRespectRules": boolean;
     "systemProxy": boolean;
     "tun": boolean;

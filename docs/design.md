@@ -84,6 +84,7 @@ core/runtime.yaml      实际交给 core 的配置（0600）
    - **IPv6 流量进入 TUN**：TUN 开、IPv6 关时写 `ipv6: true`、`dns.ipv6: false`。mihomo 在 `ipv6: false` 时去掉 TUN 的 IPv6 地址，auto-route 就不加 IPv6 路由，IPv6 流量会绕过 TUN。core 还设 `SKIP_SYSTEM_IPV6_CHECK=1`。
    - **接管 DNS**：强制 `dns.enable`（没有就补一个 fake-ip 段），TUN 下 `dns-hijack` 改为 `any:53`、`tcp://any:53`。
    - **拦截 UDP STUN**：最前面加 `AND,((NETWORK,UDP),(DST-PORT,3478/5349/19302-19309)),REJECT`。
+   - **拦截 QUIC**：紧随其后加 `AND,((NETWORK,UDP),(DST-PORT,443)),REJECT`，浏览器回落到 TCP。理由同 STUN：节点不支持 UDP 时 mihomo 跳过该规则继续匹配，可能落到 DIRECT。
    - **DNS 查询遵循规则**：`dns.respect-rules: true`，缺 `proxy-server-nameserver` 时用 `nameserver` 补。
 6. 写 `core/runtime.yaml`，执行 `core -t` 校验，再启动或热重载（`PUT /configs?force=true`）。校验失败就保留原来的配置；模块、用户规则、设置被拒绝时都回滚到原值并提示内核的错误。
 
@@ -110,6 +111,13 @@ core/runtime.yaml      实际交给 core 的配置（0600）
 - 内核开不了 listener 只会记日志，不会拒绝配置，也不重试。所以保存前检查：同一配置下两个启用的端口不能重复，不能用 mixed 端口（设置里改 mixed 端口也反向检查）；新开的端口先在回环地址上不带 `SO_REUSEADDR` 试绑，避免被别处的 `0.0.0.0` 占用时误判为空闲。
 - 保存后仍可能被占用（重启、换配置时别的程序先占了）。每次启动和重载后，后端问内核 `/clashcube/listening`（`internal/core` 注册的路由，不改 fork）：内核遍历自己的文件描述符，找出有端口、没有对端的 TCP socket（darwin 没有 `SO_ACCEPTCONN`），即真正在监听的端口。内核在 API 就绪之后才开 listener，所以没开的端口 10 秒内每 0.5 秒再问一次。不在列表里的端口：试绑不上就是被别的程序占用（`lsof` 能看到时给出程序名），否则是没开启。结果放在 `State.Ports`，行上显示原因，分别给出“换一个空闲端口”和“重试”（重载会重新尝试开启失败的 listener）。`netstat` 由非终端进程启动时看不到其他进程的 socket，不能用。
 - 入口：模块页“新建模块 → SOCKS5 端口”，或代理页节点和策略组的右键菜单“用作 SOCKS5 端口…”。行上可以直接换节点，复制菜单给出地址、`socks5://` 链接、终端命令、Clash 和 Surge 节点写法；“复制一份”换下一个空闲端口。
+
+### 3.4 只代理这些程序
+对标 Proxifier / Ghost Proxifier：选中的程序走一个节点或策略组，其他流量全部直连。
+- 存程序列表（`PROCESS-NAME`、`PROCESS-PATH`、`PROCESS-PATH-REGEX`）和按配置 ID 保存的节点。从界面选 .app 时用 `PROCESS-PATH-REGEX ^<bundle>/`，覆盖其辅助进程（子进程追踪在 macOS 上的近似）；裸可执行文件用 `PROCESS-NAME`，不受安装路径和商店应用更新影响。值和节点名里不允许逗号和换行。
+- 生成 `rules!: [<程序规则>, MATCH,DIRECT]`，整体取代配置文件和其他模块的规则。它实现 `trailing()`，排在所有模块之后合并，所以能引用服务分流生成的组；用户规则和 STUN/QUIC 拦截仍插在它前面。节点不能被规则直接引用（provider 节点、已不存在）时，经隐藏组 `ClashCube chain/apps`（精确名字 `filter` + `empty-fallback: REJECT`）。
+- 当前配置没选节点时不生成任何内容。同一配置上只允许一个启用的此类模块，否则后者会丢掉前者的规则。
+- 不认系统代理的程序只有开 TUN 才会被接管；按进程匹配要求内核能查到进程（`find-process-mode`）。
 
 ## 4. 运行时行为
 

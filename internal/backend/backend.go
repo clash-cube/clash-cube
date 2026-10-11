@@ -587,18 +587,18 @@ func (b *Backend) PatchSettings(fn func(*settings.Settings)) (settings.Settings,
 // coreFields is the settings runtimecfg lays over the profile, which a
 // change of has the core reload.
 type coreFields struct {
-	UnifiedDelay                                    bool
-	MixedPort                                       int
-	AllowLan, IPv6, ICMPForwarding, FindProcess     bool
-	GuardIPv6, GuardDNS, BlockSTUN, DNSRespectRules bool
-	LogLevel, TunStack                              string
+	UnifiedDelay                                               bool
+	MixedPort                                                  int
+	AllowLan, IPv6, ICMPForwarding, FindProcess                bool
+	GuardIPv6, GuardDNS, BlockSTUN, BlockQUIC, DNSRespectRules bool
+	LogLevel, TunStack                                         string
 }
 
 func coreSettings(s settings.Settings) coreFields {
 	return coreFields{
 		UnifiedDelay: s.UnifiedDelay,
 		MixedPort:    s.MixedPort, AllowLan: s.AllowLan, IPv6: s.IPv6, ICMPForwarding: s.ICMPForwarding, FindProcess: s.FindProcess,
-		GuardIPv6: s.GuardIPv6, GuardDNS: s.GuardDNS, BlockSTUN: s.BlockSTUN, DNSRespectRules: s.DNSRespectRules,
+		GuardIPv6: s.GuardIPv6, GuardDNS: s.GuardDNS, BlockSTUN: s.BlockSTUN, BlockQUIC: s.BlockQUIC, DNSRespectRules: s.DNSRespectRules,
 		LogLevel: s.LogLevel, TunStack: s.TunStack,
 	}
 }
@@ -606,7 +606,7 @@ func coreSettings(s settings.Settings) coreFields {
 func setCoreSettings(s *settings.Settings, f coreFields) {
 	s.UnifiedDelay = f.UnifiedDelay
 	s.MixedPort, s.AllowLan, s.IPv6, s.ICMPForwarding, s.FindProcess = f.MixedPort, f.AllowLan, f.IPv6, f.ICMPForwarding, f.FindProcess
-	s.GuardIPv6, s.GuardDNS, s.BlockSTUN, s.DNSRespectRules = f.GuardIPv6, f.GuardDNS, f.BlockSTUN, f.DNSRespectRules
+	s.GuardIPv6, s.GuardDNS, s.BlockSTUN, s.BlockQUIC, s.DNSRespectRules = f.GuardIPv6, f.GuardDNS, f.BlockSTUN, f.BlockQUIC, f.DNSRespectRules
 	s.LogLevel, s.TunStack = f.LogLevel, f.TunStack
 }
 

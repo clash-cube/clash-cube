@@ -39,7 +39,7 @@ export function processPayload(type: string, a: AppInfo) {
     const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return a.bundle ? `^${esc(a.bundle)}/` : `^${esc(a.executable)}$`;
   }
-  return a.executable.split("/").pop() ?? a.name;
+  return a.executable.split(/[\\/]/).pop() || a.name;
 }
 
 export const isProcessType = (type: string) => type.startsWith("PROCESS-");
