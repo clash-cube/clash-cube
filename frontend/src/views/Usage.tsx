@@ -9,6 +9,7 @@ import { Chevron, Close, Globe, Route, Wifi } from "../components/Icons";
 import { toastError } from "../components/Toast";
 import { usePoll } from "../usePoll";
 import { bytes } from "../format";
+import { overviewTabs } from "../nav";
 
 type Period = "day" | "week" | "month";
 type Dim = "app" | "host" | "policy" | "network";
@@ -200,10 +201,10 @@ export function OverviewTabs({ value }: { value: "overview" | "usage" | "globe" 
   return (
     <Segmented<View>
       id="overview-tabs"
-      className="track small"
+      className="track small page-tabs"
       value={value}
       onChange={setView}
-      options={[{ value: "overview", label: t("Overview") }, { value: "usage", label: t("Traffic statistics") }, { value: "globe", label: t("Global connections") }]}
+      options={overviewTabs(t)}
     />
   );
 }

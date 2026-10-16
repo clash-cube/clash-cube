@@ -41,6 +41,7 @@ const zh: Record<string, string> = {
   "Save data on metered networks": "在计费网络上省流量", "Saving data": "省流量中",
   "On a personal hotspot or in Low Data Mode, subscriptions aren't updated and connectivity isn't measured in the background.": "在个人热点或低数据模式的网络上，不在后台更新订阅、不定时测量连通性。",
   "Overview": "概览", "Proxies": "代理", "Profiles": "配置", "Connections": "连接", "Rules": "规则", "Logs": "日志", "Settings": "设置",
+  "Activity": "活动", "Routing": "分流", "Diagnostics": "诊断", "Pages": "页面", "Show sidebar": "显示侧边栏", "Hide sidebar": "隐藏侧边栏", "Sidebar width": "侧边栏宽度",
   "Rule": "规则", "Global": "全局", "Direct": "直连",
   "Running": "运行中", "Stopped": "已停止", "Starting…": "正在启动…", "Stopping…": "正在停止…", "Restarting…": "正在重启…", "Reloading…": "正在重载…", "Error": "出错",
   "Start": "启动", "Stop": "停止", "Restart": "重启", "Start core": "启动内核", "Restart core": "重启内核", "Stop core": "停止内核",

@@ -7,6 +7,18 @@ import { toast, toastError } from "./components/Toast";
 
 export type View = "overview" | "usage" | "globe" | "proxies" | "profiles" | "connections" | "rules" | "logs" | "events" | "settings";
 
+export const SETTINGS_TABS = ["general", "network", "rules", "tun", "core"] as const;
+export type SettingsTab = (typeof SETTINGS_TABS)[number];
+export const isSettingsTab = (v: unknown): v is SettingsTab => SETTINGS_TABS.includes(v as SettingsTab);
+
+// the tab ?view=settings#<tab> names, else the one last open
+function firstSettingsTab(): SettingsTab {
+  const h = location.hash.slice(1);
+  if (isSettingsTab(h)) return h;
+  try { const v = localStorage.getItem("settings.tab"); if (isSettingsTab(v)) return v; } catch {}
+  return "general";
+}
+
 // a point of the traffic chart
 export type Sample = { up: number; down: number; at: number };
 const HISTORY = 60;
@@ -32,6 +44,9 @@ type Store = {
   connQuery: string;
   view: View;
   settingsTarget: { tab: string; section?: string } | null;
+  // the settings' tab, here so the sidebar lists it and picks it too
+  settingsTab: SettingsTab;
+  setSettingsTab: (tab: SettingsTab) => void;
   // a group the proxies page shows next, scrolled to and open
   proxiesTarget: string | null;
   // a rule the rules page shows next, scrolled to and open
@@ -62,6 +77,11 @@ export const useStore = create<Store>((set) => ({
   view: (new URLSearchParams(location.search).get("view") as View) || "overview",
   setView: (view) => set({ view }),
   settingsTarget: null,
+  settingsTab: firstSettingsTab(),
+  setSettingsTab: (settingsTab) => {
+    try { localStorage.setItem("settings.tab", settingsTab); } catch {}
+    set({ settingsTab });
+  },
   proxiesTarget: null,
   rulesTarget: null,
   moduleDraft: null,

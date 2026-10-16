@@ -46,4 +46,17 @@ export const Wifi = ({ size }: P) => (<svg {...s(size)}><path d="M2 6.6a9 9 0 0 
 export const Columns = ({ size }: P) => (<svg {...s(size)}><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M8 3v10" /></svg>);
 export const Rows = ({ size }: P) => (<svg {...s(size)}><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M2 8h12" /></svg>);
 export const Eye = ({ size, off }: P & { off?: boolean }) => (<svg {...s(size)}><path d="M1.8 8S4 3.8 8 3.8 14.2 8 14.2 8 12 12.2 8 12.2 1.8 8 1.8 8z" /><circle cx="8" cy="8" r="2" />{off && <path d="m2.5 13.5 11-11" />}</svg>);
+export const Gauge = ({ size }: P) => (<svg {...s(size)}><path d="M2.5 12a5.5 5.5 0 1 1 11 0" /><path d="m8 12 2.6-4.2" /></svg>);
+export const Nodes = ({ size }: P) => (<svg {...s(size)}><circle cx="4" cy="8" r="1.8" /><circle cx="12" cy="3.8" r="1.8" /><circle cx="12" cy="12.2" r="1.8" /><path d="m5.6 7.1 4.8-2.4M5.6 8.9l4.8 2.4" /></svg>);
+export const Exchange = ({ size }: P) => (<svg {...s(size)}><path d="M5 13V3M2.5 5.5 5 3l2.5 2.5M11 3v10M8.5 10.5 11 13l2.5-2.5" /></svg>);
+export const Bars = ({ size }: P) => (<svg {...s(size)}><path d="M3 13.5V9M6.5 13.5V4M10 13.5V7M13.5 13.5V2.5" /></svg>);
+export const Bell = ({ size }: P) => (<svg {...s(size)}><path d="M4 11.5V7a4 4 0 0 1 8 0v4.5l1 1H3z" /><path d="M6.6 14a1.6 1.6 0 0 0 2.8 0" /></svg>);
+export const Lines = ({ size }: P) => (<svg {...s(size)}><rect x="2.5" y="2" width="11" height="12" rx="2" /><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" /></svg>);
+// a window with its left pane, filled while the sidebar shows (.side-toggle)
+export const SidebarIcon = ({ size = 15 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true">
+    <rect className="st-pane" x="2.5" y="3.5" width="4" height="9" rx="1" />
+    <g fill="none" stroke="currentColor" strokeWidth={1.25} strokeLinecap="round"><rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2.25" /><path d="M6.75 2.75v10.5" /></g>
+  </svg>
+);
 export const Sort = ({ size }: P) => (<svg {...s(size)}><path d="M4 3v10M2 11l2 2 2-2M10 4h4M10 8h3M10 12h2" /></svg>);

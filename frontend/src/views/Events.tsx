@@ -3,6 +3,7 @@ import { useT } from "../i18n";
 import { useStore, type View } from "../store";
 import { Segmented } from "../components/Segmented";
 import type { Event } from "../api";
+import { logsTabs } from "../nav";
 
 type Filter = "all" | "warning";
 const KINDS: Record<string, string> = { core: "Core", proxy: "System Proxy", network: "Network", profile: "Profiles", group: "Proxy groups", app: "App" };
@@ -53,10 +54,10 @@ export function LogsTabs({ value }: { value: "logs" | "events" }) {
   const setView = useStore((s) => s.setView);
   return (
     <Segmented<View>
-      className="track small"
+      className="track small page-tabs"
       value={value}
       onChange={setView}
-      options={[{ value: "logs", label: t("Logs") }, { value: "events", label: t("Events") }]}
+      options={logsTabs(t)}
     />
   );
 }

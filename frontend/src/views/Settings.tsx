@@ -13,41 +13,21 @@ import { ago, bytes } from "../format";
 import { NetworkRules } from "../components/NetworkRules";
 import { AI_SERVICES } from "../aiServices";
 import { AIServiceName } from "../components/AIServiceName";
-
-const TABS = ["general", "network", "rules", "tun", "core"] as const;
-type Tab = (typeof TABS)[number];
+import { settingsTabs } from "../nav";
 
 // the settings the core runs with: changing one reloads it (PatchSettings)
 const CORE_KEYS = new Set<string>(["mixedPort", "allowLan", "ipv6", "unifiedDelay", "logLevel", "tunStack", "icmpForwarding", "findProcess", "guardIPv6", "guardDNS", "blockSTUN", "blockQUIC", "dnsRespectRules"]);
 // the core settings being applied now, for their rows to say so
 const Applying = createContext<ReadonlySet<string>>(new Set());
 
-// the tab ?view=settings#<tab> names, else the one last open
-function firstTab(): Tab {
-  const requested = useStore.getState().settingsTarget?.tab as Tab;
-  if (TABS.includes(requested)) return requested;
-  const h = location.hash.slice(1) as Tab;
-  if (TABS.includes(h)) return h;
-  try { const v = localStorage.getItem("settings.tab") as Tab; if (TABS.includes(v)) return v; } catch {}
-  return "general";
-}
-
 export function Settings() {
   const t = useT();
   const s = useStore((st) => st.settings);
   const state = useStore((st) => st.state);
   const target = useStore((st) => st.settingsTarget);
-  const [tab, setTab] = useState<Tab>(firstTab);
+  const tab = useStore((st) => st.settingsTab);
+  const pick = useStore((st) => st.setSettingsTab);
   const [applying, setApplying] = useState<ReadonlySet<string>>(new Set());
-  const pick = (v: Tab) => {
-    setTab(v);
-    try { localStorage.setItem("settings.tab", v); } catch {}
-  };
-  useEffect(() => {
-    const on = (e: Event) => { const v = (e as CustomEvent).detail as Tab; if (TABS.includes(v)) setTab(v); };
-    window.addEventListener("settings-tab", on);
-    return () => window.removeEventListener("settings-tab", on);
-  }, []);
   useEffect(() => {
     if (!s || !target || target.tab !== tab) return;
     if (target.section) document.getElementById(target.section)?.scrollIntoView({ block: "start" });
@@ -85,13 +65,7 @@ export function Settings() {
     <Applying.Provider value={applying}>
     <div className="view settings">
       <div className="view-head">
-        <Segmented className="track small" value={tab} onChange={pick} options={[
-          { value: "general", label: t("General") },
-          { value: "network", label: t("Network") },
-          { value: "rules", label: t("Network rules") },
-          { value: "tun", label: t("Enhanced Mode") },
-          { value: "core", label: t("Core") },
-        ]} />
+        <Segmented className="track small page-tabs" value={tab} onChange={pick} options={settingsTabs(t)} />
       </div>
 
       {tab === "general" && <>

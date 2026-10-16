@@ -1,7 +1,7 @@
 import { App } from "./api";
 import { toast, toastError } from "./components/Toast";
 import { translate as t } from "./i18n";
-import { useStore } from "./store";
+import { isSettingsTab, useStore } from "./store";
 
 // run awaits p, showing its error as a toast; the result, or undefined.
 export async function run<T>(p: Promise<T>, ok?: string): Promise<T | undefined> {
@@ -86,7 +86,6 @@ export function openRule(type: string, payload: string) {
 // openSettings shows the settings on one tab, also when they are open.
 export function openSettings(tab: string, section?: string) {
   useStore.setState({ settingsTarget: { tab, section } });
-  try { localStorage.setItem("settings.tab", tab); } catch {}
-  window.dispatchEvent(new CustomEvent("settings-tab", { detail: tab }));
+  if (isSettingsTab(tab)) useStore.getState().setSettingsTab(tab);
   useStore.getState().setView("settings");
 }
