@@ -1,16 +1,18 @@
 ClashCube for macOS 12 and later and Windows 10/11. This is a prerelease; please report issues with your OS version and CPU architecture.
 
-### What's new in v0.1.11
+### What's new in v0.1.12
 
-- On macOS, add a rule for the current webpage directly from the menu bar when using Safari or a Chromium browser. The first use may request browser automation permission; Firefox is not supported.
-- Create temporary rules for quick exceptions. They appear on the Rules page and are cleared when the profile is switched or updated.
-- Updated mihomo to openconnect-support commit 61beae9e, including platform test and OpenConnect CI adjustments.
+- Add managed Tailscale connections: sign in to a persistent tailnet, inspect peers and choose which remote subnets to use.
+- Add an “only these programs” module to proxy selected applications while sending other traffic directly, plus a QUIC blocking switch to make browsers fall back to TCP.
+- Navigate the main window with a resizable sidebar. Its width and visibility are remembered.
+- Search the runtime configuration with highlighted matches, a result counter and keyboard shortcuts for navigating matches without hiding surrounding lines.
 
 ### 本次更新
 
-- macOS 可从菜单栏直接为 Safari 或 Chromium 浏览器中的当前网页添加规则。首次使用可能请求浏览器自动化权限；暂不支持 Firefox。
-- 支持添加临时规则，方便快速设置例外；规则页可查看和删除，切换或更新配置后自动清除。
-- 更新 mihomo 至 openconnect-support 分支的 61beae9e，包含平台测试和 OpenConnect CI 调整。
+- 新增 Tailscale 连接管理：登录并保留组网身份，查看节点，选择要使用的远程子网。
+- 新增“仅这些程序”模块，让指定程序走代理、其他流量直连；新增 QUIC 屏蔽开关，让浏览器回退到 TCP。
+- 主窗口新增可调整宽度的侧边栏，并记住宽度和显示状态。
+- 运行配置搜索支持匹配高亮、结果计数和快捷键导航，同时保留匹配位置周围的内容。
 
 ### Downloads
 
