@@ -1066,6 +1066,9 @@ select.input { padding-right: 6px; }
 .runtime-yaml > .hunk:first-child { margin-top: 0; }
 .runtime-yaml > .hunk .counts { font-weight: 400; color: var(--muted); }
 .runtime-config .hunk-nav { display: flex; gap: 2px; }
+.runtime-config .status { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.runtime-yaml mark.hit { color: inherit; background: var(--amber-soft); box-shadow: 0 0 0 1px color-mix(in srgb, var(--amber) 35%, transparent); border-radius: 2px; }
+.runtime-yaml mark.hit.cur { color: var(--card); background: var(--amber); box-shadow: none; }
 .rules .idx { display: flex; align-items: center; gap: 3px; }
 .rules .idx .chev { flex: none; color: var(--faint); transition: transform .2s var(--ease); }
 .rules .trow.open .idx .chev { transform: rotate(90deg); }
