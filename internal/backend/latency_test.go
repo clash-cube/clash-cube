@@ -30,6 +30,23 @@ func latencyCore(t *testing.T, proxies map[string]mihomoapi.Proxy, providers map
 	return mihomoapi.New(strings.TrimPrefix(s.URL, "http://"), "")
 }
 
+func TestPublicLatencySkipsPrivateTailnetAndAliases(t *testing.T) {
+	probes := make(chan string, 4)
+	c := latencyCore(t, map[string]mihomoapi.Proxy{
+		"public":  {Name: "public", Type: "Socks5"},
+		"private": {Name: "private", Type: "Tailscale"},
+		"alias":   {Name: "alias", Type: "Selector", Now: "private", All: []string{"private"}},
+	}, nil, func(w http.ResponseWriter, r *http.Request) {
+		probes <- r.URL.Path
+		fmt.Fprint(w, `{"delay":10}`)
+	})
+	var tester latencyTester
+	result, err := tester.run(c, "https://public.invalid/204", "all", "", func(LatencyEvent) {})
+	if err != nil || result.Total != 1 || len(probes) != 1 || <-probes != "/proxies/public/delay" {
+		t.Fatalf("private network was publicly probed: %v %+v %v", probes, result, err)
+	}
+}
+
 func TestAutomaticGroupStreamsBeforeSlowProbeCompletes(t *testing.T) {
 	const testURL = "https://group.invalid/204"
 	var started atomic.Bool

@@ -10,5 +10,7 @@ export type {
     Rule,
     RuleExtra,
     RuleProvider,
+    TailscalePing,
+    TailscaleStatus,
     Traffic
 } from "./models.js";

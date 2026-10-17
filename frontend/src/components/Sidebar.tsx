@@ -1,4 +1,4 @@
-import { Fragment, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useStore, type View } from "../store";
 import { useT } from "../i18n";
 import { groups, settingsTabs, type Tab } from "../nav";
@@ -45,6 +45,22 @@ export function Sidebar({ width, onWidth, onHide }: { width: number; onWidth: (w
   const setSettingsTab = useStore((s) => s.setSettingsTab);
   useStore((s) => s.state);
   const side = useRef<HTMLElement>(null);
+  const [keyboard, setKeyboard] = useState(false);
+
+  // WebView can focus the separator as the window opens. Show its focus
+  // ring only after keyboard input, while keeping it in the tab order.
+  useEffect(() => {
+    const key = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Tab" || e.key === "ArrowLeft" || e.key === "ArrowRight") setKeyboard(true);
+    };
+    const pointer = () => setKeyboard(false);
+    document.addEventListener("keydown", key, true);
+    document.addEventListener("pointerdown", pointer, true);
+    return () => {
+      document.removeEventListener("keydown", key, true);
+      document.removeEventListener("pointerdown", pointer, true);
+    };
+  }, []);
 
   const drag = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
@@ -113,7 +129,7 @@ export function Sidebar({ width, onWidth, onHide }: { width: number; onWidth: (w
           <span className={"cdot " + coreTone()} /><span>{t("Core")} · {coreLabel()}</span>
         </button>
       </div>
-      <div className="side-edge" role="separator" aria-orientation="vertical" aria-label={t("Sidebar width")} tabIndex={0}
+      <div className={"side-edge" + (keyboard ? " keyboard" : "")} role="separator" aria-orientation="vertical" aria-label={t("Sidebar width")} tabIndex={0}
         aria-valuemin={SIDE_MIN} aria-valuemax={SIDE_MAX} aria-valuenow={width || undefined}
         onPointerDown={drag} onKeyDown={nudge} />
     </aside>

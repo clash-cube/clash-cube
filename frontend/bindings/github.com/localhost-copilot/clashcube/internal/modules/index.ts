@@ -8,5 +8,6 @@ export type {
     Port,
     Route,
     Service,
+    Tailscale,
     Template
 } from "./models.js";

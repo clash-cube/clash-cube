@@ -15,6 +15,9 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as backend$0 from "../backend/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as mihomoapi$0 from "../mihomoapi/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as usage$0 from "../usage/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -259,6 +262,26 @@ export function State(): $CancellablePromise<backend$0.State> {
 
 export function Stop(): $CancellablePromise<void> {
     return $Call.ByID(3279807313);
+}
+
+export function TailscaleHostname(): $CancellablePromise<string> {
+    return $Call.ByID(1358880930);
+}
+
+export function TailscaleLocalNetworks(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(2960536541);
+}
+
+export function TailscaleLogin(name: string): $CancellablePromise<void> {
+    return $Call.ByID(2520452372, name);
+}
+
+export function TailscaleLogout(name: string): $CancellablePromise<void> {
+    return $Call.ByID(1770305857, name);
+}
+
+export function TailscalePing(name: string, ip: string): $CancellablePromise<mihomoapi$0.TailscalePing> {
+    return $Call.ByID(585486883, name, ip);
 }
 
 /**

@@ -59,6 +59,7 @@ export interface Module {
      * the only programs proxied, everything else direct
      */
     "apps"?: Apps | null;
+    "tailscale"?: Tailscale | null;
 
     /**
      * for YAML taken from a kind's form, the kind it was: going back to the
@@ -155,6 +156,18 @@ export interface Service {
      * the one it starts with
      */
     "region"?: string;
+}
+
+/**
+ * Tailscale is one persistent, browser-authenticated tailnet connection. Its
+ * identity is independent of display names and profiles; Routes are an explicit
+ * choice to send these destinations to the remote network, including offline.
+ */
+export interface Tailscale {
+    "identity": string;
+    "hostname": string;
+    "controlURL"?: string;
+    "routes": string[] | null;
 }
 
 /**

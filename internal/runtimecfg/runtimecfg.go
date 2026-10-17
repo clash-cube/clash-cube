@@ -87,6 +87,9 @@ func buildSteps(id string, profile []byte, s settings.Settings, ctl Controller, 
 		step("module:"+mod.Name, m)
 	}
 	hideChainNodes(m)
+	if err := tailscaleRoutes(m); err != nil {
+		return nil, err
+	}
 	step("app", m)
 	if s.MixedPort > 0 {
 		m["mixed-port"] = s.MixedPort

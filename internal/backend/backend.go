@@ -51,7 +51,8 @@ type State struct {
 	// the last configuration refused, until one is taken
 	Refusal *Refusal `json:"refusal,omitempty"`
 	// how the port modules' ports came up (portstate.go)
-	Ports []PortState `json:"ports"`
+	Ports      []PortState                 `json:"ports"`
+	Tailscales []mihomoapi.TailscaleStatus `json:"tailscales"`
 	// updating the app itself (appupdate.go)
 	Update AppUpdate `json:"update"`
 }
@@ -115,8 +116,9 @@ type Backend struct {
 	// the last configuration refused, until one is taken (runtimeview.go)
 	refusal *Refusal
 	// portstate.go
-	ports   []PortState
-	portGen int
+	ports      []PortState
+	portGen    int
+	tailscales []mihomoapi.TailscaleStatus
 
 	// usage.go
 	usage     *usage.Store
@@ -213,6 +215,7 @@ func (b *Backend) State() State {
 	st, errText := b.core.Status()
 	b.mu.Lock()
 	busy, lost, refusal, ports := b.busy, b.proxyLost, b.refusal, b.ports
+	tailscales := b.tailscales
 	b.mu.Unlock()
 	name := ""
 	if p, ok := profiles.Get(s.Profile); ok {
@@ -224,6 +227,7 @@ func (b *Backend) State() State {
 		ServiceMode: s.ServiceMode, MixedPort: s.MixedPort,
 		Profile: s.Profile, ProfileName: name, Busy: busy, Network: b.network(s),
 		Refusal: refusal, Update: b.AppUpdate(), Ports: append([]PortState{}, ports...),
+		Tailscales: append([]mihomoapi.TailscaleStatus{}, tailscales...),
 	}
 }
 
@@ -743,7 +747,8 @@ func (b *Backend) restoreRuntime() {
 
 // SetModules replaces the user's modules. The configuration they make is
 // tested even with the core stopped, and taken at once when it runs; a
-// configuration the core refuses restores the previous modules.
+// configuration the core refuses restores the previous modules. A changed
+// Tailscale hostname or control server restarts the core instead.
 func (b *Backend) SetModules(ms []modules.Module) error {
 	before := modules.List()
 	if err := checkPorts(before, ms); err != nil {
@@ -751,6 +756,14 @@ func (b *Backend) SetModules(ms []modules.Module) error {
 	}
 	if err := modules.Save(ms); err != nil {
 		return err
+	}
+	if tailscaleReconnects(before, ms) && b.core.Client() != nil {
+		if err := b.Restart(); err != nil {
+			_ = modules.Save(before)
+			_ = b.Restart()
+			return err
+		}
+		return nil
 	}
 	if err := b.check(); err != nil {
 		_ = modules.Save(before)

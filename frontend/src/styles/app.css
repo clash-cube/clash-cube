@@ -124,8 +124,8 @@ code, .mono { font-family: var(--code); font-size: 11.5px; }
 .side-core > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* its edge drags it wider or narrower: the reach a little either side of
    the line, the line itself unchanged */
-.side-edge { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; z-index: 1; cursor: col-resize; touch-action: none; --wails-draggable: no-drag; }
-.side-edge:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+.side-edge { position: absolute; top: 0; bottom: 0; right: -4px; width: 8px; z-index: 1; cursor: col-resize; touch-action: none; outline: none; --wails-draggable: no-drag; }
+.side-edge.keyboard:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
 body.side-drag, body.side-drag * { cursor: col-resize !important; user-select: none; }
 /* beside the sidebar the header says where the reader is, "Activity /
    Overview / Traffic statistics", and the pages' tab strips are the
@@ -964,6 +964,49 @@ select.input { padding-right: 6px; }
 .port-editor .row-inline { flex-direction: row; align-items: center; gap: 10px; min-height: 26px; }
 .port-editor .scope > .switch { align-self: flex-start; margin-top: 3px; }
 .port-editor .row-inline > .switch { margin-top: 0; }
+.tailscale-editor .field .label { width: 96px; white-space: nowrap; }
+.tailscale-editor textarea { min-height: 52px; }
+.tailscale-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.tailscale-line { min-height: 26px; font-size: 12.5px; }
+.tailscale-line .pick-note { font-size: 11.5px; }
+.tailscale-self { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 6px; margin-left: -2px; border-radius: 6px; color: var(--muted); transition: background .12s, color .12s; }
+.tailscale-self svg { opacity: 0; transition: opacity .12s; }
+.tailscale-self:hover { background: var(--pill); color: var(--fg-2); }
+.tailscale-self:hover svg, .tailscale-self:focus-visible svg { opacity: 1; }
+/* what takes effect at once above, the settings saved below */
+.tailscale-sep { height: 1px; margin: 4px -14px; background: var(--line-2); }
+.tailscale-route { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-height: 22px; font-size: 12px; }
+.tailscale-route .pick-note { font-size: 11.5px; }
+.tailscale-notice { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; }
+.tailscale-editor .link { padding: 0; font-size: 12px; color: var(--accent); background: none; }
+.tailscale-editor .link:hover { text-decoration: underline; }
+.tailscale-editor .tailscale-advanced { align-self: flex-start; display: flex; align-items: center; gap: 4px; color: var(--muted); }
+.tailscale-editor .tailscale-advanced:hover { color: var(--fg-2); text-decoration: none; }
+.tailscale-editor .tailscale-advanced .chev { color: inherit; }
+.tailscale-peer-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; min-height: 26px; }
+.tailscale-peer-toolbar .search { flex: 1; min-width: 120px; max-width: 220px; height: 26px; }
+.tailscale-peer-toolbar .pick-note { font-size: 11.5px; }
+.tailscale-peers { border-radius: 8px; box-shadow: inset 0 0 0 1px var(--line-2); padding: 3px; max-height: 252px; overflow-y: auto; }
+.tailscale-peer + .tailscale-peer { border-top: 1px solid var(--line-2); }
+.tailscale-peer-row.row { gap: 6px; min-height: 46px; padding: 0 4px 0 8px; border-radius: 6px; transition: background .12s; }
+.tailscale-peer-row:hover, .tailscale-peer-row:focus-within { background: var(--card-2); }
+.tailscale-peer-toggle { display: flex; align-items: center; gap: 8px; align-self: stretch; flex: 1; min-width: 0; text-align: left; }
+.tailscale-peer-toggle .name, .tailscale-peer-toggle .sub { display: block; }
+.tailscale-peer-toggle .name { font-size: 12.5px; }
+.tailscale-peer-toggle .sub { font-size: 11px; }
+.tailscale-peer-toggle .chev, .tailscale-peer-row > .icon { flex: none; }
+.tailscale-peer-row > .icon { width: 24px; height: 24px; }
+.tailscale-peer-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+.tailscale-peer-dot.online { background: var(--green); }
+.tailscale-peer-state { flex: none; font-size: 11px; color: var(--muted); }
+.tailscale-peer-details { padding: 3px 6px 9px 22px; }
+.tailscale-peer-details > div { display: grid; grid-template-columns: 62px minmax(0, 1fr) 22px; align-items: start; gap: 6px; padding: 3px 0; font-size: 11px; line-height: 20px; }
+.tailscale-peer-details dt { color: var(--muted); }
+.tailscale-peer-details dd { min-width: 0; color: var(--fg-2); overflow-wrap: anywhere; user-select: text; }
+.tailscale-peer-details .icon { width: 20px; height: 20px; }
+.tailscale-peers-empty { padding: 16px 8px; text-align: center; font-size: 12px; color: var(--muted); }
+.tailscale-editor .err { color: var(--red); }
+.tailscale-editor .pick-note.warn { color: var(--amber); }
 /* only these programs: the programs in the form */
 .apps-list { display: flex; flex-direction: column; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--line-2); padding: 3px; max-height: 216px; overflow-y: auto; }
 .apps-row { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 4px 0 8px; border-radius: 6px; font-size: 12.5px; animation: pop-fade .15s ease-out; }

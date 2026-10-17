@@ -41,6 +41,14 @@ func (s *AppService) Restart() error       { return s.h.b.Restart() }
 // retries listeners it couldn't open.
 func (s *AppService) Reload() error { return s.h.b.Reload() }
 
+func (s *AppService) TailscaleLogin(name string) error  { return s.h.b.TailscaleLogin(name) }
+func (s *AppService) TailscaleLogout(name string) error { return s.h.b.TailscaleLogout(name) }
+func (s *AppService) TailscalePing(name, ip string) (mihomoapi.TailscalePing, error) {
+	return s.h.b.TailscalePing(name, ip)
+}
+func (s *AppService) TailscaleLocalNetworks() []string { return s.h.b.TailscaleLocalNetworks() }
+func (s *AppService) TailscaleHostname() string        { return s.h.b.TailscaleHostname() }
+
 func (s *AppService) SetMode(mode string) error {
 	return s.h.b.SetMode(mode)
 }

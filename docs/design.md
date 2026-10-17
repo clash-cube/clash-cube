@@ -119,6 +119,12 @@ core/runtime.yaml      实际交给 core 的配置（0600）
 - 当前配置没选节点时不生成任何内容。同一配置上只允许一个启用的此类模块，否则后者会丢掉前者的规则。
 - 不认系统代理的程序只有开 TUN 才会被接管；按进程匹配要求内核能查到进程（`find-process-mode`）。
 
+### 3.5 Tailscale
+
+Tailscale 是表单模块，通过 mihomo 内嵌 tsnet 访问 tailnet 设备与用户选择的远端子网。稳定身份 ID 决定 state-dir；模块显示名、配置重载和子网选择不改变身份。同一生效配置只允许一个托管连接。内核在接受配置后启动连接，同一身份的配置世代复用 session；身份文件有进程间锁，提权写入仍保留 core home 的用户所有权。完整行为和限制见 [tailscale.md](tailscale.md)。
+
+`TAILSCALE` 规则动态读取可见 peer IP、MagicDNS 后缀和显式选择的 CIDR，不为设备变化重载配置。在全部模块合并后补入，优先于配置/应用模块规则，用户规则和 STUN/QUIC 防护继续在前。托管节点从自动 `include-all` / `include-all-proxies` 组候选和普通公网测速中排除。状态与浏览器登录、退出登录、peer 探测通过受 secret 认证的 `/clashcube/tailscale` 接口；状态流进入 `State.Tailscales`，GUI 不访问 mihomo 单例。
+
 ## 4. 运行时行为
 
 - **启动**：加载设置 → 生成并校验 runtime.yaml → 拉起 core（上次是服务模式且 helper 可用时交给 helper）→ 等 `/version` 就绪后打开 WebSocket 流 → 恢复系统代理。启动时如果系统代理指向我们的端口但 core 没在运行，先清掉。

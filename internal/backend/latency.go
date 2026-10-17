@@ -64,7 +64,7 @@ func (b *Backend) TestLatency(kind, name string, notify func(LatencyEvent)) (Lat
 
 func latencyTestable(p mihomoapi.Proxy) bool {
 	switch strings.ToLower(p.Type) {
-	case "reject", "rejectdrop", "block":
+	case "reject", "rejectdrop", "block", "tailscale":
 		return false
 	}
 	return true

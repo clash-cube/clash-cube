@@ -3,6 +3,9 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as mihomoapi$0 from "../mihomoapi/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as wifi$0 from "../wifi/models.js";
 
 /**
@@ -754,6 +757,7 @@ export interface State {
      * how the port modules' ports came up (portstate.go)
      */
     "ports": PortState[] | null;
+    "tailscales": mihomoapi$0.TailscaleStatus[] | null;
 
     /**
      * updating the app itself (appupdate.go)

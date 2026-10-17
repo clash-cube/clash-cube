@@ -60,13 +60,15 @@ func (m Module) Kind() Kind {
 		return m.Port
 	case m.Apps != nil:
 		return m.Apps
+	case m.Tailscale != nil:
+		return m.Tailscale
 	}
 	return nil
 }
 
 // withKind is m made from k instead.
 func (m Module) withKind(k Kind) Module {
-	m.Route, m.Port, m.Apps = nil, nil, nil
+	m.Route, m.Port, m.Apps, m.Tailscale = nil, nil, nil, nil
 	switch k := k.(type) {
 	case *Route:
 		m.Route = k
@@ -74,6 +76,8 @@ func (m Module) withKind(k Kind) Module {
 		m.Port = k
 	case *Apps:
 		m.Apps = k
+	case *Tailscale:
+		m.Tailscale = k
 	}
 	return m
 }
@@ -89,7 +93,7 @@ func (m Module) wasKind() Kind {
 // kinds counts how many kinds m is made from; more than one is refused.
 func (m Module) kinds() int {
 	n := 0
-	for _, set := range []bool{m.Route != nil, m.Port != nil, m.Apps != nil} {
+	for _, set := range []bool{m.Route != nil, m.Port != nil, m.Apps != nil, m.Tailscale != nil} {
 		if set {
 			n++
 		}

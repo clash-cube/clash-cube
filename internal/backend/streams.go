@@ -28,6 +28,18 @@ func (b *Backend) startStreams() {
 		return mihomoapi.Stream(ctx, c, "/memory", b.sink.Memory)
 	})
 	go b.recordUsage(ctx, c)
+	go follow(ctx, func(ctx context.Context) error {
+		return mihomoapi.Stream(ctx, c, "/clashcube/tailscale?stream=true", func(nodes []mihomoapi.TailscaleStatus) {
+			b.mu.Lock()
+			if ctx.Err() != nil {
+				b.mu.Unlock()
+				return
+			}
+			b.tailscales = nodes
+			b.mu.Unlock()
+			b.emitState()
+		})
+	})
 	b.restartLogs()
 }
 
@@ -62,6 +74,7 @@ func (b *Backend) restartLogs() {
 func (b *Backend) stopStreams() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	b.tailscales = nil
 	if b.streamCancel != nil {
 		b.streamCancel()
 		b.streamCancel = nil
