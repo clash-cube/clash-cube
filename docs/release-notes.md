@@ -1,7 +1,8 @@
 ClashCube for macOS 12 and later and Windows 10/11. This is a prerelease; please report issues with your OS version and CPU architecture.
 
-### What's new in v0.1.12
+### What's new in v0.1.13
 
+- Give the macOS tray panel a popover shape with an arrow pointing to the menu bar icon, plus animated opening and closing.
 - Add managed Tailscale connections: sign in to a persistent tailnet, inspect peers and choose which remote subnets to use.
 - Add an “only these programs” module to proxy selected applications while sending other traffic directly, plus a QUIC blocking switch to make browsers fall back to TCP.
 - Navigate the main window with a resizable sidebar. Its width and visibility are remembered.
@@ -9,6 +10,7 @@ ClashCube for macOS 12 and later and Windows 10/11. This is a prerelease; please
 
 ### 本次更新
 
+- macOS 托盘面板采用带箭头的浮层造型，指向菜单栏图标，并新增打开和关闭动画。
 - 新增 Tailscale 连接管理：登录并保留组网身份，查看节点，选择要使用的远程子网。
 - 新增“仅这些程序”模块，让指定程序走代理、其他流量直连；新增 QUIC 屏蔽开关，让浏览器回退到 TCP。
 - 主窗口新增可调整宽度的侧边栏，并记住宽度和显示状态。
