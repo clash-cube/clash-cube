@@ -176,6 +176,8 @@ const zh: Record<string, string> = {
   "Groups": "策略组", "Providers": "提供商", "{n} nodes": "{n} 个节点", "Reachable nodes": "可用节点", "Click to test this node": "点击测试该节点", "Click to test again": "点击重新测速", "Looked up through {p}, not {q} that the test URL takes": "此次查询经过 {p}，而非测速链接所走的 {q}",
   "Events": "事件", "Problems": "问题", "No events": "暂无事件", "Network changes, automatic group switches and errors appear here.": "网络变化、自动策略组切换和错误会显示在这里。",
   "Proxy groups": "策略组", "Notifications": "通知", "Core errors, failed updates, the system proxy taken by another app, and network rules applied": "内核出错、订阅更新失败、系统代理被其他应用改写、应用网络规则时通知",
+  "Subscriptions": "订阅", "User agent": "User-Agent", "Default": "默认", "Custom": "自定义",
+  "Some providers send a different configuration for another client. Updates are fetched as {ua}.": "有些机场会按客户端返回不同的配置。当前以 {ua} 获取更新。",
   "Another app changed the system proxy": "其他应用修改了系统代理", "Apps that follow the system proxy no longer go through ClashCube.": "遵循系统代理的应用已不再经过 ClashCube。",
   "Set as System Proxy": "设为系统代理", "Turn off System Proxy": "关闭系统代理", "Copy Shell Export Command": "复制终端代理命令",
   "Copy Shell Export Command with LAN IP": "复制带局域网 IP 的终端代理命令", "Network Settings…": "网络设置…",

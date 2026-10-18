@@ -14,6 +14,11 @@ type Settings struct {
 	// Profile is the id of the profile in use.
 	Profile string `json:"profile"`
 
+	// SubscriptionUA is what profile updates are fetched as; empty is the
+	// app's own name (profiles.DefaultUserAgent). Some providers answer with
+	// a different configuration depending on the client that asks.
+	SubscriptionUA string `json:"subscriptionUa"`
+
 	// What the app lays over every profile (runtimecfg).
 	Mode         string `json:"mode"` // rule | global | direct
 	MixedPort    int    `json:"mixedPort"`

@@ -630,6 +630,9 @@ type SettingsService struct{ h *host }
 
 func (s *SettingsService) Get() settings.Settings { return settings.Load() }
 
+// DefaultUserAgent is what profile updates are fetched as unless one is set.
+func (s *SettingsService) DefaultUserAgent() string { return s.h.b.DefaultUserAgent() }
+
 // SetNetworkAuto turns the network rules on or off.
 func (s *SettingsService) SetNetworkAuto(on bool) (settings.Settings, error) {
 	return s.h.b.SetNetworkAuto(on)
@@ -675,6 +678,7 @@ type Patch struct {
 	SaveData        *bool     `json:"saveData,omitempty"`
 	AIServices      *[]string `json:"aiServices,omitempty"`
 	AutoUpdateApp   *bool     `json:"autoUpdateApp,omitempty"`
+	SubscriptionUA  *string   `json:"subscriptionUa,omitempty"`
 }
 
 func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
@@ -689,6 +693,13 @@ func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
 			}
 		}
 		p.Bypass = &clean
+	}
+	if p.SubscriptionUA != nil {
+		ua := strings.TrimSpace(*p.SubscriptionUA)
+		if !profiles.ValidUserAgent(ua) {
+			return settings.Load(), errors.New("a user agent must be one line of at most 200 characters")
+		}
+		p.SubscriptionUA = &ua
 	}
 	out, err := s.h.b.PatchSettings(func(st *settings.Settings) {
 		set(&st.MixedPort, p.MixedPort)
@@ -716,6 +727,7 @@ func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
 		set(&st.SaveData, p.SaveData)
 		set(&st.AIServices, p.AIServices)
 		set(&st.AutoUpdateApp, p.AutoUpdateApp)
+		set(&st.SubscriptionUA, p.SubscriptionUA)
 	})
 	if p.Dock != nil {
 		application.InvokeAsync(func() { s.h.dock(s.h.main.IsVisible()) })

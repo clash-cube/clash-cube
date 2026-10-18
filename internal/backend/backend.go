@@ -173,7 +173,7 @@ func (b *Backend) Init() error {
 		s.Profile = profiles.List()[0].ID
 		_ = settings.Save(s)
 	}
-	profiles.SetUserAgent("clash.meta/" + b.CoreVersion + " clashcube/" + b.Version)
+	b.applyUserAgent(s)
 	// a system proxy left pointing at us by a crash is cleared, even when
 	// it should be on: it points at a port nobody serves until the core
 	// starts (and it may never, with AutoStart off or a broken profile).
@@ -574,9 +574,13 @@ func (b *Backend) PatchSettings(fn func(*settings.Settings)) (settings.Settings,
 				_ = b.writeRuntime(false) // what a crash restart would read
 			}
 			b.opMu.Unlock()
+			b.applyUserAgent(after)
 			b.emitState()
 			return after, err
 		}
+	}
+	if before.SubscriptionUA != after.SubscriptionUA {
+		b.applyUserAgent(after)
 	}
 	if before.LogLevel != after.LogLevel {
 		b.restartLogs()
@@ -588,6 +592,17 @@ func (b *Backend) PatchSettings(fn func(*settings.Settings)) (settings.Settings,
 	return after, nil
 }
 
+// applyUserAgent sets what profile updates are fetched as.
+func (b *Backend) applyUserAgent(s settings.Settings) {
+	profiles.SetUserAgent(profiles.EffectiveUserAgent(b.CoreVersion, b.Version, s.SubscriptionUA))
+}
+
+// DefaultUserAgent is what profile updates are fetched as unless the user
+// picks another.
+func (b *Backend) DefaultUserAgent() string {
+	return profiles.DefaultUserAgent(b.CoreVersion, b.Version)
+}
+
 // coreFields is the settings runtimecfg lays over the profile, which a
 // change of has the core reload.
 type coreFields struct {
@@ -595,7 +610,7 @@ type coreFields struct {
 	MixedPort                                                  int
 	AllowLan, IPv6, ICMPForwarding, FindProcess                bool
 	GuardIPv6, GuardDNS, BlockSTUN, BlockQUIC, DNSRespectRules bool
-	LogLevel, TunStack                                         string
+	LogLevel, TunStack, SubscriptionUA                         string
 }
 
 func coreSettings(s settings.Settings) coreFields {
@@ -603,7 +618,7 @@ func coreSettings(s settings.Settings) coreFields {
 		UnifiedDelay: s.UnifiedDelay,
 		MixedPort:    s.MixedPort, AllowLan: s.AllowLan, IPv6: s.IPv6, ICMPForwarding: s.ICMPForwarding, FindProcess: s.FindProcess,
 		GuardIPv6: s.GuardIPv6, GuardDNS: s.GuardDNS, BlockSTUN: s.BlockSTUN, BlockQUIC: s.BlockQUIC, DNSRespectRules: s.DNSRespectRules,
-		LogLevel: s.LogLevel, TunStack: s.TunStack,
+		LogLevel: s.LogLevel, TunStack: s.TunStack, SubscriptionUA: s.SubscriptionUA,
 	}
 }
 
@@ -611,7 +626,7 @@ func setCoreSettings(s *settings.Settings, f coreFields) {
 	s.UnifiedDelay = f.UnifiedDelay
 	s.MixedPort, s.AllowLan, s.IPv6, s.ICMPForwarding, s.FindProcess = f.MixedPort, f.AllowLan, f.IPv6, f.ICMPForwarding, f.FindProcess
 	s.GuardIPv6, s.GuardDNS, s.BlockSTUN, s.BlockQUIC, s.DNSRespectRules = f.GuardIPv6, f.GuardDNS, f.BlockSTUN, f.BlockQUIC, f.DNSRespectRules
-	s.LogLevel, s.TunStack = f.LogLevel, f.TunStack
+	s.LogLevel, s.TunStack, s.SubscriptionUA = f.LogLevel, f.TunStack, f.SubscriptionUA
 }
 
 // UseProfile switches to another profile.

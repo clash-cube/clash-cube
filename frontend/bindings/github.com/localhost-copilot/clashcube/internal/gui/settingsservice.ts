@@ -18,6 +18,13 @@ import * as settings$0 from "../settings/models.js";
 // @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
+/**
+ * DefaultUserAgent is what profile updates are fetched as unless one is set.
+ */
+export function DefaultUserAgent(): $CancellablePromise<string> {
+    return $Call.ByID(3643128974);
+}
+
 export function Get(): $CancellablePromise<settings$0.Settings> {
     return $Call.ByID(170134267);
 }

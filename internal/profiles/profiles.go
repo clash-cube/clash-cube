@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go.yaml.in/yaml/v3"
@@ -43,13 +44,56 @@ type Profile struct {
 func (p Profile) Path() string { return filepath.Join(appdir.Profiles(), p.ID+".yaml") }
 
 var (
-	mu        sync.Mutex
-	userAgent       = "clash.meta/clashcube"
-	maxSize   int64 = 32 << 20
+	mu      sync.Mutex
+	maxSize int64 = 32 << 20
 )
 
+// userAgent is what subscriptions are fetched as. Settings can change it
+// while an update is downloading, so it is swapped atomically.
+var userAgent atomic.Value
+
+func init() { userAgent.Store("clash.meta/clashcube") }
+
 // SetUserAgent sets what subscriptions are fetched as.
-func SetUserAgent(ua string) { userAgent = ua }
+func SetUserAgent(ua string) { userAgent.Store(ua) }
+
+// UserAgent is what subscriptions are fetched as now.
+func UserAgent() string {
+	if ua, ok := userAgent.Load().(string); ok && ua != "" {
+		return ua
+	}
+	return "clash.meta/clashcube"
+}
+
+// DefaultUserAgent names this app and its core to subscription servers.
+func DefaultUserAgent(coreVersion, appVersion string) string {
+	return "clash.meta/" + coreVersion + " clashcube/" + appVersion
+}
+
+// ValidUserAgent reports whether ua can be sent as one header line. Empty is
+// valid and means the default.
+func ValidUserAgent(ua string) bool {
+	if len(ua) > 200 {
+		return false
+	}
+	for i := 0; i < len(ua); i++ {
+		if ua[i] < 0x20 || ua[i] == 0x7f {
+			return false
+		}
+	}
+	return true
+}
+
+// EffectiveUserAgent is custom when the user set one and the default
+// otherwise. A value that can't be a header falls back to the default rather
+// than failing every download: it may come from a hand-edited settings.json.
+func EffectiveUserAgent(coreVersion, appVersion, custom string) string {
+	custom = strings.TrimSpace(custom)
+	if custom == "" || !ValidUserAgent(custom) {
+		return DefaultUserAgent(coreVersion, appVersion)
+	}
+	return custom
+}
 
 func indexPath() string { return filepath.Join(appdir.Profiles(), "index.json") }
 
@@ -283,7 +327,7 @@ func fetch(u string) ([]byte, fetched, error) {
 	if err != nil {
 		return nil, info, err
 	}
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", UserAgent())
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, info, err

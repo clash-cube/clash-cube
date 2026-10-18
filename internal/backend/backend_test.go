@@ -905,3 +905,31 @@ hosts:
 		t.Errorf("rejected = %+v", r)
 	}
 }
+
+// What profile updates are fetched as comes from settings, at start and when
+// it changes; clearing it goes back to the app's own name.
+func TestSubscriptionUserAgent(t *testing.T) {
+	t.Setenv("CLASHCUBE_HOME", t.TempDir())
+	if _, err := settings.Update(func(s *settings.Settings) {
+		s.MixedPort, s.AutoStart, s.AutoUpdateApp = freePort(t), false, false
+		s.SubscriptionUA = "ClashforWindows/0.19.23"
+	}); err != nil {
+		t.Fatal(err)
+	}
+	b := New("0.1.13", "v1.19.0", []byte(base), nopSink{make(chan State, 64)})
+	if err := b.Init(); err != nil {
+		t.Fatal(err)
+	}
+	if got := profiles.UserAgent(); got != "ClashforWindows/0.19.23" {
+		t.Fatalf("at start: %q", got)
+	}
+	if got, want := b.DefaultUserAgent(), "clash.meta/v1.19.0 clashcube/0.1.13"; got != want {
+		t.Fatalf("default: %q, want %q", got, want)
+	}
+	if _, err := b.PatchSettings(func(s *settings.Settings) { s.SubscriptionUA = "" }); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := profiles.UserAgent(), "clash.meta/v1.19.0 clashcube/0.1.13"; got != want {
+		t.Fatalf("after clearing: %q, want %q", got, want)
+	}
+}

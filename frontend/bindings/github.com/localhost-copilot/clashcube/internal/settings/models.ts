@@ -38,6 +38,13 @@ export interface Settings {
     "profile": string;
 
     /**
+     * SubscriptionUA is what profile updates are fetched as; empty is the
+     * app's own name (profiles.DefaultUserAgent). Some providers answer with
+     * a different configuration depending on the client that asks.
+     */
+    "subscriptionUa": string;
+
+    /**
      * What the app lays over every profile (runtimecfg).
      * rule | global | direct
      */

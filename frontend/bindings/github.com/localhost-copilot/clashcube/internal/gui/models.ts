@@ -103,6 +103,7 @@ export interface Patch {
     "saveData"?: boolean | null;
     "aiServices"?: string[] | null;
     "autoUpdateApp"?: boolean | null;
+    "subscriptionUa"?: string | null;
 }
 
 /**

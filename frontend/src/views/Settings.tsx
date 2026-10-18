@@ -16,7 +16,7 @@ import { AIServiceName } from "../components/AIServiceName";
 import { settingsTabs } from "../nav";
 
 // the settings the core runs with: changing one reloads it (PatchSettings)
-const CORE_KEYS = new Set<string>(["mixedPort", "allowLan", "ipv6", "unifiedDelay", "logLevel", "tunStack", "icmpForwarding", "findProcess", "guardIPv6", "guardDNS", "blockSTUN", "blockQUIC", "dnsRespectRules"]);
+const CORE_KEYS = new Set<string>(["mixedPort", "allowLan", "ipv6", "unifiedDelay", "logLevel", "tunStack", "icmpForwarding", "findProcess", "guardIPv6", "guardDNS", "blockSTUN", "blockQUIC", "dnsRespectRules", "subscriptionUa"]);
 // the core settings being applied now, for their rows to say so
 const Applying = createContext<ReadonlySet<string>>(new Set());
 
@@ -81,6 +81,10 @@ export function Settings() {
               <option value="never">{t("Never")}</option>
             </select>
           </Row>}
+        </Section>
+
+        <Section title={t("Subscriptions")}>
+          <SubscriptionUARow value={s.subscriptionUa ?? ""} onPatch={patch} />
         </Section>
 
         <Section title={t("Global connections")}>
@@ -440,10 +444,44 @@ function NumberInput({ value, onCommit }: { value: number; onCommit: (v: number)
   return <input className="input num" value={v} inputMode="numeric" onChange={(e) => setV(e.target.value.replace(/\D/g, ""))} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} />;
 }
 
-function TextInput({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+function TextInput({ value, onCommit, placeholder }: { value: string; onCommit: (v: string) => void; placeholder?: string }) {
   const [v, setV] = useState(value);
   useEffect(() => setV(value), [value]);
-  return <input className="input" style={{ width: 280 }} value={v} onChange={(e) => setV(e.target.value)} onBlur={() => v.trim() !== value && onCommit(v.trim())} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} />;
+  return <input className="input" style={{ width: 280 }} placeholder={placeholder} value={v} onChange={(e) => setV(e.target.value)} onBlur={() => v.trim() !== value && onCommit(v.trim())} onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} />;
+}
+
+// What profile updates are fetched as. Some providers key the configuration
+// they send on this, so the names other clients use are one pick away.
+const UA_PRESETS = [
+  { value: "", label: "Default" },
+  { value: "clash-verge/v2.4.2", label: "Clash Verge" },
+  { value: "ClashforWindows/0.19.23", label: "Clash for Windows" },
+];
+
+function SubscriptionUARow({ value, onPatch }: { value: string; onPatch: (p: Patch) => Promise<void> }) {
+  const t = useT();
+  const [editing, setEditing] = useState(() => !UA_PRESETS.some((p) => p.value === value));
+  useEffect(() => { if (!UA_PRESETS.some((p) => p.value === value)) setEditing(true); }, [value]);
+  const [def, setDef] = useState("");
+  useEffect(() => {
+    let live = true;
+    S.DefaultUserAgent().then((ua) => { if (live) setDef(ua); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+  return (
+    <Row label={t("User agent")} sub={t("Some providers send a different configuration for another client. Updates are fetched as {ua}.", { ua: value || def })} wrap>
+      <select className="input" value={editing ? "custom" : value}
+        onChange={(e) => {
+          if (e.target.value === "custom") { setEditing(true); return; }
+          setEditing(false);
+          void onPatch({ subscriptionUa: e.target.value });
+        }}>
+        {UA_PRESETS.map((p) => <option key={p.value} value={p.value}>{p.value === "" ? t("Default") : p.label}</option>)}
+        <option value="custom">{t("Custom")}</option>
+      </select>
+      {editing && <TextInput value={value} onCommit={(v) => void onPatch({ subscriptionUa: v })} placeholder={def} />}
+    </Row>
+  );
 }
 
 function BypassRow({ value, onSave }: { value: string[]; onSave: (v: string[]) => void }) {

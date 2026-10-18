@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"go.yaml.in/yaml/v3"
 
 	"github.com/localhost-copilot/clashcube/internal/modules"
+	"github.com/localhost-copilot/clashcube/internal/profiles"
 	"github.com/localhost-copilot/clashcube/internal/settings"
 	"github.com/localhost-copilot/clashcube/internal/userrules"
 )
@@ -107,6 +109,10 @@ func buildSteps(id string, profile []byte, s settings.Settings, ctl Controller, 
 	// for every connection, not only those a PROCESS-NAME rule asks about
 	if s.FindProcess {
 		m["find-process-mode"] = "always"
+	}
+	// providers inside the profile are fetched as the profile itself is
+	if ua := strings.TrimSpace(s.SubscriptionUA); ua != "" && profiles.ValidUserAgent(ua) {
+		m["global-ua"] = ua
 	}
 	step("settings", m)
 	// The app is the only controller: a profile's own (or a unix socket,

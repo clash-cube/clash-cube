@@ -60,6 +60,23 @@ custom-key: kept
 	if v := m["tun"].(map[string]any)["disable-icmp-forwarding"]; v != true {
 		t.Errorf("disable-icmp-forwarding = %v, want true", v)
 	}
+
+	// providers are fetched as the subscription is; without a choice the
+	// profile's own global-ua stays
+	for _, tc := range []struct{ ua, want string }{{"", "mine/1"}, {"clash-verge/v2.4.2", "clash-verge/v2.4.2"}, {"bad\nua", "mine/1"}} {
+		s.SubscriptionUA = tc.ua
+		out, err = Build("p", []byte("global-ua: mine/1"), s, Controller{}, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		m = nil
+		if err := yaml.Unmarshal(out, &m); err != nil {
+			t.Fatal(err)
+		}
+		if m["global-ua"] != tc.want {
+			t.Errorf("ua %q: global-ua = %v, want %s", tc.ua, m["global-ua"], tc.want)
+		}
+	}
 }
 
 // The user's rules go first; one whose policy the profile lacks is left
