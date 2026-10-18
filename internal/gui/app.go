@@ -55,7 +55,9 @@ type host struct {
 	keys  *shortcuts
 
 	panelHeight    int
-	closing        atomic.Bool // a full-screen main window leaving it, to hide after
+	panelClosing   atomic.Bool  // the panel shrinks before it hides (macOS)
+	panelGen       atomic.Int64 // each open and close; a newer one cancels a pending hide
+	closing        atomic.Bool  // a full-screen main window leaving it, to hide after
 	mainReady      chan struct{}
 	mainReadyOnce  sync.Once
 	panelReady     chan struct{}
@@ -133,8 +135,8 @@ func Run(version string) error {
 		Frameless:       true,
 		AlwaysOnTop:     true,
 		DisableResize:   true,
-		HideOnEscape:    true,
-		HideOnFocusLost: true,
+		HideOnEscape:    runtime.GOOS == "windows", // macOS hides it through hidePanel, which animates
+		HideOnFocusLost: runtime.GOOS == "windows",
 		BackgroundType:  application.BackgroundTypeTranslucent,
 		Mac: application.MacWindow{
 			Backdrop:     application.MacBackdropTranslucent,
@@ -147,6 +149,8 @@ func Run(version string) error {
 			h.panelReadyOnce.Do(func() { close(h.panelReady) })
 		})
 	} else {
+		h.panel.RegisterKeyBinding("escape", func(application.Window) { h.hidePanel() })
+		h.panel.OnWindowEvent(events.Common.WindowLostFocus, func(*application.WindowEvent) { h.hidePanel() })
 		close(h.panelReady)
 	}
 
@@ -213,14 +217,14 @@ func Run(version string) error {
 	// the menu takes the panel's place; opening it doesn't take focus
 	// from the panel, so HideOnFocusLost wouldn't hide it
 	h.tray.OnRightClick(func() {
-		h.tray.HideWindow()
+		h.hidePanel()
 		if runtime.GOOS == "windows" {
 			h.menu.tracking(true)
 			defer h.menu.tracking(false)
 		}
 		h.tray.OpenMenu()
 	})
-	h.tray.AttachWindow(h.panel).WindowOffset(6)
+	h.tray.AttachWindow(h.panel).WindowOffset(panelOffset)
 	h.tray.OnClick(func() {
 		trayPlay()
 		h.showPanel(true)
@@ -236,6 +240,7 @@ func Run(version string) error {
 		if settings.Load().Notify {
 			application.InvokeAsync(h.startNotifications)
 		}
+		shapePanel(h.panel)
 		h.menu.refresh()
 		h.keys.apply()
 		go h.b.Boot()
@@ -318,7 +323,7 @@ func (h *host) showMain(view string) {
 		return
 	}
 	h.closing.Store(false)
-	h.panel.Hide()
+	h.hidePanel()
 	if view != "" {
 		h.main.EmitEvent("navigate", view)
 	}
@@ -331,14 +336,56 @@ func (h *host) showMain(view string) {
 func (h *host) showPanel(toggle bool) {
 	select {
 	case <-h.panelReady:
-		if toggle {
-			h.tray.ToggleWindow()
-		} else {
-			h.tray.ShowWindow()
+		if runtime.GOOS == "windows" {
+			if toggle {
+				h.tray.ToggleWindow()
+			} else {
+				h.tray.ShowWindow()
+			}
+			return
+		}
+		// a click on the icon takes the focus first, so the panel may
+		// already be closing: let it
+		if toggle && h.panel.IsVisible() {
+			h.hidePanel()
+			return
+		}
+		closing := h.panelClosing.Swap(false)
+		h.panelGen.Add(1)
+		shown := h.panel.IsVisible() && !closing
+		if !shown {
+			panelOpening(h.panel)
+		}
+		h.tray.ShowWindow()
+		if !shown {
+			panelOpened(h.panel)
 		}
 	default:
 		go func() { <-h.panelReady; application.InvokeAsync(func() { h.showPanel(toggle) }) }()
 	}
+}
+
+// hidePanel hides the tray panel; on macOS it shrinks into its arrow first.
+func (h *host) hidePanel() {
+	if runtime.GOOS == "windows" {
+		h.panel.Hide()
+		return
+	}
+	if !h.panel.IsVisible() || h.panelClosing.Swap(true) {
+		return
+	}
+	gen := h.panelGen.Add(1)
+	panelClosing(h.panel)
+	time.AfterFunc(panelCloseTime, func() {
+		application.InvokeAsync(func() {
+			if h.panelGen.Load() != gen {
+				return
+			}
+			h.panelClosing.Store(false)
+			h.panel.Hide()
+			panelClosed(h.panel)
+		})
+	})
 }
 
 func (h *host) hideMain() {
@@ -374,7 +421,7 @@ func (h *host) fitPanel(height, ms int) {
 	}
 	h.panel.SetSize(panelWidth, height)
 	if h.panel.IsVisible() {
-		_ = h.tray.PositionWindow(h.panel, 6)
+		_ = h.tray.PositionWindow(h.panel, panelOffset)
 	}
 }
 

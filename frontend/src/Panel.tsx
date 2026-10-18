@@ -235,7 +235,8 @@ function useFit(parts: React.RefObject<HTMLElement | null>[]) {
     const measure = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        const h = Math.ceil(parts.reduce((n, r) => n + (r.current?.getBoundingClientRect().height ?? 0), 0)) + 4;
+        const arrow = parseFloat(getComputedStyle(document.body).paddingTop) || 0;
+        const h = Math.ceil(parts.reduce((n, r) => n + (r.current?.getBoundingClientRect().height ?? 0), arrow)) + 4;
         if (Math.abs(h - last.current) < 2) return;
         const first = last.current === 0;
         last.current = h;

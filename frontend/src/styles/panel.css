@@ -1,5 +1,7 @@
 /* ---- the tray panel -------------------------------------------------------- */
 .panel { border-radius: 12px; overflow: hidden; }
+/* the window draws an arrow above the panel on macOS (panel_darwin.go) */
+:root.is-panel[data-platform="macos"] body { padding-top: 10px; }
 .ptop { display: flex; align-items: center; gap: 8px; padding: 10px 10px 8px 14px; flex: none; }
 .plogo { display: inline-flex; width: 24px; height: 28px; align-items: center; justify-content: center; color: var(--fg); }
 .pstatus { flex: 1; min-width: 0; }

@@ -15,7 +15,16 @@ import (
 
 // Windows uses the native title bar and taskbar; AppKit-only decoration is
 // intentionally absent. Panel positioning and resizing stay with Wails.
+const panelOffset = 6
+
+const panelCloseTime = 0
+
 func glide(*application.WebviewWindow, int, int, [4]float64) bool { return false }
+func shapePanel(*application.WebviewWindow)                       {}
+func panelOpening(*application.WebviewWindow)                     {}
+func panelOpened(*application.WebviewWindow)                      {}
+func panelClosing(*application.WebviewWindow)                     {}
+func panelClosed(*application.WebviewWindow)                      {}
 func activateApp()                                                {}
 func setDock(bool, bool)                                          {}
 func dockPolicy(bool) application.ActivationPolicy                { return application.ActivationPolicyRegular }

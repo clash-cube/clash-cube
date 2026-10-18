@@ -102,7 +102,7 @@ func helperPrompt() string {
 
 // ShowMain opens the main window, on view if one is given.
 func (s *AppService) ShowMain(view string) { application.InvokeAsync(func() { s.h.showMain(view) }) }
-func (s *AppService) HidePanel()           { application.InvokeAsync(func() { s.h.panel.Hide() }) }
+func (s *AppService) HidePanel()           { application.InvokeAsync(s.h.hidePanel) }
 func (s *AppService) Quit()                { application.InvokeAsync(s.h.app.Quit) }
 
 // FitPanel sizes the tray panel to its page's height (CSS pixels), gliding
