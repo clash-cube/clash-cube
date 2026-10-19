@@ -34,8 +34,9 @@ Modules made from a form (a route, a port) implement `modules.Kind`
 
 ## mihomo is a submodule of a fork
 
-- `third_party/mihomo` is `Demogorgon314/mihomo` on branch
-  `openconnect-support`. It is compiled from source through a `replace`.
+- `third_party/mihomo` is `clash-cube/mihomo` (a fork of
+  `Demogorgon314/mihomo`) on branch `openconnect-support`. It is compiled
+  from source through a `replace`.
 - `go.mod` must also carry the fork's own `replace` lines, because dependents
   don't inherit them. After bumping the submodule, run
   `scripts/sync-replaces.sh`.
