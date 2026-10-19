@@ -1,5 +1,9 @@
 /* The palette, type and motion: one quiet surface, controls that read as native. */
 :root {
+  --radius-card: 12px;
+  --radius-sheet: 16px;
+  --radius-handle: 4px;
+  --sheet-scrim: rgba(0, 0, 0, .32);
   --bg: #f4f4f6;
   --card: #ffffff;
   --card-2: #f9f9fb;

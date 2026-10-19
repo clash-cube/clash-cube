@@ -2,11 +2,57 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 )
+
+// NodeEgress observes the selected outbound using the same trace and IP
+// attribute caches as AI checks. Groups are resolved to their current leaf so
+// changing a nested selector cannot reuse the previous node's address.
+func (b *Backend) NodeEgress(node string) (AIEgress, error) {
+	c, err := b.Client()
+	if err != nil {
+		return AIEgress{}, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	return b.nodeEgress(ctx, c, node)
+}
+
+func (b *Backend) nodeEgress(ctx context.Context, c *mihomoapi.Client, node string) (AIEgress, error) {
+	proxies, err := c.Proxies(ctx)
+	if err != nil {
+		return AIEgress{}, err
+	}
+	seen := map[string]bool{}
+	for {
+		p, ok := proxies[node]
+		if seen[node] || node == "" {
+			return AIEgress{}, fmt.Errorf("unavailable outbound %q", node)
+		}
+		seen[node] = true
+		// Provider leaves need not appear in /proxies. Trace validates their
+		// names against the core's complete outbound registry.
+		if !ok || p.Now == "" {
+			break
+		}
+		node = p.Now
+	}
+	body, err := b.aiEgress.get(ctx, c, node, proxyTrace)
+	if err != nil {
+		return AIEgress{}, err
+	}
+	e, err := parseEgress(aiService{}, body, nil)
+	if err != nil {
+		return AIEgress{}, err
+	}
+	e.Node = node
+	e.Details, _ = b.aiIPs.get(ctx, e.IP, false, time.Now(), lookupAIIP)
+	return e, nil
+}
 
 type aiEgressKey struct {
 	client *mihomoapi.Client

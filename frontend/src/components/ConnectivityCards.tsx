@@ -59,7 +59,7 @@ function shortServer(s: string) {
 // The four latencies Surge's overview leads with: the router, DNS, the
 // internet directly, and through the proxy. Measured on open, every 30s
 // while shown, and on demand.
-export function ConnectivityCards() {
+export function ConnectivityCards({ heading }: { heading?: ReactNode } = {}) {
   const t = useT();
   const running = useStore((s) => s.state?.core === "running");
   const mode = useStore((s) => s.state?.mode);
@@ -182,7 +182,7 @@ export function ConnectivityCards() {
   return (
     <>
       <div className="section-title section-head">
-        {t("Network")}
+        {heading ?? t("Network")}
         <button className={"icon" + (busy ? " spin" : "")} title={t("Test")} disabled={!running} onClick={measure}><Refresh size={13} /></button>
       </div>
       <div className="conn-cards">

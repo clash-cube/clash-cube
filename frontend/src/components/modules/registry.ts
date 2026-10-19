@@ -5,6 +5,7 @@ import { routeKind } from "./route";
 import { portKind } from "./port";
 import { appsKind } from "./apps";
 import { tailscaleKind } from "./tailscale";
+import { capabilities } from "../../mobile/capabilities";
 
 // KINDS is every kind but YAML, which takes the modules none of them
 // claims. Their order is the add menu's, after YAML's templates.
@@ -13,4 +14,4 @@ const KINDS: ModuleKind[] = [routeKind, portKind, appsKind, tailscaleKind];
 export const kindOf = (m: Module): ModuleKind => KINDS.find((k) => k.is(m)) ?? yamlKind;
 
 // the kinds as the add menu lists them
-export const MENU: ModuleKind[] = [yamlKind, ...KINDS];
+export const availableKinds = (): ModuleKind[] => [yamlKind, ...KINDS.filter(k => capabilities().listeners || k !== portKind)];

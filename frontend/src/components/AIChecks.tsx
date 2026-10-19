@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, type AICheck, type AIEgress, type AIHost, type AIRoute } from "../api";
 import { useStore } from "../store";
 import { useT } from "../i18n";
@@ -28,7 +28,7 @@ const cache = new Map<string, { at: number; result: AICheck }>();
 
 // Whether every name an AI service's apps talk to leaves by the same
 // address, and whether the service serves that address's region.
-export function AIChecks() {
+export function AIChecks({ icon }: { icon?: ReactNode } = {}) {
   const t = useT();
   const running = useStore((s) => s.state?.core === "running");
   const systemProxyOnly = useStore((s) => !!s.state?.systemProxy && !s.state?.tun);
@@ -88,7 +88,7 @@ export function AIChecks() {
   return (
     <>
       <div className="section-title section-head">
-        <span className="ai-head-title">{t("AI services")}{systemProxyOnly && <LeakHint />}</span>
+        <span className="ai-head-title">{icon}{t("AI services")}{systemProxyOnly && <LeakHint />}</span>
         <span className="ai-head-actions">
           {anyIP && <button className="icon" title={t(hidden ? "Show IP address" : "Hide IP address")} aria-label={t(hidden ? "Show IP address" : "Hide IP address")} aria-pressed={hidden} onClick={toggleHidden}><Eye size={14} off={hidden} /></button>}
           <button className={"icon" + (busy ? " spin" : "")} title={t("Refresh routes, egress IP and IP attributes")} disabled={!running || busy} onClick={() => check(services, true)}><Refresh size={13} /></button>

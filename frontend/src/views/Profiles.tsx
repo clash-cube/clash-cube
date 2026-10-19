@@ -9,6 +9,9 @@ import { ago, bytes } from "../format";
 import { Segmented } from "../components/Segmented";
 import { Modules } from "../components/modules";
 import { RefusalBanner, RuntimeConfig } from "../components/RuntimeConfig";
+import { isAndroid } from "../platform";
+import { PageActions } from "../mobile/PageActions";
+import { errText } from "../components/Toast";
 
 const TABS = ["profiles", "modules", "merged"] as const;
 type Tab = typeof TABS[number];
@@ -55,10 +58,11 @@ export function Profiles() {
   };
 
   return (
-    <div className="view">
+    <div className="view profiles-view">
+      {isAndroid && <PageActions><button className="icon" aria-label={t("Update all")} disabled={updatingAll} onClick={updateAll}><Refresh size={22} /></button><button className="icon" aria-label={t("Import")} onClick={e => setImportAt(e.currentTarget)}><Plus size={22} /></button></PageActions>}
       <div className="view-head">
         <Segmented className="track small" value={tab} onChange={setTab} options={[
-          { value: "profiles", label: `${t("Profiles")} ${profiles.length}` },
+          { value: "profiles", label: isAndroid ? t("Profiles") : `${t("Profiles")} ${profiles.length}` },
           { value: "modules", label: t("Modules") },
           { value: "merged", label: t("Merged") },
         ]} />
@@ -133,13 +137,13 @@ function ProfileRow({ p, current, flash, onFlash, onCopied }: { p: Profile; curr
   const pct = total ? Math.min(100, (used / total) * 100) : 0;
   const expired = p.expire ? p.expire * 1000 < Date.now() : false;
   const sub = [
-    p.url ? new URL(p.url).host : t("Local file"),
+    p.url ? (isAndroid ? t("Subscription") : new URL(p.url).host) : t("Local file"),
     t("Updated {t}", { t: ago(p.updated, t) }),
     p.expire ? (expired ? t("Expired") : t("Expires {d}", { d: new Date(p.expire * 1000).toLocaleDateString() })) : "",
   ].filter(Boolean).join(" · ");
 
   return (
-    <div className={"row click profile" + (current ? " current" : "") + (flash ? " flash" : "")} onClick={use}>
+    <div className={"row click profile" + (current ? " current" : "") + (flash ? " flash" : "")} onClick={use} onContextMenu={isAndroid ? e => { e.preventDefault(); setMenuAt(e.currentTarget); } : undefined}>
       <span className={"ic" + (current ? " on" : "")}>{p.url ? <Globe /> : <File />}</span>
       <div className="who">
         {renaming ? (
@@ -167,8 +171,8 @@ function ProfileRow({ p, current, flash, onFlash, onCopied }: { p: Profile; curr
           ...(p.url ? [{ label: t("Copy URL"), onClick: () => { App.CopyText(p.url!); toast(t("Copied")); } }] : []),
           { label: t("Rename"), onClick: () => setRenaming(true) },
           ...(p.url ? [{ label: t("Make an editable copy"), onClick: duplicate }] : []),
-          { label: t("Open in editor"), onClick: openInEditor },
-          { label: t("Show in Finder"), onClick: () => P.Reveal(p.id).catch(toastError) },
+          ...(!isAndroid ? [{ label: t("Open in editor"), onClick: openInEditor },
+          { label: t("Show in Finder"), onClick: () => P.Reveal(p.id).catch(toastError) }] : []),
           ...(!current ? ["sep" as const, { label: t("Remove"), danger: true, onClick: remove }] : []),
         ]} />
       </Popover>
@@ -198,6 +202,7 @@ function ImportPopover({ anchor, request, onClose, onDone }: { anchor: HTMLEleme
   const [url, setUrl] = useState(request?.url ?? "");
   const [name, setName] = useState(request?.name ?? "");
   const [interval, setInterval] = useState(24);
+  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => { if (anchor) setTimeout(() => input.current?.focus(), 60); }, [anchor]);
@@ -205,12 +210,13 @@ function ImportPopover({ anchor, request, onClose, onDone }: { anchor: HTMLEleme
   const submit = async () => {
     if (busy || !url.trim()) return;
     setBusy(true);
+    setError("");
     try {
       const p = await P.ImportURL(url.trim(), name.trim(), interval);
       toast(t("Imported {name}", { name: p.name }));
       setUrl(""); setName("");
       onDone(p);
-    } catch (e) { toastError(e); }
+    } catch (e) { setError(errText(e)); if (!isAndroid) toastError(e); }
     setBusy(false);
   };
   const file = async () => {
@@ -226,16 +232,17 @@ function ImportPopover({ anchor, request, onClose, onDone }: { anchor: HTMLEleme
   return (
     <Popover anchor={anchor} open={!!anchor} onClose={() => { if (!busy) onClose(); }} align="end" width={360}>
       <form className="pop-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        <h3>{t("Import from URL")}</h3>
-        <label>{t("Subscription URL")}<input ref={input} className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" /></label>
+        <h3>{t(isAndroid ? "Import profile" : "Import from URL")}</h3>
+        <label>{t("Subscription URL")}<div className="mobile-url-input"><input ref={input} className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder={isAndroid ? t("Subscription URL") : "https://…"} />{isAndroid && <button type="button" className="btn" onClick={() => setUrl(window.clashcubeAndroid?.readClipboard() ?? "")}>{t("Paste")}</button>}</div></label>
+        {isAndroid && error && <p className="mobile-error">{error}</p>}
         <label>{t("Name (optional)")}<input className="input" value={name} onChange={(e) => setName(e.target.value)} /></label>
-        <label>{t("Auto update")}
+        {!isAndroid && <label>{t("Auto update")}
           <select className="input" value={interval} onChange={(e) => setInterval(+e.target.value)}>
             {INTERVALS.map((h) => <option key={h} value={h}>{h ? t("Every {n}h", { n: h }) : t("Never")}</option>)}
           </select>
-        </label>
+        </label>}
         <div className="foot">
-          <button type="button" className="btn" disabled={busy} onClick={file}>{t("Import a file…")}</button>
+          <button type="button" className="btn file-import" disabled={busy} onClick={file}>{t("Import a file…")}</button>
           <div className="grow" />
           <button type="submit" className="btn primary" disabled={busy || !url.trim()}>{busy ? t("Updating…") : t("Import")}</button>
         </div>

@@ -12,6 +12,11 @@ func Root() string {
 	if d := os.Getenv("CLASHCUBE_HOME"); d != "" {
 		return d
 	}
+	if runtime.GOOS == "android" {
+		// The Activity must supply Context.getFilesDir() before starting Wails.
+		// Never fall back to a relative or desktop path in an Android process.
+		panic("Android files directory has not been initialized")
+	}
 	if runtime.GOOS == "windows" {
 		d, err := os.UserConfigDir()
 		if err == nil {

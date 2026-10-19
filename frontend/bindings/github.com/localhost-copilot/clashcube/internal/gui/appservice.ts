@@ -171,6 +171,13 @@ export function LANProxyCommand(): $CancellablePromise<string> {
 }
 
 /**
+ * NodeEgress shares the AI checks' cached exit address for an outbound.
+ */
+export function NodeEgress(node: string): $CancellablePromise<backend$0.AIEgress> {
+    return $Call.ByID(2934556666, node);
+}
+
+/**
  * OpenAutomationSettings opens the pane where ClashCube may be let ask
  * browsers for their page.
  */
@@ -180,6 +187,13 @@ export function OpenAutomationSettings(): $CancellablePromise<void> {
 
 export function OpenURL(url: string): $CancellablePromise<void> {
     return $Call.ByID(3602974294, url);
+}
+
+/**
+ * Platform identifies the native host independently of the WebView user agent.
+ */
+export function Platform(): $CancellablePromise<string> {
+    return $Call.ByID(2189815990);
 }
 
 /**

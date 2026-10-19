@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { isAndroid } from "../platform";
+import { BottomSheet } from "../mobile/BottomSheet";
 
 export type Point = { x: number; y: number };
 
@@ -7,7 +9,11 @@ export type Point = { x: number; y: number };
 // middle) and sinks back toward it as it closes. Given a point instead, as a
 // context menu is, it opens from there: its corner at the pointer, turned to
 // the left or upward where the window has no room.
-export function Popover({ anchor, point, open, onClose, children, align = "start", width }: {
+export function Popover(props: Parameters<typeof DesktopPopover>[0]) {
+  return isAndroid ? <BottomSheet open={props.open} onClose={props.onClose}>{props.children}</BottomSheet> : <DesktopPopover {...props} />;
+}
+
+function DesktopPopover({ anchor, point, open, onClose, children, align = "start", width }: {
   anchor: HTMLElement | null;
   point?: Point | null;
   open: boolean;

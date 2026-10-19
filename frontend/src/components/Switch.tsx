@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { isAndroid } from "../platform";
 
 // Switch flips at once; when onChange returns a promise it shows the new
 // side as pending (a spinner on the thumb) until `on` catches up, and
@@ -9,7 +10,7 @@ export function Switch({ on, onChange, busy, disabled, label }: { on: boolean; o
   useEffect(() => { if (pending !== null && on === pending) setPending(null); }, [on, pending]);
   useEffect(() => () => clearTimeout(settle.current), []);
   const shown = pending ?? on;
-  return (
+  const button = (
     <button
       // never a form's submit, which a button in a form is by default
       type="button"
@@ -30,4 +31,5 @@ export function Switch({ on, onChange, busy, disabled, label }: { on: boolean; o
       }}
     />
   );
+  return isAndroid ? <span className="mobile-switch">{button}</span> : button;
 }

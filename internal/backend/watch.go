@@ -10,7 +10,6 @@ import (
 	"github.com/localhost-copilot/clashcube/internal/appdir"
 	"github.com/localhost-copilot/clashcube/internal/profiles"
 	"github.com/localhost-copilot/clashcube/internal/settings"
-	"github.com/localhost-copilot/clashcube/internal/sysproxy"
 )
 
 // Event is something that happened, for the events list and, when Notify
@@ -66,8 +65,7 @@ func (b *Backend) ClearEvents() {
 
 // The machine, as variables so tests can stand in for it.
 var (
-	proxyEffective = sysproxy.Effective
-	networkKey     = primaryNetwork
+	networkKey = primaryNetwork
 )
 
 const watchEvery = 3 * time.Second

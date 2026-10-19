@@ -12,6 +12,8 @@ import { ago, bytes, delayClass, fmtDelay, nodeLabel } from "../format";
 import { App, type Group, type Member, type Provider } from "../api";
 import { startCore } from "../actions";
 import { reveal } from "../reveal";
+import { isAndroid } from "../platform";
+import { PageActions } from "../mobile/PageActions";
 
 type Tab = "groups" | "providers";
 
@@ -24,6 +26,7 @@ export function Proxies() {
   const { groups, providers, select, testGroup, testProvider, testOne, testAll, updateProvider, testing, progress, flash } = useGroups({ providers: true, testOnOpen: true });
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [sorted, setSorted] = useState(false);
+  const [named, setNamed] = useState(false);
   // ?view=proxies#providers opens on the providers
   const [tab, setTab] = useState<Tab>(location.hash === "#providers" ? "providers" : "groups");
   const [updatingAll, setUpdatingAll] = useState(false);
@@ -32,6 +35,11 @@ export function Proxies() {
   const [q, setQ] = useState("");
   // a node's or group's context menu
   const [menu, setMenu] = useState<{ name: string; point: Point } | null>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const targets = [...(groups ?? []), ...(providers ?? [])];
+    if (core !== "running" || (groups && !targets.some(g => g.name === menu.name || g.members?.some(m => m.name === menu.name)))) setMenu(null);
+  }, [core, groups, providers, menu]);
   const onMenu = (name: string, point: Point) => setMenu({ name, point });
   // while searching every match is open; a card folded then stays folded
   // only until the query changes
@@ -63,7 +71,7 @@ export function Proxies() {
   if (core !== "running") {
     return (
       <div className="view">
-        <div className="empty-state"><b>{t("Core is not running")}</b>{t("Start the core to see proxies.")}<div><button className="btn primary" onClick={startCore}>{t("Start core")}</button></div></div>
+        <div className="empty-state"><b>{t(isAndroid ? "Turn on to see proxy groups" : "Core is not running")}</b>{!isAndroid && t("Start the core to see proxies.")}<div><button className="btn primary" onClick={startCore}>{t(isAndroid ? "Turn on" : "Start core")}</button></div></div>
       </div>
     );
   }
@@ -79,6 +87,7 @@ export function Proxies() {
   const needle = q.trim().toLowerCase();
   const has = (name: string) => name.toLowerCase().includes(needle);
   const narrow = <T extends { name: string; members?: Member[] | null }>(x: T): T | null => {
+    if (named) x = { ...x, members: [...(x.members ?? [])].sort((a, b) => a.name.localeCompare(b.name)) };
     if (!needle || has(x.name)) return x;
     const members = (x.members ?? []).filter((m) => has(m.name));
     return members.length ? { ...x, members } : null;
@@ -99,16 +108,21 @@ export function Proxies() {
   };
 
   const wide = width >= TWO_COLUMNS_MIN;
-  const cols = twoCols && wide ? 2 : 1;
+  const cols = !isAndroid && twoCols && wide ? 2 : 1;
 
   return (
     <div className="view proxies-view" ref={box}>
-      <div className="view-head">
+      {isAndroid && <PageActions query={q} onQuery={setQ} items={[
+        { label: t("Default order"), checked: !sorted && !named, onClick: () => { setSorted(false); setNamed(false); } },
+        { label: t("Sort by latency"), checked: sorted, onClick: () => { setSorted(true); setNamed(false); } },
+        { label: t("Sort by name"), checked: named, onClick: () => { setSorted(false); setNamed(true); } },
+      ]}><button className="icon" aria-label={t("Test all")} disabled={!!testing["all/"]} onClick={testAll}><Bolt size={22} /></button></PageActions>}
+      <div className={"view-head" + (pvs.length ? "" : " mobile-no-providers")}>
         <h2>{t("Proxies")}</h2>
         {pvs.length ? (
           <Segmented className="track small" value={view} onChange={setTab} options={[
-            { value: "groups", label: `${t("Groups")} ${shown.length}` },
-            { value: "providers", label: `${t("Providers")} ${pvs.length}` },
+            { value: "groups", label: isAndroid ? t("Groups") : `${t("Groups")} ${shown.length}` },
+            { value: "providers", label: isAndroid ? t("Providers") : `${t("Providers")} ${pvs.length}` },
           ]} />
         ) : <span className="sub">{shown.length}</span>}
         <div className="view-tools">
@@ -166,7 +180,7 @@ export function Proxies() {
       )}
       <Popover anchor={null} point={menu?.point} open={!!menu} onClose={() => setMenu(null)}>
         {menu && <Menu close={() => setMenu(null)} items={[
-          ...(menu.name !== "GLOBAL" ? [{ label: t("Serve on a SOCKS5 port…"), onClick: () => openPortDraft(menu.name) }] : []),
+          ...(isAndroid ? [{ label: t("Test"), onClick: () => testOne(menu.name) }] : menu.name !== "GLOBAL" ? [{ label: t("Serve on a SOCKS5 port…"), onClick: () => openPortDraft(menu.name) }] : []),
           { label: t("Copy name"), onClick: () => App.CopyText(nodeLabel(menu.name)).then(() => toast(t("Copied"))) },
         ]} />}
       </Popover>
@@ -304,7 +318,7 @@ function NodeGrid({ members: ms, sorted, now, selectable, flashKey, onSelect, on
           className={"node stagger" + (m.name === now ? " on" : "") + (selectable ? "" : " fixed") + (flashKey === m.name ? " flash" : "")}
           style={{ ["--i" as string]: Math.min(i, 24) }}
           // with nothing to select (a provider's nodes), a click tests
-          onClick={(e) => (e.altKey || !onSelect ? onTestOne(m.name) : selectable && m.name !== now && onSelect(m.name))}
+          onClick={(e) => isAndroid ? selectable && m.name !== now && onSelect?.(m.name) : (e.altKey || !onSelect ? onTestOne(m.name) : selectable && m.name !== now && onSelect(m.name))}
           onContextMenu={onMenu && ((e) => { e.preventDefault(); onMenu(m.name, { x: e.clientX, y: e.clientY }); })}
           title={nodeLabel(m.name) + "\n" + (onSelect ? "⌥-click: " + t("test this node only") : t("Click to test this node"))}
         >
@@ -313,11 +327,12 @@ function NodeGrid({ members: ms, sorted, now, selectable, flashKey, onSelect, on
             <span className="ntype">{m.type}{m.udp ? " · UDP" : ""}</span>
             <span
               className={"delay " + (testing["#" + m.name] ? "testing" : delayClass(m.delay))}
-              onClick={(e) => { e.stopPropagation(); onTestOne(m.name); }}
+              onClick={isAndroid ? undefined : (e) => { e.stopPropagation(); onTestOne(m.name); }}
             >
               {testing["#" + m.name] ? "···" : fmtDelay(m.delay, t)}
             </span>
           </span>
+          {isAndroid && <span className="mobile-node-check" aria-label={m.name === now ? t("Selected") : undefined} aria-hidden={m.name !== now}>{m.name === now ? "✓" : null}</span>}
         </button>
       ))}
     </div>

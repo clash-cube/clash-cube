@@ -1,3 +1,5 @@
+//go:build !android
+
 // ClashCube is a macOS menu bar and Windows tray app for mihomo. One binary runs in three
 // roles: the GUI (default), the proxy core (`core`), and the privileged
 // helper daemon (`helper`). See docs/design.md.

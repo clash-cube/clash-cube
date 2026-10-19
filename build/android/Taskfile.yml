@@ -1,0 +1,15 @@
+version: '3'
+
+tasks:
+  apk:
+    summary: Build the Android debug APK for arm64-v8a and x86_64
+    cmds:
+      - task: :bindings
+      - cd frontend && pnpm run build:dev
+      - bash scripts/build-android.sh
+
+  install:
+    summary: Build, install and launch on the selected adb device
+    deps: [apk]
+    cmds:
+      - bash scripts/install-android.sh

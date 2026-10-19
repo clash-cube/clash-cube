@@ -4,6 +4,8 @@ import { useStore, type View } from "../store";
 import { Segmented } from "../components/Segmented";
 import type { Event } from "../api";
 import { logsTabs } from "../nav";
+import { isAndroid } from "../platform";
+import { PageActions } from "../mobile/PageActions";
 
 type Filter = "all" | "warning";
 const KINDS: Record<string, string> = { core: "Core", proxy: "System Proxy", network: "Network", profile: "Profiles", group: "Proxy groups", app: "App" };
@@ -23,6 +25,7 @@ export function Events() {
 
   return (
     <div className="view events-view">
+      {isAndroid && <PageActions items={[{ label: t("Clear"), onClick: clear }]} />}
       <div className="view-head">
         <LogsTabs value="events" />
         <div className="view-tools">
@@ -35,6 +38,7 @@ export function Events() {
           <div className="empty-state"><b>{t("No events")}</b>{t("Network changes, automatic group switches and errors appear here.")}</div>
         ) : shown.map((e) => (
           <div className={"event " + e.level} key={e.id}>
+            {isAndroid && <span className="mobile-event-time">{when(e.time)} · {t(e.level.toUpperCase())}</span>}
             <span className="dot" />
             <div>
               <div className="text">{eventText(t, e)}</div>

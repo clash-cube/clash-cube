@@ -22,10 +22,16 @@ import { RuleEditor, suggestions } from "../components/RuleEditor";
 import { GroupPicker, RouteChain, routeGroups } from "../components/RouteChain";
 import { useGroups } from "../useGroups";
 import type { Group } from "../api";
+import { isAndroid } from "../platform";
+import { MobileConnections } from "../mobile/MobileConnections";
 
 const ROW = 44, HEAD = 34;
 
 export function Connections() {
+  return isAndroid ? <MobileConnections /> : <DesktopConnections />;
+}
+
+function DesktopConnections() {
   const t = useT();
   const profile = useStore((s) => s.state?.profile);
   const running = useStore((s) => s.state?.core === "running");
@@ -339,7 +345,7 @@ function Chain({ c }: { c: Conn }) {
   </span>;
 }
 
-function Detail({ c, leaving, sourceLabel, at, closeDisabled, onClose, onKill, onAddRule, groups, picking, onPick }: {
+export function Detail({ c, leaving, sourceLabel, at, closeDisabled, onClose, onKill, onAddRule, groups, picking, onPick }: {
   c: Conn; leaving: boolean; sourceLabel?: string; at: number; closeDisabled: boolean; onClose: () => void; onKill: () => void; onAddRule: (at: HTMLElement) => void;
   groups: Group[] | null; picking: string; onPick: (group: string, at: HTMLElement) => void;
 }) {
@@ -366,6 +372,11 @@ function Detail({ c, leaving, sourceLabel, at, closeDisabled, onClose, onKill, o
     [t("Upload"), `${bytes(c.upload)} · ${speed(c.up)}`], [t("Download"), `${bytes(c.download)} · ${speed(c.down)}`],
     [t("Time"), `${duration(c.start, c.closedAt ?? at)} · ${new Date(c.start).toLocaleTimeString([], { hour12: false })}`],
   ];
+  if (isAndroid) return <div className="mobile-connection-detail">
+    <dl>{rows.map(([k, v], i) => <div className="stagger" style={{ ["--i" as string]: i }} key={k}><dt>{k}</dt><dd onContextMenu={e => { e.preventDefault(); copy(v); }}>{v}</dd></div>)}</dl>
+    <div className="mobile-detail-actions"><button className="btn" onClick={e => onAddRule(e.currentTarget)}>{t("Add rule…")}</button><button className="btn" onClick={() => copy(rows.map(([k,v]) => `${k}: ${v}`).join("\n"))}>{t("Copy details")}</button><button className="btn danger" disabled={closeDisabled} onClick={onKill}>{t("Close connection")}</button></div>
+    <button className="btn" onClick={() => setRaw(!raw)}>{t("Raw JSON")}</button>{raw && <pre className="conn-json">{json}</pre>}
+  </div>;
   return (
     <aside className={"detail" + (leaving ? " leaving" : "")}>
       <div className="detail-head"><AppIcon path={m.processPath} core={m.type === "Inner"} /><b title={hostOf(c)}>{hostOf(c)}</b><button className="icon" title={t("Close details")} onClick={onClose}><Close size={12} /></button></div>

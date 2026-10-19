@@ -15,6 +15,49 @@ import (
 	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 )
 
+func TestHomeEgressSharesAICacheAndFollowsNestedSelection(t *testing.T) {
+	var traces atomic.Int32
+	selected := "one"
+	proxies := map[string]mihomoapi.Proxy{
+		"main":   {Now: "nested"},
+		"nested": {Now: "one"},
+	}
+	c := latencyCore(t, proxies, nil, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/clashcube/trace" {
+			t.Errorf("unexpected request %s", r.URL.Path)
+		}
+		traces.Add(1)
+		if got := r.URL.Query().Get("proxy"); got != selected {
+			t.Errorf("trace for %q, want %q", got, selected)
+		}
+		fmt.Fprint(w, `{"body":"ip=203.0.113.9\nloc=HK\n"}`)
+	})
+	b := &Backend{}
+	// Keep this test offline while exercising the same enrichment cache.
+	b.aiIPs.entries = map[string]aiIPEntry{"203.0.113.9": {details: &AIIPDetails{Kind: "ISP"}, expires: time.Now().Add(time.Hour)}}
+	ctx := context.Background()
+	// An AI check has already observed this leaf.
+	_, err := b.aiEgress.get(ctx, c, "one", proxyTrace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, err := b.nodeEgress(ctx, c, "main")
+	if err != nil || e.Node != "one" || e.IP != "203.0.113.9" || e.Details == nil || e.Details.Kind != "ISP" || traces.Load() != 1 {
+		t.Fatalf("shared exit: %+v, %v, traces=%d", e, err, traces.Load())
+	}
+	// A different outbound must get its own trace, while sharing IP metadata.
+	selected = "two"
+	proxies["nested"] = mihomoapi.Proxy{Now: "two"}
+	e, err = b.nodeEgress(ctx, c, "main")
+	if err != nil || e.Node != "two" || traces.Load() != 2 {
+		t.Fatalf("new leaf: %+v, %v", e, err)
+	}
+	proxies["nested"] = mihomoapi.Proxy{Now: "main"}
+	if _, err := b.nodeEgress(ctx, c, "main"); err == nil || traces.Load() != 2 {
+		t.Fatalf("cyclic group must fail without a trace: %v", err)
+	}
+}
+
 func TestAIEgressSharedRequests(t *testing.T) {
 	for _, fail := range []bool{false, true} {
 		t.Run(fmt.Sprint("failure=", fail), func(t *testing.T) {

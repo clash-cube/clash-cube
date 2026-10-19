@@ -42,6 +42,29 @@ func Main(args []string) error {
 		return errors.New("core: -d and -f are required")
 	}
 	os.Unsetenv("CLASHCUBE_SECRET")
+	if err := Initialize(*home, *file); err != nil {
+		return err
+	}
+	if *test {
+		return Validate()
+	}
+	opts := []hub.Option{}
+	if *ctl != "" {
+		opts = append(opts, hub.WithExternalController(*ctl))
+	}
+	if *secret != "" {
+		opts = append(opts, hub.WithSecret(*secret))
+	}
+	if err := Start(opts...); err != nil {
+		return err
+	}
+	defer executor.Shutdown()
+	return wait(opts)
+}
+
+// Initialize prepares one process for validation or running. Mihomo state is
+// process-global; callers must use a fresh process for a new core instance.
+func Initialize(home, file string) error {
 	// mihomo leaves the TUN without an IPv6 address when this Mac has no
 	// global IPv6 at start; joining an IPv6 network later would then route
 	// IPv6 around the TUN. darwin's utun always takes the address.
@@ -50,36 +73,41 @@ func Main(args []string) error {
 	guardResolver()
 	_, _ = maxprocs.Set(maxprocs.Logger(func(string, ...any) {}))
 
-	absHome, _ := filepath.Abs(*home)
-	absFile, _ := filepath.Abs(*file)
+	absHome, _ := filepath.Abs(home)
+	absFile, _ := filepath.Abs(file)
 	C.SetHomeDir(absHome)
 	C.SetConfig(absFile)
 	if err := config.Init(absHome); err != nil {
 		return fmt.Errorf("init home: %w", err)
 	}
 
-	if *test {
-		if _, err := executor.Parse(); err != nil {
-			return fmt.Errorf("configuration test failed: %w", err)
-		}
-		fmt.Println("configuration test is successful")
-		return nil
-	}
+	return nil
+}
 
-	var opts []hub.Option
-	if *ctl != "" {
-		opts = append(opts, hub.WithExternalController(*ctl))
+// Validate uses the same parser as startup without opening listeners.
+func Validate() error {
+	if _, err := executor.Parse(); err != nil {
+		return fmt.Errorf("configuration test failed: %w", err)
 	}
-	if *secret != "" {
-		opts = append(opts, hub.WithSecret(*secret))
-	}
+	fmt.Println("configuration test is successful")
+	return nil
+}
+
+// Start installs the parsed configuration, controller and application routes.
+func Start(opts ...hub.Option) error {
 	if err := hub.Parse(nil, opts...); err != nil {
 		return fmt.Errorf("parse config: %w", err)
 	}
 	if updater.GeoAutoUpdate() {
 		updater.RegisterGeoUpdater()
 	}
-	defer executor.Shutdown()
+	return nil
+}
+
+// Shutdown releases core resources; the host must then exit the process.
+func Shutdown() { executor.Shutdown() }
+
+func wait(opts []hub.Option) error {
 
 	// The GUI going away (its end of our stdin closing) ends us too, so a
 	// crashed GUI never leaves a core holding the ports.

@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 
-type Option<T extends string> = { value: T; label: string; title?: string };
+type Option<T extends string> = { value: T; label: string; title?: string; icon?: ReactNode };
 
 // where each control with an id last put its thumb, for the same control on
 // the next page to glide on from there
@@ -53,7 +53,7 @@ export function Segmented<T extends string>({ options, value, onChange, classNam
       <span className="thumb" ref={thumb} />
       {options.map((o) => (
         <button type="button" key={o.value} data-value={o.value} role="tab" aria-selected={o.value === value} title={o.title} className={o.value === value ? "on" : ""} onClick={() => onChange(o.value)}>
-          {o.label}
+          {o.icon}{o.label}
         </button>
       ))}
     </div>

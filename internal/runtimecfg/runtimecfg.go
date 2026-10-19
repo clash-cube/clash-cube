@@ -140,6 +140,7 @@ func buildSteps(id string, profile []byte, s settings.Settings, ctl Controller, 
 	}
 	m["tun"] = tun
 	guard(m, tun, s)
+	platformPolicy(m, tun, s)
 	step("settings", m)
 
 	if pre := userRules(m, user); len(pre) > 0 {

@@ -4,6 +4,7 @@ import type { ConnectionGroupBy } from "../connections";
 import { useT } from "../i18n";
 import { Popover } from "./Popover";
 import { Segmented } from "./Segmented";
+import { capabilities } from "../mobile/capabilities";
 
 export function ConnectionViewMenu({ by, onBy, selected, onChange, onReset }: {
   by: ConnectionGroupBy; onBy: (by: ConnectionGroupBy) => void;
@@ -12,6 +13,7 @@ export function ConnectionViewMenu({ by, onBy, selected, onChange, onReset }: {
   const t = useT();
   const anchor = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  if (!capabilities().desktop) return null;
   return <>
     <button ref={anchor} className="btn small" aria-expanded={open} onClick={() => setOpen(!open)}>{t("View")}</button>
     <Popover anchor={anchor.current} open={open} onClose={() => setOpen(false)} width={320} align="end">

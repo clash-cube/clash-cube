@@ -4,12 +4,15 @@ import { useStore } from "../store";
 import { Search } from "../components/Icons";
 import { Segmented } from "../components/Segmented";
 import { LogsTabs } from "./Events";
+import { isAndroid } from "../platform";
+import { PageActions } from "../mobile/PageActions";
 
 const LEVELS = ["debug", "info", "warning", "error"] as const;
 type Level = (typeof LEVELS)[number] | "all";
 
 export function Logs() {
   const t = useT();
+  const levelLabels = isAndroid ? t("All / Info / Warn / Error").split(" / ") : ["All", "Info", "Warn", "Error"];
   const logs = useStore((s) => s.logs);
   const clear = useStore((s) => s.clearLogs);
   const [level, setLevel] = useState<Level>("all");
@@ -30,11 +33,12 @@ export function Logs() {
 
   return (
     <div className="view logs-view">
+      {isAndroid && <PageActions query={q} onQuery={setQ} items={[{ label: t("Clear"), onClick: clear }]} />}
       <div className="view-head">
         <LogsTabs value="logs" />
         {!follow && <span className="badge">{t("Paused")}</span>}
         <div className="view-tools">
-          <Segmented className="track small" value={level} onChange={setLevel} options={[{ value: "all", label: "All" }, { value: "info", label: "Info" }, { value: "warning", label: "Warn" }, { value: "error", label: "Error" }]} />
+          <Segmented className="track small" value={level} onChange={setLevel} options={[{ value: "all", label: levelLabels[0] }, { value: "info", label: levelLabels[1] }, { value: "warning", label: levelLabels[2] }, { value: "error", label: levelLabels[3] }]} />
           <label className="search"><Search /><input placeholder={t("Search")} value={q} onChange={(e) => setQ(e.target.value)} /></label>
           <button className="btn small" onClick={clear}>{t("Clear")}</button>
         </div>

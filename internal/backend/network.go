@@ -11,7 +11,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/localhost-copilot/clashcube/internal/helper"
 	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 	"github.com/localhost-copilot/clashcube/internal/netpath"
 	"github.com/localhost-copilot/clashcube/internal/profiles"
@@ -21,9 +20,8 @@ import (
 
 // The machine, as variables so tests can stand in for it.
 var (
-	readWiFi        = wifi.Current
-	readPath        = netpath.Current
-	helperInstalled = helper.Installed
+	readWiFi = wifi.Current
+	readPath = netpath.Current
 )
 
 // Network is the network the Mac is on and what the rules make of it

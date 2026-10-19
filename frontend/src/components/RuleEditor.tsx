@@ -130,7 +130,7 @@ export function RuleEditor({ anchor, point, onClose, initial, choices = [], onSa
         <RuleFields key={opened} rule={rule} setRule={setRule} choices={choices} policies={policies} input={input} />
         <div className="hint">{t("Goes ahead of the profile's rules and stays across profile updates.")}</div>
         <div className="foot">
-          <button type="button" className="btn" onClick={onClose}>{t("Cancel")}</button>
+          <button type="button" className="btn mobile-cancel" onClick={onClose}>{t("Cancel")}</button>
           <button type="submit" className="btn primary" disabled={busy || !rule.payload.trim() || !rule.policy}>{t(onSave ? "Save" : "Add")}</button>
         </div>
       </form>

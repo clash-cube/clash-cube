@@ -45,9 +45,7 @@ func (s sink) Profiles(ps []profiles.Profile)  { s.emit("profiles", ps) }
 func (s sink) Latency(l backend.LatencySample) { s.emit("connectivity", l) }
 func (s sink) Event(e backend.Event) {
 	s.emit("event", e)
-	if (e.Text == backend.ResetText || e.Text == backend.OfflineText) && s.h.menu != nil {
-		s.h.menu.remeasure()
-	}
+	s.h.eventChanged(e)
 	if e.Notify {
 		go s.h.notify(e)
 	}

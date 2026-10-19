@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vpn_running">运行中</string>
+    <string name="vpn_stop">停止</string>
+</resources>

@@ -1,5 +1,5 @@
 import { isWindows } from "../platform";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { Children, isValidElement, createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Hotkeys } from "../components/Hotkeys";
 import { useT } from "../i18n";
 import { applyTheme, useStore } from "../store";
@@ -14,6 +14,8 @@ import { NetworkRules } from "../components/NetworkRules";
 import { AI_SERVICES } from "../aiServices";
 import { AIServiceName } from "../components/AIServiceName";
 import { settingsTabs } from "../nav";
+import { capabilities } from "../mobile/capabilities";
+import { openReleases } from "../mobile/native";
 
 // the settings the core runs with: changing one reloads it (PatchSettings)
 const CORE_KEYS = new Set<string>(["mixedPort", "allowLan", "ipv6", "unifiedDelay", "logLevel", "tunStack", "icmpForwarding", "findProcess", "guardIPv6", "guardDNS", "blockSTUN", "blockQUIC", "dnsRespectRules", "subscriptionUa"]);
@@ -21,6 +23,7 @@ const CORE_KEYS = new Set<string>(["mixedPort", "allowLan", "ipv6", "unifiedDela
 const Applying = createContext<ReadonlySet<string>>(new Set());
 
 export function Settings() {
+  const cap = capabilities();
   const t = useT();
   const s = useStore((st) => st.settings);
   const state = useStore((st) => st.state);
@@ -39,7 +42,7 @@ export function Settings() {
     { value: "system", label: "System", title: t("Uses the system network stack.") },
     { value: "gvisor", label: "gVisor", title: t("Uses gVisor's userspace network stack for TCP and UDP.") },
     { value: "mixed", label: "Mixed", title: t("Uses the system stack for TCP and gVisor for UDP.") },
-    { value: "mips", label: t("MIPS"), title: t("Uses mihomo's own pure-Go userspace IP stack.") },
+    ...(cap.desktop ? [{ value: "mips", label: t("MIPS"), title: t("Uses mihomo's own pure-Go userspace IP stack.") }] : []),
   ];
 
   const patch = async (p: Patch) => {
@@ -64,17 +67,17 @@ export function Settings() {
   return (
     <Applying.Provider value={applying}>
     <div className="view settings">
-      <div className="view-head">
+      {cap.desktop && <div className="view-head">
         <Segmented className="track small page-tabs" value={tab} onChange={pick} options={settingsTabs(t)} />
-      </div>
+      </div>}
 
       {tab === "general" && <>
         <Section title={t("General")}>
-          <Row label={t("Start core when the app opens")}><Switch on={s.autoStart} onChange={(v) => patch({ autoStart: v })} /></Row>
-          <Row label={t("Open at login")}><Switch on={s.launchAtLogin} onChange={(v) => patch({ launchAtLogin: v })} /></Row>
-          <Row label={t(isWindows ? "Show speed in the tray tooltip" : "Show speed in the menu bar")}><Switch on={s.traySpeed} onChange={(v) => patch({ traySpeed: v })} /></Row>
-          <Row label={t("Notifications")} sub={t("Core errors, failed updates, the system proxy taken by another app, and network rules applied")}><Switch on={s.notify} onChange={(v) => patch({ notify: v })} /></Row>
-          {!isWindows && <Row label={t("Show in Dock")}>
+          <Row label={t(cap.phone ? "Turn on when the app opens" : "Start core when the app opens")}><Switch on={s.autoStart} onChange={(v) => patch({ autoStart: v })} /></Row>
+          {cap.desktop && <Row label={t("Open at login")}><Switch on={s.launchAtLogin} onChange={(v) => patch({ launchAtLogin: v })} /></Row>}
+          {cap.desktop && <Row label={t(isWindows ? "Show speed in the tray tooltip" : "Show speed in the menu bar")}><Switch on={s.traySpeed} onChange={(v) => patch({ traySpeed: v })} /></Row>}
+          {cap.notifications && <Row label={t("Notifications")} sub={t("Core errors, failed updates, the system proxy taken by another app, and network rules applied")}><Switch on={s.notify} onChange={(v) => patch({ notify: v })} /></Row>}
+          {cap.desktop && !isWindows && <Row label={t("Show in Dock")}>
             <select className="input" value={s.dock} onChange={(e) => patch({ dock: e.target.value })}>
               <option value="window">{t("While the window is open")}</option>
               <option value="always">{t("Always")}</option>
@@ -100,9 +103,9 @@ export function Settings() {
           ))}
         </Section>
 
-        <Section title={t("Keyboard shortcuts")}>
+        {cap.hotkeys && <Section title={t("Keyboard shortcuts")}>
           <Hotkeys />
-        </Section>
+        </Section>}
 
         <Section title={t("Appearance")}>
           <Row label={t("Theme")}>
@@ -114,20 +117,20 @@ export function Settings() {
         </Section>
 
         <Section title={t("About")}>
-          <UpdateRow />
-          <Row label={t("Check for updates automatically")} sub={t(isWindows ? "Checks every 6 hours. Download Windows updates from the release page." : "Every 6 hours, not on metered networks. A new version is downloaded and installed when ClashCube restarts.")} wrap>
+          {cap.updater ? <UpdateRow /> : <Row label={t("ClashCube")} sub={state?.appVersion}><button className="btn" onClick={openReleases}>{t("Check for Updates")}</button></Row>}
+          {cap.updater && <Row label={t("Check for updates automatically")} sub={t(isWindows ? "Checks every 6 hours. Download Windows updates from the release page." : "Every 6 hours, not on metered networks. A new version is downloaded and installed when ClashCube restarts.")} wrap>
             <Switch on={s.autoUpdateApp} onChange={(v) => patch({ autoUpdateApp: v })} />
-          </Row>
+          </Row>}
           <Row label={t("mihomo")}><span className="mono muted">{state?.coreVersion}</span></Row>
         </Section>
       </>}
 
       {tab === "network" && <>
         <Section title={t("Network")}>
-          <Row field="mixedPort" label={t("Mixed port")}><NumberInput value={s.mixedPort} onCommit={(v) => patch({ mixedPort: v })} /></Row>
-          <Row field="allowLan" label={t("Allow LAN")}><Switch on={s.allowLan} onChange={(v) => patch({ allowLan: v })} /></Row>
+          {cap.listeners && <Row field="mixedPort" label={t("Mixed port")}><NumberInput value={s.mixedPort} onCommit={(v) => patch({ mixedPort: v })} /></Row>}
+          {cap.listeners && <Row field="allowLan" label={t("Allow LAN")}><Switch on={s.allowLan} onChange={(v) => patch({ allowLan: v })} /></Row>}
           <Row field="ipv6" label={t("IPv6")}><Switch on={s.ipv6} onChange={(v) => patch({ ipv6: v })} /></Row>
-          <Row field="findProcess" label={t("Identify processes")} sub={t("Show which app made each connection")}><Switch on={s.findProcess} onChange={(v) => patch({ findProcess: v })} /></Row>
+          <Row field="findProcess" label={t(cap.phone ? "Identify apps" : "Identify processes")} sub={t("Show which app made each connection")}><Switch on={s.findProcess} onChange={(v) => patch({ findProcess: v })} /></Row>
           <Row label={t("Latency test URL")}><TextInput value={s.testUrl} onCommit={(v) => patch({ testUrl: v })} /></Row>
           <Row field="unifiedDelay" label={t("Unified delay")} sub={t("Measure a second request over the same connection when possible, reducing handshake overhead in latency results. This does not make connections faster.")} wrap>
             <Switch on={s.unifiedDelay} onChange={(v) => patch({ unifiedDelay: v })} />
@@ -136,15 +139,15 @@ export function Settings() {
             {state?.network.savingData && <span className="badge">{t("Saving data")}</span>}
             <Switch on={s.saveData} onChange={(v) => patch({ saveData: v })} />
           </Row>
-          <BypassRow value={s.bypass ?? []} onSave={(v) => patch({ bypass: v })} />
+          {cap.listeners && <BypassRow value={s.bypass ?? []} onSave={(v) => patch({ bypass: v })} />}
         </Section>
       </>}
 
-      {tab === "rules" && <NetworkRules settings={s} />}
+      {cap.networkRules && tab === "rules" && <NetworkRules settings={s} />}
 
       {tab === "tun" && <>
-        <Section title={t("Enhanced Mode")}>
-          <ServiceModeRow />
+        <Section title={t(cap.phone ? "VPN & Leak Protection" : "Enhanced Mode")}>
+          {cap.helper && <ServiceModeRow />}
           <Row field="tunStack" label={t("TUN stack")} sub={tunStacks.find((stack) => stack.value === s.tunStack)?.title} wrap>
             <Segmented className="track small" value={s.tunStack} onChange={(v) => patch({ tunStack: v })} options={tunStacks} />
           </Row>
@@ -154,7 +157,7 @@ export function Settings() {
         </Section>
 
         <Section title={t("Leak Protection")} id="leak-protection">
-          {state?.systemProxy && !state.tun && (
+          {cap.helper && state?.systemProxy && !state.tun && (
             <div className="row">
               <div className="who">
                 <div className="name">{t("System proxy only")}</div>
@@ -193,10 +196,10 @@ export function Settings() {
             <ActionButton label={t("Clear")} busyLabel={t("Clearing…")} disabled={state?.core !== "running"} onClick={() => run(Proxy.FlushDNS(), t("DNS cache cleared"))} />
           </Row>
           <GeoRow running={state?.core === "running"} />
-          <Row label={t("Copy shell export command")} sub={t(isWindows ? "Alt-click: use this computer's LAN address" : "⌥-click: use this Mac's LAN address")}>
+          {cap.listeners && <Row label={t("Copy shell export command")} sub={t(isWindows ? "Alt-click: use this computer's LAN address" : "⌥-click: use this Mac's LAN address")}>
             <button className="btn small" onClick={(e) => copyCommand(e.altKey)}>{t("Copy")}</button>
-          </Row>
-          <Row label={t("Open data folder")}><button className="btn small" onClick={() => run(App.RevealData())}>{t(isWindows ? "File Explorer" : "Finder")}</button></Row>
+          </Row>}
+          {cap.desktopFiles && <Row label={t("Open data folder")}><button className="btn small" onClick={() => run(App.RevealData())}>{t(isWindows ? "File Explorer" : "Finder")}</button></Row>}
         </Section>
       </>}
     </div>
@@ -213,7 +216,7 @@ function CoreStatus() {
   const core = state.core;
   const running = core === "running";
   const busy = !!state.busy || core === "starting" || core === "stopping";
-  const sub = running
+  const sub = capabilities().phone ? t("mihomo {ver} · runs in its own process", { ver: state.coreVersion || "—" }) : running
     ? [`mihomo ${state.coreVersion}`, state.serviceMode ? t(isWindows ? "Core runs as administrator" : "Core runs as root") : t("Core runs as you"), `127.0.0.1:${state.mixedPort}`].join(" · ")
     : core === "crashed" ? t("Core stopped with an error") : t("Proxies, DNS and the tools below need the core running");
   return (
@@ -230,7 +233,7 @@ function CoreStatus() {
               : running ? <>
                 <ActionButton label={t("Restart")} busyLabel={t("Restarting…")} onClick={restartCore} />
                 <ActionButton className="danger" label={t("Stop")} busyLabel={t("Stopping…")} onClick={stopCore} />
-              </> : <ActionButton className="primary" label={t("Start")} busyLabel={t("Starting…")} onClick={startCore} />}
+              </> : <ActionButton className="primary" label={t(capabilities().phone ? "Turn on" : "Start")} busyLabel={t("Starting…")} onClick={startCore} />}
           </div>
         </div>
         {core === "crashed" && state.coreError && (
@@ -429,8 +432,9 @@ function Section({ title, children, id }: { title: string; children: ReactNode; 
 function Row({ label, sub, wrap, field, children }: { label: ReactNode; sub?: string; wrap?: boolean; field?: keyof Patch; children: ReactNode }) {
   const t = useT();
   const applying = useContext(Applying).has(field ?? "");
+  const wide = capabilities().phone && Children.toArray(children).some(child => isValidElement(child) && [Segmented, TextInput, NumberInput, "select", "input", "textarea"].includes(child.type as any));
   return (
-    <div className="row">
+    <div className={"row" + (wide ? " mobile-wide" : "")}>
       <div className="who"><div className="name">{label}</div>{sub && <div className={wrap ? "sub wrap" : "sub"}>{sub}</div>}</div>
       <div className="end">{applying && <span className="applying"><Spinner />{t("Applying…")}</span>}{children}</div>
     </div>

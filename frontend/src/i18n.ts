@@ -3,6 +3,31 @@ import { useStore } from "./store";
 // Chinese, keyed by the English: a missing entry shows the
 // English rather than a key.
 const zh: Record<string, string> = {
+  "Navigation": "导航", "Selected": "已选择", "Not enabled": "未开启",
+  "Run time": "运行时长", "Proxy group summary": "代理组", "Network checks": "网络检测",
+  "Turn on to see proxy groups": "开启后显示代理组",
+  "Sort by name": "按名称", "Group by app": "按应用分组",
+  "No active connections right now": "暂时没有活跃连接",
+  "When on, ongoing connections appear here": "开启后，这里会显示正在进行的连接",
+  "Close {n} connections?": "关闭 {n} 条连接？",
+  "Import profile": "导入配置", "Paste": "粘贴",
+  "Subscription": "订阅",
+  "Close": "关闭",
+  "All / Info / Warn / Error": "All / Info / Warn / Error",
+  "Info": "Info", "Warn": "Warn",
+  "INFO": "INFO", "WARNING": "WARN", "ERROR": "ERROR",
+  "Home": "首页", "VPN & Leak Protection": "VPN 与防泄露",
+  "Back": "返回", "Actions": "操作", "Running for {duration}": "已运行 {duration}",
+  "Turn on when the app opens": "打开应用时自动开启", "Identify apps": "识别应用",
+  "mihomo {ver} · runs in its own process": "mihomo {ver} · 在独立进程中运行",
+  "Turning on…": "正在开启…", "Turning off…": "正在关闭…",
+  "Turn on": "开启", "Turn off": "关闭", "Turn on again": "重新开启",
+  "The core quit unexpectedly": "内核意外退出",
+  "The core service stopped or was killed by the system": "内核服务已停止或被系统结束",
+  "When on, every app's traffic goes through ClashCube": "开启后，所有应用的流量都经过 ClashCube",
+  "Allow the VPN connection to turn on": "需要允许 VPN 连接才能开启",
+  "Import a profile in Profiles first": "先在“配置”中导入一个配置",
+  "No profile": "未选择配置", "Active apps": "活跃应用",
   "Tailscale": "Tailscale", "Private networks": "私有网络",
   "Online": "在线", "Offline": "离线", "Relayed": "中继",
   "Access tailnet devices and selected remote subnets": "访问 tailnet 设备和选定的远端子网",
@@ -361,7 +386,9 @@ function lang(setting: string | undefined): "zh" | "en" {
 }
 
 export function translate(s: string, vars?: Vars, l?: "zh" | "en"): string {
-  let out = (l ?? lang(useStore.getState().settings?.lang)) === "zh" ? zh[s] ?? s : s;
+  const phoneCopy: Record<string, string> = { On: "已开启", Off: "未开启", "No connections": "暂无连接", "Copy name": "复制名称", "Sort by latency": "按延迟", "Import a file…": "从文件导入…", "Close {n} matching": "关闭匹配的 {n} 条", "Profile order": "配置顺序", "Most hits": "命中最多", "Process": "应用" };
+  const phone = typeof document !== "undefined" && document.documentElement.dataset.platform === "android";
+  let out = (l ?? lang(useStore.getState().settings?.lang)) === "zh" ? (phone ? phoneCopy[s] : undefined) ?? zh[s] ?? s : s;
   if (vars) for (const k in vars) out = out.split("{" + k + "}").join(String(vars[k]));
   return out;
 }

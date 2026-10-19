@@ -10,10 +10,12 @@ import { Switch } from "../Switch";
 import { Fold } from "../Fold";
 import { Close, Grip, More, Plus } from "../Icons";
 import { toast, toastError } from "../Toast";
-import { kindOf, MENU } from "./registry";
+import { kindOf, availableKinds } from "./registry";
 import { blank } from "./yaml";
 import { useNodes } from "./shared";
 import type { NewEntry, NewSection, RowCtx } from "./kinds";
+import { isAndroid } from "../../platform";
+import { EditorPage } from "../../mobile/EditorPage";
 
 // Modules are laid over the profiles in order, as Surge's are: the global
 // ones over every profile, then the profile in use's own over it alone.
@@ -46,7 +48,7 @@ export function Modules() {
   const global = mods?.filter((m) => !m.profile) ?? [];
   const own = profile ? mods?.filter((m) => m.profile === profile) ?? [] : [];
   // every kind's entries, in the registry's order (hooks, so always all)
-  const sectionsNew: NewSection[] = MENU.flatMap((k) => k.useNew?.([...global, ...own]) ?? []);
+  const sectionsNew: NewSection[] = availableKinds().flatMap((k) => k.useNew?.([...global, ...own]) ?? []);
   // the sections, each a list the rows are dragged in and between
   const sections = profile ? [global, own] : [global];
   const sort = useSort(sections.map((x) => x.length), (from, to) => drop(from, to));
@@ -90,7 +92,7 @@ export function Modules() {
   };
   const duplicate = async (m: Module) => {
     const make = kindOf(m).duplicate;
-    if (make === false) return;
+    if (make === false || !availableKinds().includes(kindOf(m))) return;
     try {
       const copy = { ...(make ? await make(m) : { ...m, id: "" }), name: t("{name} copy", { name: m.name }) };
       const next = [...mods];
@@ -102,7 +104,8 @@ export function Modules() {
   const draftIn = (to: string) => {
     if (!draft || (draft.profile ?? "") !== to) return null;
     const { Editor } = kindOf(draft);
-    return <div className="list modules"><Editor module={draft} open onCancel={() => setDraft(null)} onSave={add} /></div>;
+    const editor = <Editor module={draft} open onCancel={() => setDraft(null)} onSave={add} />;
+    return isAndroid ? <EditorPage title={draft.name || t("Modules")} onClose={() => setDraft(null)}>{editor}</EditorPage> : <div className="list modules">{editor}</div>;
   };
   const replace = async (m: Module, n: Module) => save(mods.map((o) => (o.id === m.id ? n : o)));
   // a section's rows, or what it says empty, which a row can be dropped on
@@ -117,7 +120,7 @@ export function Modules() {
             onPick: (g: Group, n: string) => select(g.name, n), onSave: (n: Module) => replace(m, n) }}
           onToggle={(on) => save(mods.map((o) => (o.id === m.id ? { ...o, enabled: on } : o)))}
           onScope={() => setScope(m, m.profile ? 0 : 1)}
-          onDuplicate={kindOf(m).duplicate === false ? undefined : () => duplicate(m)}
+          onDuplicate={kindOf(m).duplicate === false || !availableKinds().includes(kindOf(m)) ? undefined : () => duplicate(m)}
           onRemove={() => save(mods.filter((o) => o.id !== m.id))}
           onSave={async (n) => { if (await replace(m, n)) { setOpen(""); toast(t("Saved")); } }} />
       ))}
@@ -304,9 +307,9 @@ function ModuleRow({ m, ctx, open, flash, sort, s, i, profileName, onToggle, onS
           <Switch on={m.enabled} onChange={onToggle} label={m.name} />
         </div>
       </div>
-      <Fold open={open}>
+      {isAndroid ? open && <EditorPage title={m.name} onClose={ctx.onOpen}><Editor module={m} open onCancel={ctx.onOpen} onSave={onSave} /></EditorPage> : <Fold open={open}>
         <Editor module={m} open={open} onCancel={ctx.onOpen} onSave={onSave} />
-      </Fold>
+      </Fold>}
     </div>
   );
 }

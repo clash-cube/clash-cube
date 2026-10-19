@@ -2,6 +2,12 @@
 type P = { size?: number };
 const s = (size = 16) => ({ width: size, height: size, viewBox: "0 0 16 16", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const });
 
+export const Tools = ({ size }: P) => (<svg {...s(size)}><rect x="2" y="5" width="12" height="9" rx="2" /><path d="M5 5V2.5h6V5M2 9h12M8 8v3" /></svg>);
+export const Pause = ({ size }: P) => (<svg {...s(size)}><path d="M5 3v10M11 3v10" /></svg>);
+export const Info = ({ size }: P) => (<svg {...s(size)}><circle cx="8" cy="8" r="6" /><path d="M8 7v4M8 4.5v.1" /></svg>);
+export const Target = ({ size }: P) => (<svg {...s(size)}><circle cx="8" cy="8" r="6" /><circle cx="8" cy="8" r="2" /></svg>);
+export const Star = ({ size }: P) => (<svg {...s(size)}><path d="m8 1 1.8 5.2L15 8l-5.2 1.8L8 15l-1.8-5.2L1 8l5.2-1.8z" /></svg>);
+
 export const Logo = ({ size = 18 }: P) => (
   <svg width={size} height={size} viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinejoin="round">
     {/* the faces, each its own so a light can go round them (.logo.spin) */}

@@ -4,6 +4,8 @@ import { useStore } from "../store";
 import { Proxy, type Rule, type RuleProvider, type UserRule } from "../api";
 import { usePoll } from "../usePoll";
 import { Arrow, Chevron, Close, Plus, Refresh, Search } from "../components/Icons";
+import { isAndroid } from "../platform";
+import { PageActions } from "../mobile/PageActions";
 import { EntryList, RuleDetail } from "../components/RuleDetail";
 import { RuleEditor } from "../components/RuleEditor";
 import { AppIcon } from "../components/AppIcon";
@@ -108,14 +110,18 @@ export function Rules() {
   }, [rules, q, order]);
 
   return (
-    <div className="view" onScroll={(e) => {
+    <div className="view rules-view" onScroll={(e) => {
       const el = e.currentTarget;
       if (el.scrollTop + el.clientHeight > el.scrollHeight - 400 && limit < shown.length) setLimit(limit + 300);
     }}>
+      {isAndroid && <PageActions query={q} onQuery={v => { setQ(v); setLimit(300); }} items={[
+        { label: t("Profile order"), checked: order === "profile", onClick: () => setOrder("profile") },
+        { label: t("Most hits"), checked: order === "hits", onClick: () => setOrder("hits") },
+      ]} />}
       <div className="view-head">
         <Segmented className="track small" value={tab} onChange={setTab} options={[
-          { value: "rules", label: `${t("Rules")} ${rules.length}` },
-          { value: "providers", label: `${t("Providers")} ${providers.length}` },
+          { value: "rules", label: isAndroid ? t("Rules") : `${t("Rules")} ${rules.length}` },
+          { value: "providers", label: isAndroid ? t("Providers") : `${t("Providers")} ${providers.length}` },
           { value: "lookup", label: t("Lookup") },
         ]} />
         <div className="view-tools">
@@ -126,7 +132,7 @@ export function Rules() {
       {tab === "lookup" ? <HostLookup running={running} /> : tab === "providers" ? <RuleProviders providers={providers} rules={rules} q={q} reload={loadProviders} /> : <>
       <div className="section-title user-rules-title">
         <span>{t("My rules")}</span>
-        <button className="btn small" onClick={(e) => setAddAt(addAt ? null : e.currentTarget)}><Plus size={12} />{t("Add rule…")}</button>
+        <button className="btn small" onClick={(e) => setAddAt(addAt ? null : e.currentTarget)}><Plus size={12} />{t(isAndroid ? "Add" : "Add rule…")}</button>
       </div>
       {temp.length > 0 && (
         <div className="list table rules mine">
@@ -178,9 +184,9 @@ export function Rules() {
               <Fragment key={r.index}>
               <div className={"trow click" + (open.has(r.index) ? " open" : "") + (marked === r.index ? " marked" : "")} data-index={r.index}
                 title={t("Click for details")} onClick={() => toggle(r.index)}>
-                <span className="cell idx num"><Chevron size={9} className="chev" />{r.index + 1}</span>
+                <span className="cell idx num"><Chevron size={9} className="chev" />{isAndroid ? "#" : ""}{r.index + 1}</span>
                 <span className="cell"><span className="rtype">{r.type}</span></span>
-                <span className="cell mono payload" title={r.payload}>{r.payload || "—"}{r.size > 0 && <span className="sub"> ({r.size})</span>}</span>
+                <span className={"cell mono payload" + (!r.payload ? " empty-payload" : "")} title={r.payload}>{r.payload || "—"}{r.size > 0 && <span className="sub"> ({r.size})</span>}</span>
                 <PolicyRoute policy={r.proxy} nowOf={nowOf} />
                 <span className="cell hits" title={hits && at ? t("Last hit {t}", { t: ago(at, t) }) : undefined}>
                   <span className="hitbar"><i style={{ width: (hits / maxHits) * 100 + "%" }} /></span>
@@ -191,6 +197,7 @@ export function Rules() {
               </Fragment>
             );
           })}
+          {isAndroid && shown.length > limit && <button className="mobile-row" onClick={() => setLimit(limit + 300)}>{t("Show {n} more", { n: shown.length - limit })}</button>}
         </div>
       )}
       </>}

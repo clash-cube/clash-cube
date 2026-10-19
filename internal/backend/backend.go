@@ -18,14 +18,12 @@ import (
 	"time"
 
 	"github.com/localhost-copilot/clashcube/internal/appdir"
-	"github.com/localhost-copilot/clashcube/internal/appupdate"
 	"github.com/localhost-copilot/clashcube/internal/coremgr"
 	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 	"github.com/localhost-copilot/clashcube/internal/modules"
 	"github.com/localhost-copilot/clashcube/internal/profiles"
 	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
 	"github.com/localhost-copilot/clashcube/internal/settings"
-	"github.com/localhost-copilot/clashcube/internal/sysproxy"
 	"github.com/localhost-copilot/clashcube/internal/usage"
 	"github.com/localhost-copilot/clashcube/internal/userrules"
 )
@@ -181,9 +179,7 @@ func (b *Backend) Init() error {
 	if proxyPointsAt(proxyHost, s.MixedPort) && !listening(s.MixedPort) {
 		_ = proxyClear()
 	}
-	if bundle := appupdate.Bundle(); bundle != "" && appupdate.Stuck(bundle) == "" {
-		b.upd.bundle = bundle
-	}
+	b.initUpdater()
 	go b.autoUpdate()
 	go b.appUpdateLoop()
 	go b.refreshCity()
@@ -193,6 +189,10 @@ func (b *Backend) Init() error {
 // Boot starts the core if the settings say to, then restores the system proxy.
 func (b *Backend) Boot() {
 	go b.watch()
+	if b.attachCore() {
+		b.emitState()
+		return
+	}
 	s := settings.Load()
 	if !s.AutoStart {
 		b.emitState()
@@ -302,6 +302,9 @@ func (b *Backend) Start() error {
 }
 
 func (b *Backend) start() error {
+	if status, _ := b.core.Status(); status == coremgr.Running {
+		return nil
+	}
 	b.setBusy("starting")
 	defer b.setBusy("")
 	b.pickRunner()
@@ -312,12 +315,12 @@ func (b *Backend) start() error {
 		b.reportCrash(err)
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), coreStartTimeout)
 	defer cancel()
 	if err := b.core.Start(ctx); err != nil {
 		return err
 	}
-	if err := b.waitMixedPort(ctx, settings.Load().MixedPort); err != nil {
+	if err := b.waitMixedPort(ctx, runtimecfg.MixedPort(settings.Load())); err != nil {
 		_ = b.core.Stop()
 		b.reportCrash(err)
 		return err
@@ -440,7 +443,7 @@ func (b *Backend) Shutdown() {
 	b.shutdown = true
 	close(b.done)
 	b.releaseProxy()
-	_ = b.core.Stop()
+	b.shutdownCore()
 	_ = b.Usage().Flush()
 }
 
@@ -479,28 +482,6 @@ func (b *Backend) SetSystemProxy(on bool) error {
 	b.noteManual("systemProxy", strconv.FormatBool(on))
 	return nil
 }
-
-func (b *Backend) setSystemProxy(on bool) error {
-	if _, err := settings.Update(func(s *settings.Settings) { s.SystemProxy = on }); err != nil {
-		return err
-	}
-	defer b.emitState()
-	if !on {
-		b.releaseProxy()
-		return nil
-	}
-	if b.core.Client() == nil {
-		return nil // set when the core starts
-	}
-	return b.applyProxy(true)
-}
-
-// The system proxy, as variables so tests leave the machine's alone.
-var (
-	proxySet      = sysproxy.Set
-	proxyClear    = sysproxy.Clear
-	proxyPointsAt = sysproxy.PointsAt
-)
 
 const proxyHost = "127.0.0.1"
 

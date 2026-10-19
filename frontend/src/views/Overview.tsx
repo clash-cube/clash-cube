@@ -144,7 +144,7 @@ export function Overview() {
 // label, a figure with its unit set small, and a faint line of detail. The
 // proxied share alone also draws, a small ring, so the row has one thing
 // to look at. A cell that leads somewhere is a button with a faint chevron.
-function Stat({ label, value, sub, ring, onClick, title }: {
+export function Stat({ label, value, sub, ring, onClick, title }: {
   label: string; value?: string; sub?: ReactNode; ring?: number; onClick?: () => void; title?: string;
 }) {
   // "51.7 MB" → 51.7 and a small MB; "23%" → 23 and a small %
@@ -189,7 +189,7 @@ const UNROUTED = new Set(["", "REJECT", "REJECT-DROP"]);
 // useToday is today's traffic from the statistics kept across runs, and
 // how much of it went through a proxy rather than DIRECT; the share is
 // undefined while nothing has moved.
-function useToday() {
+export function useToday() {
   const [today, setToday] = useState<{ up: number; down: number; proxied: number; direct: number; share?: number } | null>(null);
   usePoll(() => {
     const d = ymd(new Date());
