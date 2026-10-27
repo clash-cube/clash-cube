@@ -107,6 +107,45 @@ func (m *Manager) Controller() runtimecfg.Controller {
 	return m.ctl
 }
 
+// SetController supplies the private endpoint of a separately supervised core.
+// Call only while stopped, before Start or Attach.
+func (m *Manager) SetController(ctl runtimecfg.Controller) {
+	m.mu.Lock()
+	m.ctl = ctl
+	m.mu.Unlock()
+}
+
+// Attach observes an existing core without starting it or changing its config.
+// exited belongs to the observer; losing it never stops the supervised process.
+func (m *Manager) Attach(ctx context.Context, ctl runtimecfg.Controller, exited <-chan error) error {
+	client := mihomoapi.New(ctl.Addr, ctl.Secret)
+	if _, err := client.Version(ctx); err != nil {
+		return err
+	}
+	m.mu.Lock()
+	m.gen++
+	gen := m.gen
+	m.ctl, m.client, m.status, m.lastErr = ctl, client, Running, ""
+	m.mu.Unlock()
+	if m.onChange != nil {
+		m.onChange()
+	}
+	go func() {
+		err := <-exited
+		m.exited(gen, err)
+	}()
+	return nil
+}
+
+// Detach releases this manager's observation without stopping its core.
+func (m *Manager) Detach() {
+	m.mu.Lock()
+	m.gen++
+	m.client = nil
+	m.mu.Unlock()
+	m.set(Stopped, "")
+}
+
 // Tail is the last lines the core wrote.
 func (m *Manager) Tail() []string {
 	m.mu.Lock()
@@ -222,14 +261,23 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	go func() {
 		err := <-exited
-		m.mu.Lock()
-		current := gen == m.gen && m.status == Running
-		m.mu.Unlock()
-		if current {
-			m.set(Crashed, m.failure(err))
-		}
+		m.exited(gen, err)
 	}()
 	return nil
+}
+
+func (m *Manager) exited(gen int, err error) {
+	message := m.failure(err)
+	m.mu.Lock()
+	if gen != m.gen || m.status != Running {
+		m.mu.Unlock()
+		return
+	}
+	m.status, m.lastErr = Crashed, message
+	m.mu.Unlock()
+	if m.onChange != nil {
+		m.onChange()
+	}
 }
 
 // failure is err with the core's last error line, which says more.

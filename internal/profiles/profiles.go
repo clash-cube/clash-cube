@@ -177,6 +177,16 @@ func ImportFile(path, name string) (Profile, error) {
 	if name == "" {
 		name = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 	}
+	return ImportContent(name, body)
+}
+
+// ImportContent imports a browser upload without accepting a server file path.
+func ImportContent(name string, body []byte) (Profile, error) {
+	if int64(len(body)) > maxSize {
+		return Profile{}, errors.New("profile is too large")
+	}
+	name = strings.TrimSpace(name)
+	if name == "" { name = "Imported" }
 	return add(Profile{ID: newID(), Name: name}, body)
 }
 

@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+[ -z "${IPKG_INSTROOT:-}" ] || exit 0
+sh /usr/share/clashcube/package-assets.sh
+/etc/init.d/clashcube enable
+/etc/init.d/clashcube start

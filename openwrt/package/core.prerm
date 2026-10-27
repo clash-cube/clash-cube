@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+[ -z "${IPKG_INSTROOT:-}" ] || exit 0
+/etc/init.d/clashcube-core stop
+if [ "${1:-}" != upgrade ]; then /etc/init.d/clashcube-core disable; fi

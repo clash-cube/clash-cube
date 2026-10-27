@@ -1,4 +1,4 @@
-import { isWindows } from "../platform";
+import { isWindows, isWeb } from "../platform";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Hotkeys } from "../components/Hotkeys";
 import { useT } from "../i18n";
@@ -14,6 +14,7 @@ import { NetworkRules } from "../components/NetworkRules";
 import { AI_SERVICES } from "../aiServices";
 import { AIServiceName } from "../components/AIServiceName";
 import { settingsTabs } from "../nav";
+import { RouterPanel } from "../components/RouterPanel";
 
 // the settings the core runs with: changing one reloads it (PatchSettings)
 const CORE_KEYS = new Set<string>(["mixedPort", "allowLan", "ipv6", "unifiedDelay", "logLevel", "tunStack", "icmpForwarding", "findProcess", "guardIPv6", "guardDNS", "blockSTUN", "blockQUIC", "dnsRespectRules", "subscriptionUa"]);
@@ -70,11 +71,11 @@ export function Settings() {
 
       {tab === "general" && <>
         <Section title={t("General")}>
-          <Row label={t("Start core when the app opens")}><Switch on={s.autoStart} onChange={(v) => patch({ autoStart: v })} /></Row>
-          <Row label={t("Open at login")}><Switch on={s.launchAtLogin} onChange={(v) => patch({ launchAtLogin: v })} /></Row>
-          <Row label={t(isWindows ? "Show speed in the tray tooltip" : "Show speed in the menu bar")}><Switch on={s.traySpeed} onChange={(v) => patch({ traySpeed: v })} /></Row>
-          <Row label={t("Notifications")} sub={t("Core errors, failed updates, the system proxy taken by another app, and network rules applied")}><Switch on={s.notify} onChange={(v) => patch({ notify: v })} /></Row>
-          {!isWindows && <Row label={t("Show in Dock")}>
+          <Row label={t(isWeb ? "Start core when the router boots" : "Start core when the app opens")}><Switch on={s.autoStart} onChange={(v) => patch({ autoStart: v })} /></Row>
+          {!isWeb && <Row label={t("Open at login")}><Switch on={s.launchAtLogin} onChange={(v) => patch({ launchAtLogin: v })} /></Row>}
+          {!isWeb && <Row label={t(isWindows ? "Show speed in the tray tooltip" : "Show speed in the menu bar")}><Switch on={s.traySpeed} onChange={(v) => patch({ traySpeed: v })} /></Row>}
+          {!isWeb && <Row label={t("Notifications")} sub={t("Core errors, failed updates, the system proxy taken by another app, and network rules applied")}><Switch on={s.notify} onChange={(v) => patch({ notify: v })} /></Row>}
+          {!isWindows && !isWeb && <Row label={t("Show in Dock")}>
             <select className="input" value={s.dock} onChange={(e) => patch({ dock: e.target.value })}>
               <option value="window">{t("While the window is open")}</option>
               <option value="always">{t("Always")}</option>
@@ -100,9 +101,9 @@ export function Settings() {
           ))}
         </Section>
 
-        <Section title={t("Keyboard shortcuts")}>
+        {!isWeb && <Section title={t("Keyboard shortcuts")}>
           <Hotkeys />
-        </Section>
+        </Section>}
 
         <Section title={t("Appearance")}>
           <Row label={t("Theme")}>
@@ -114,15 +115,16 @@ export function Settings() {
         </Section>
 
         <Section title={t("About")}>
-          <UpdateRow />
-          <Row label={t("Check for updates automatically")} sub={t(isWindows ? "Checks every 6 hours. Download Windows updates from the release page." : "Every 6 hours, not on metered networks. A new version is downloaded and installed when ClashCube restarts.")} wrap>
+          {isWeb ? <Row label={t("ClashCube")}><span className="mono muted">{state?.appVersion}</span></Row> : <UpdateRow />}
+          {!isWeb && <Row label={t("Check for updates automatically")} sub={t(isWindows ? "Checks every 6 hours. Download Windows updates from the release page." : "Every 6 hours, not on metered networks. A new version is downloaded and installed when ClashCube restarts.")} wrap>
             <Switch on={s.autoUpdateApp} onChange={(v) => patch({ autoUpdateApp: v })} />
-          </Row>
+          </Row>}
           <Row label={t("mihomo")}><span className="mono muted">{state?.coreVersion}</span></Row>
         </Section>
       </>}
 
       {tab === "network" && <>
+        {isWeb && <RouterPanel />}
         <Section title={t("Network")}>
           <Row field="mixedPort" label={t("Mixed port")}><NumberInput value={s.mixedPort} onCommit={(v) => patch({ mixedPort: v })} /></Row>
           <Row field="allowLan" label={t("Allow LAN")}><Switch on={s.allowLan} onChange={(v) => patch({ allowLan: v })} /></Row>
@@ -132,11 +134,11 @@ export function Settings() {
           <Row field="unifiedDelay" label={t("Unified delay")} sub={t("Measure a second request over the same connection when possible, reducing handshake overhead in latency results. This does not make connections faster.")} wrap>
             <Switch on={s.unifiedDelay} onChange={(v) => patch({ unifiedDelay: v })} />
           </Row>
-          <Row label={t("Save data on metered networks")} sub={t("On a personal hotspot or in Low Data Mode, subscriptions aren't updated and connectivity isn't measured in the background.")} wrap>
+          {!isWeb && <Row label={t("Save data on metered networks")} sub={t("On a personal hotspot or in Low Data Mode, subscriptions aren't updated and connectivity isn't measured in the background.")} wrap>
             {state?.network.savingData && <span className="badge">{t("Saving data")}</span>}
             <Switch on={s.saveData} onChange={(v) => patch({ saveData: v })} />
-          </Row>
-          <BypassRow value={s.bypass ?? []} onSave={(v) => patch({ bypass: v })} />
+          </Row>}
+          {!isWeb && <BypassRow value={s.bypass ?? []} onSave={(v) => patch({ bypass: v })} />}
         </Section>
       </>}
 
@@ -193,10 +195,10 @@ export function Settings() {
             <ActionButton label={t("Clear")} busyLabel={t("Clearing…")} disabled={state?.core !== "running"} onClick={() => run(Proxy.FlushDNS(), t("DNS cache cleared"))} />
           </Row>
           <GeoRow running={state?.core === "running"} />
-          <Row label={t("Copy shell export command")} sub={t(isWindows ? "Alt-click: use this computer's LAN address" : "⌥-click: use this Mac's LAN address")}>
+          <Row label={t("Copy shell export command")} sub={isWeb ? undefined : t(isWindows ? "Alt-click: use this computer's LAN address" : "⌥-click: use this Mac's LAN address")}>
             <button className="btn small" onClick={(e) => copyCommand(e.altKey)}>{t("Copy")}</button>
           </Row>
-          <Row label={t("Open data folder")}><button className="btn small" onClick={() => run(App.RevealData())}>{t(isWindows ? "File Explorer" : "Finder")}</button></Row>
+          {!isWeb && <Row label={t("Open data folder")}><button className="btn small" onClick={() => run(App.RevealData())}>{t(isWindows ? "File Explorer" : "Finder")}</button></Row>}
         </Section>
       </>}
     </div>
@@ -214,7 +216,7 @@ function CoreStatus() {
   const running = core === "running";
   const busy = !!state.busy || core === "starting" || core === "stopping";
   const sub = running
-    ? [`mihomo ${state.coreVersion}`, state.serviceMode ? t(isWindows ? "Core runs as administrator" : "Core runs as root") : t("Core runs as you"), `127.0.0.1:${state.mixedPort}`].join(" · ")
+    ? [`mihomo ${state.coreVersion}`, isWeb ? t("Core runs as root") : state.serviceMode ? t(isWindows ? "Core runs as administrator" : "Core runs as root") : t("Core runs as you"), `127.0.0.1:${state.mixedPort}`].join(" · ")
     : core === "crashed" ? t("Core stopped with an error") : t("Proxies, DNS and the tools below need the core running");
   return (
     <>

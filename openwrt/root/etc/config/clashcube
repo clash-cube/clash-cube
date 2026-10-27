@@ -1,0 +1,4 @@
+config clashcube 'main'
+	option data_dir '/etc/clashcube'
+	option storage_mode 'persistent'
+	option external_mount '/mnt/clashcube'

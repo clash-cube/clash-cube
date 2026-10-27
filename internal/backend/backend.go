@@ -72,9 +72,17 @@ type Backend struct {
 	Version     string
 	CoreVersion string
 	DefaultYAML []byte
+	// RuntimeOverlay adds app-owned platform configuration after the user's
+	// modules and settings. Set it before Init; desktop applications leave it nil.
+	RuntimeOverlay *runtimecfg.Overlay
+	// CoreService is an independently supervised runner. Configure before Init.
+	// Shutdown detaches from it; explicit Stop and Restart still control it.
+	CoreService coremgr.Runner
 
 	core *coremgr.Manager
 	sink Sink
+	// A separately upgraded service can report a version newer than this build.
+	serviceCoreVersion string
 
 	opMu sync.Mutex // one start/stop/reload at a time
 	mu   sync.Mutex
@@ -148,6 +156,9 @@ func New(version, coreVersion string, defaultYAML []byte, sink Sink) *Backend {
 // Init prepares the directories and the first profile; Start then runs the
 // core if the settings say to.
 func (b *Backend) Init() error {
+	if b.CoreService != nil {
+		b.core.SetRunner(b.CoreService)
+	}
 	if err := appdir.Ensure(); err != nil {
 		return err
 	}
@@ -193,6 +204,10 @@ func (b *Backend) Init() error {
 // Boot starts the core if the settings say to, then restores the system proxy.
 func (b *Backend) Boot() {
 	go b.watch()
+	if b.CoreService != nil {
+		b.emitState()
+		return
+	}
 	s := settings.Load()
 	if !s.AutoStart {
 		b.emitState()
@@ -215,6 +230,10 @@ func (b *Backend) State() State {
 	st, errText := b.core.Status()
 	b.mu.Lock()
 	busy, lost, refusal, ports := b.busy, b.proxyLost, b.refusal, b.ports
+	coreVersion := b.CoreVersion
+	if b.serviceCoreVersion != "" {
+		coreVersion = b.serviceCoreVersion
+	}
 	tailscales := b.tailscales
 	b.mu.Unlock()
 	name := ""
@@ -222,7 +241,7 @@ func (b *Backend) State() State {
 		name = p.Name
 	}
 	return State{
-		Core: string(st), CoreError: errText, CoreVersion: b.CoreVersion, AppVersion: b.Version,
+		Core: string(st), CoreError: errText, CoreVersion: coreVersion, AppVersion: b.Version,
 		Mode: s.Mode, SystemProxy: s.SystemProxy, ProxyLost: lost && s.SystemProxy, Tun: s.Tun, TunStack: s.TunStack,
 		ServiceMode: s.ServiceMode, MixedPort: s.MixedPort,
 		Profile: s.Profile, ProfileName: name, Busy: busy, Network: b.network(s),
@@ -283,11 +302,18 @@ func (b *Backend) writeRuntime(fresh bool) error {
 			return err
 		}
 	}
-	err = runtimecfg.Write(appdir.RuntimeConfig(), p.ID, body, s, ctl, b.rules(), modules.List())
+	err = runtimecfg.Write(appdir.RuntimeConfig(), p.ID, body, s, ctl, b.rules(), modules.List(), b.runtimeOverlays()...)
 	if err != nil && strings.HasPrefix(err.Error(), "profile: ") {
 		b.refuseProfile(p.Path(), err)
 	}
 	return err
+}
+
+func (b *Backend) runtimeOverlays() []runtimecfg.Overlay {
+	if b.RuntimeOverlay == nil {
+		return nil
+	}
+	return []runtimecfg.Overlay{*b.RuntimeOverlay}
 }
 
 // Start runs the core.
@@ -302,6 +328,21 @@ func (b *Backend) Start() error {
 }
 
 func (b *Backend) start() error {
+	if client := b.core.Client(); client != nil {
+		if b.CoreService == nil {
+			return nil
+		}
+		// The service observes exits before the management poll can. Do not
+		// treat that stale observation as a running core, or rewrite a live
+		// core's credentials on a redundant Start request.
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		_, err := client.Version(ctx)
+		cancel()
+		if err == nil {
+			return nil
+		}
+		b.core.Detach()
+	}
 	b.setBusy("starting")
 	defer b.setBusy("")
 	b.pickRunner()
@@ -383,6 +424,11 @@ func (b *Backend) stop() error {
 	b.setBusy("stopping")
 	defer b.setBusy("")
 	b.releaseProxy()
+	if status, _ := b.core.Status(); status == coremgr.Stopped && b.CoreService != nil {
+		// A supervisor may be retrying boot restoration while management sees
+		// a stopped core. An explicit Stop must cancel that pending intent.
+		return b.CoreService.Stop()
+	}
 	return b.core.Stop()
 }
 
@@ -440,8 +486,38 @@ func (b *Backend) Shutdown() {
 	b.shutdown = true
 	close(b.done)
 	b.releaseProxy()
-	_ = b.core.Stop()
+	if b.CoreService != nil {
+		b.core.Detach()
+	} else {
+		_ = b.core.Stop()
+	}
 	_ = b.Usage().Flush()
+}
+
+// AttachCore reconnects a management session without reloading runtime.yaml or
+// changing proxy selections. A stopped core is never started by attachment.
+func (b *Backend) AttachCore(ctl runtimecfg.Controller, exited <-chan error) error {
+	b.opMu.Lock()
+	defer b.opMu.Unlock()
+	if b.shutdown {
+		return errors.New("backend is shutting down")
+	}
+	b.pickRunner()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := b.core.Attach(ctx, ctl, exited); err != nil {
+		return err
+	}
+	if p, ok := profiles.Get(settings.Load().Profile); ok {
+		if fi, err := os.Stat(p.Path()); err == nil {
+			b.mu.Lock()
+			b.profileRead = profileStamp{p.ID, fi.ModTime(), fi.Size()}
+			b.mu.Unlock()
+		}
+	}
+	b.startStreams()
+	b.watchPorts()
+	return nil
 }
 
 // SetMode switches rule / global / direct.
@@ -594,13 +670,52 @@ func (b *Backend) PatchSettings(fn func(*settings.Settings)) (settings.Settings,
 
 // applyUserAgent sets what profile updates are fetched as.
 func (b *Backend) applyUserAgent(s settings.Settings) {
-	profiles.SetUserAgent(profiles.EffectiveUserAgent(b.CoreVersion, b.Version, s.SubscriptionUA))
+	profiles.SetUserAgent(profiles.EffectiveUserAgent(b.coreVersion(), b.Version, s.SubscriptionUA))
 }
 
 // DefaultUserAgent is what profile updates are fetched as unless the user
 // picks another.
 func (b *Backend) DefaultUserAgent() string {
-	return profiles.DefaultUserAgent(b.CoreVersion, b.Version)
+	return profiles.DefaultUserAgent(b.coreVersion(), b.Version)
+}
+
+func (b *Backend) coreVersion() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.serviceCoreVersion != "" {
+		return b.serviceCoreVersion
+	}
+	return b.CoreVersion
+}
+
+// ObserveCoreVersion updates presentation and subscription identification after
+// an independent core upgrade, without reloading configuration or connections.
+func (b *Backend) ObserveCoreVersion(version string) {
+	if b.CoreService == nil || version == "" {
+		return
+	}
+	b.mu.Lock()
+	if b.serviceCoreVersion == version {
+		b.mu.Unlock()
+		return
+	}
+	b.serviceCoreVersion = version
+	b.mu.Unlock()
+	b.applyUserAgent(settings.Load())
+	b.emitState()
+}
+
+// ObserveCoreStopped clears an obsolete crash observation after the independent
+// service reports an intentional stop. A concurrent Start remains authoritative.
+func (b *Backend) ObserveCoreStopped() {
+	b.opMu.Lock()
+	defer b.opMu.Unlock()
+	if b.CoreService == nil || b.shutdown || b.core.Client() != nil {
+		return
+	}
+	if status, _ := b.core.Status(); status == coremgr.Crashed {
+		b.core.Detach()
+	}
 }
 
 // coreFields is the settings runtimecfg lays over the profile, which a

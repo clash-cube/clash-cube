@@ -22,7 +22,6 @@ import (
 	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 	"github.com/localhost-copilot/clashcube/internal/modules"
 	"github.com/localhost-copilot/clashcube/internal/profiles"
-	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
 	"github.com/localhost-copilot/clashcube/internal/settings"
 	"github.com/localhost-copilot/clashcube/internal/usage"
 	"github.com/localhost-copilot/clashcube/internal/userrules"
@@ -185,159 +184,26 @@ func (s *AppService) ClearEvents()            { s.h.b.ClearEvents() }
 
 func (s *AppService) RevealData() error { return openPath(appdir.Root(), false, false) }
 
-// Group is a proxy group with its members, in the profile's order.
-type Group struct {
-	Name    string   `json:"name"`
-	Type    string   `json:"type"`
-	Now     string   `json:"now"`
-	Hidden  bool     `json:"hidden"`
-	Icon    string   `json:"icon"`
-	TestURL string   `json:"testUrl"`
-	Members []Member `json:"members"`
-	Module  string   `json:"module,omitempty"` // the ID of the module that made it
-}
-
-type Member struct {
-	Name  string `json:"name"`
-	Type  string `json:"type"`
-	UDP   bool   `json:"udp"`
-	Delay int    `json:"delay"` // last test, ms; 0 untested, -1 failed
-	Group bool   `json:"group"` // a group itself
-}
+type Group = backend.Group
+type Member = backend.Member
+type Provider = backend.Provider
 
 // ProxyService is the core's proxies, groups, connections and rules.
 type ProxyService struct {
-	h *host
-
+	h       *host
 	meterMu sync.Mutex
-	meter   backend.ClientMeter // for TopClients
+	meter   backend.ClientMeter
 	meterAt time.Time
-}
-
-// providerProxies is every provider's proxies by name, which /proxies
-// leaves out.
-func (s *ProxyService) providerProxies(ctx context.Context, c *mihomoapi.Client) (map[string]mihomoapi.ProxyProvider, map[string]mihomoapi.Proxy, error) {
-	pvs, err := c.ProxyProviders(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	byName := map[string]mihomoapi.Proxy{}
-	for _, p := range pvs {
-		// the core's own, for groups' proxies: those /proxies has
-		if p.VehicleType == "Compatible" {
-			continue
-		}
-		for _, m := range p.Proxies {
-			byName[m.Name] = m
-		}
-	}
-	return pvs, byName, nil
 }
 
 func (s *ProxyService) client() (*mihomoapi.Client, error) { return s.h.b.Client() }
 
-func lastDelay(p mihomoapi.Proxy) int {
-	if len(p.History) == 0 {
-		return 0
-	}
-	d := p.History[len(p.History)-1].Delay
-	if d == 0 {
-		return -1
-	}
-	return d
-}
-
 // Groups is every proxy group, GLOBAL last.
-func (s *ProxyService) Groups() ([]Group, error) {
-	c, err := s.client()
-	if err != nil {
-		return nil, err
-	}
-	all, err := c.Proxies(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	// a group that uses a provider lists its proxies by name only
-	_, fromProviders, _ := s.providerProxies(context.Background(), c)
-	for name, p := range fromProviders {
-		if _, ok := all[name]; !ok {
-			all[name] = p
-		}
-	}
-	var order []string
-	if g, ok := all["GLOBAL"]; ok {
-		order = append(order, g.All...)
-	}
-	order = append(order, "GLOBAL")
-	made := map[string]string{}
-	for _, m := range modules.For(settings.Load().Profile, modules.List()) {
-		if k, ok := m.Kind().(modules.Grouper); ok {
-			if g := k.GroupIn(func(n string) bool { _, ok := all[n]; return ok }); g != "" {
-				made[g] = m.ID
-			}
-		}
-	}
-	var out []Group
-	for _, name := range order {
-		p, ok := all[name]
-		if !ok || len(p.All) == 0 || strings.HasPrefix(name, runtimecfg.ChainPrefix) {
-			continue
-		}
-		g := Group{Name: p.Name, Type: p.Type, Now: p.Now, Hidden: p.Hidden, Icon: p.Icon, TestURL: p.TestURL, Module: made[p.Name]}
-		for _, m := range p.All {
-			if name == "GLOBAL" && strings.HasPrefix(m, runtimecfg.ChainPrefix) {
-				continue
-			}
-			mp := all[m]
-			selected := all[backend.SelectedProxy(all, m)]
-			g.Members = append(g.Members, Member{Name: m, Type: mp.Type, UDP: mp.UDP, Delay: lastDelay(selected), Group: len(mp.All) > 0})
-		}
-		out = append(out, g)
-	}
-	return out, nil
-}
-
-// Provider is a proxy provider with its nodes, as the profile lists them.
-type Provider struct {
-	Name        string    `json:"name"`
-	VehicleType string    `json:"vehicleType"` // HTTP | File | Inline
-	TestURL     string    `json:"testUrl"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-	Upload      int64     `json:"upload"`
-	Download    int64     `json:"download"`
-	Total       int64     `json:"total"`
-	Expire      int64     `json:"expire"`
-	Members     []Member  `json:"members"`
-}
+func (s *ProxyService) Groups() ([]Group, error) { return s.h.b.Groups() }
 
 // Providers is the profile's proxy providers, by name; the ones the core
 // makes for groups' own proxies are left out.
-func (s *ProxyService) Providers() ([]Provider, error) {
-	c, err := s.client()
-	if err != nil {
-		return nil, err
-	}
-	all, _, err := s.providerProxies(context.Background(), c)
-	if err != nil {
-		return nil, err
-	}
-	out := []Provider{}
-	for _, p := range all {
-		if p.VehicleType == "Compatible" || p.Name == "default" || strings.HasPrefix(p.Name, runtimecfg.ChainPrefix) {
-			continue
-		}
-		pv := Provider{Name: p.Name, VehicleType: p.VehicleType, TestURL: p.TestURL, UpdatedAt: p.UpdatedAt, Members: []Member{}}
-		if si := p.SubscriptionInfo; si != nil {
-			pv.Upload, pv.Download, pv.Total, pv.Expire = si.Upload, si.Download, si.Total, si.Expire
-		}
-		for _, m := range p.Proxies {
-			pv.Members = append(pv.Members, Member{Name: m.Name, Type: m.Type, UDP: m.UDP, Delay: lastDelay(m)})
-		}
-		out = append(out, pv)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out, nil
-}
+func (s *ProxyService) Providers() ([]Provider, error) { return s.h.b.Providers() }
 
 // UpdateProvider fetches a proxy provider again.
 func (s *ProxyService) UpdateProvider(name string) error {
@@ -650,103 +516,22 @@ func (s *SettingsService) RequestWiFiPermission() { wifi.RequestPermission() }
 
 func (s *SettingsService) SavedWiFiNetworks() ([]string, error) { return wifi.SavedNetworks() }
 
-// Patch is a partial update: the keys of p (as settings.json names them)
-// that are present are changed.
-type Patch struct {
-	MixedPort       *int      `json:"mixedPort,omitempty"`
-	AllowLan        *bool     `json:"allowLan,omitempty"`
-	IPv6            *bool     `json:"ipv6,omitempty"`
-	LogLevel        *string   `json:"logLevel,omitempty"`
-	TunStack        *string   `json:"tunStack,omitempty"`
-	ICMPForwarding  *bool     `json:"icmpForwarding,omitempty"`
-	GuardIPv6       *bool     `json:"guardIPv6,omitempty"`
-	GuardDNS        *bool     `json:"guardDNS,omitempty"`
-	BlockSTUN       *bool     `json:"blockSTUN,omitempty"`
-	BlockQUIC       *bool     `json:"blockQUIC,omitempty"`
-	DNSRespectRules *bool     `json:"dnsRespectRules,omitempty"`
-	UnifiedDelay    *bool     `json:"unifiedDelay,omitempty"`
-	Bypass          *[]string `json:"bypass,omitempty"`
-	AutoStart       *bool     `json:"autoStart,omitempty"`
-	LaunchAtLogin   *bool     `json:"launchAtLogin,omitempty"`
-	Theme           *string   `json:"theme,omitempty"`
-	Lang            *string   `json:"lang,omitempty"`
-	Dock            *string   `json:"dock,omitempty"`
-	TestURL         *string   `json:"testUrl,omitempty"`
-	TraySpeed       *bool     `json:"traySpeed,omitempty"`
-	FindProcess     *bool     `json:"findProcess,omitempty"`
-	Notify          *bool     `json:"notify,omitempty"`
-	SaveData        *bool     `json:"saveData,omitempty"`
-	AIServices      *[]string `json:"aiServices,omitempty"`
-	AutoUpdateApp   *bool     `json:"autoUpdateApp,omitempty"`
-	SubscriptionUA  *string   `json:"subscriptionUa,omitempty"`
-}
+type Patch = backend.Patch
 
 func (s *SettingsService) Patch(p Patch) (settings.Settings, error) {
-	if p.MixedPort != nil && (*p.MixedPort < 1 || *p.MixedPort > 65535) {
-		return settings.Load(), errors.New("port must be 1–65535")
-	}
-	if p.Bypass != nil {
-		var clean []string
-		for _, b := range *p.Bypass {
-			if b = strings.TrimSpace(b); b != "" {
-				clean = append(clean, b)
-			}
-		}
-		p.Bypass = &clean
-	}
-	if p.SubscriptionUA != nil {
-		ua := strings.TrimSpace(*p.SubscriptionUA)
-		if !profiles.ValidUserAgent(ua) {
-			return settings.Load(), errors.New("a user agent must be one line of at most 200 characters")
-		}
-		p.SubscriptionUA = &ua
-	}
-	out, err := s.h.b.PatchSettings(func(st *settings.Settings) {
-		set(&st.MixedPort, p.MixedPort)
-		set(&st.AllowLan, p.AllowLan)
-		set(&st.IPv6, p.IPv6)
-		set(&st.LogLevel, p.LogLevel)
-		set(&st.TunStack, p.TunStack)
-		set(&st.ICMPForwarding, p.ICMPForwarding)
-		set(&st.GuardIPv6, p.GuardIPv6)
-		set(&st.GuardDNS, p.GuardDNS)
-		set(&st.BlockSTUN, p.BlockSTUN)
-		set(&st.BlockQUIC, p.BlockQUIC)
-		set(&st.DNSRespectRules, p.DNSRespectRules)
-		set(&st.UnifiedDelay, p.UnifiedDelay)
-		set(&st.Bypass, p.Bypass)
-		set(&st.AutoStart, p.AutoStart)
-		set(&st.LaunchAtLogin, p.LaunchAtLogin)
-		set(&st.Theme, p.Theme)
-		set(&st.Lang, p.Lang)
-		set(&st.Dock, p.Dock)
-		set(&st.TestURL, p.TestURL)
-		set(&st.TraySpeed, p.TraySpeed)
-		set(&st.FindProcess, p.FindProcess)
-		set(&st.Notify, p.Notify)
-		set(&st.SaveData, p.SaveData)
-		set(&st.AIServices, p.AIServices)
-		set(&st.AutoUpdateApp, p.AutoUpdateApp)
-		set(&st.SubscriptionUA, p.SubscriptionUA)
-	})
-	if p.Dock != nil {
+	out, err := s.h.b.PatchFields(p)
+	if p.Dock != nil && out.Dock == *p.Dock {
 		application.InvokeAsync(func() { s.h.dock(s.h.main.IsVisible()) })
 	}
-	if p.Lang != nil {
+	if p.Lang != nil && out.Lang == *p.Lang {
 		application.InvokeAsync(s.h.relabelTray)
 	}
-	if p.LaunchAtLogin != nil {
+	if p.LaunchAtLogin != nil && out.LaunchAtLogin == *p.LaunchAtLogin {
 		if lerr := setLaunchAtLogin(*p.LaunchAtLogin); lerr != nil && err == nil {
 			err = lerr
 		}
 	}
 	return out, err
-}
-
-func set[T any](dst *T, src *T) {
-	if src != nil {
-		*dst = *src
-	}
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }

@@ -42,7 +42,7 @@ export function RuntimeConfig({ focus }: { focus: number }) {
   const [cur, setCur] = useState(0);
   const now = hits.length ? hits[Math.min(cur, hits.length - 1)] : null;
   const label = (src: string) => src.startsWith("module:") ? `${t("Module")} · ${src.slice(7)}`
-    : src === "settings" ? t("Settings") : src === "rules" ? t("My rules") : src === "app" ? "ClashCube" : t("Pending reload");
+    : src === "settings" ? t("Settings") : src === "rules" ? t("My rules") : src === "router" ? t("Router") : src === "app" ? "ClashCube" : t("Pending reload");
 
   // the refused line is scrolled to, a few lines down from the top
   const pre = useRef<HTMLPreElement>(null);

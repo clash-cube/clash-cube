@@ -22,6 +22,7 @@ import (
 	"github.com/localhost-copilot/clashcube/internal/autostart"
 	"github.com/localhost-copilot/clashcube/internal/backend"
 	"github.com/localhost-copilot/clashcube/internal/core"
+	"github.com/localhost-copilot/clashcube/internal/defaults"
 	"github.com/localhost-copilot/clashcube/internal/mihomoapi"
 	"github.com/localhost-copilot/clashcube/internal/profiles"
 	"github.com/localhost-copilot/clashcube/internal/settings"
@@ -30,8 +31,7 @@ import (
 //go:embed all:dist
 var dist embed.FS
 
-//go:embed default.yaml
-var defaultYAML []byte
+var defaultYAML = defaults.Profile
 
 //go:embed tray.png
 var trayIcon []byte

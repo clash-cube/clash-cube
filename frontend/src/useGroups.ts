@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Events } from "@wailsio/runtime";
+import { Events } from "./api";
 import { Proxy, type Group, type Member, type Provider } from "./api";
 import type { LatencyEvent } from "../bindings/github.com/localhost-copilot/clashcube/internal/backend/models";
 import { useStore } from "./store";

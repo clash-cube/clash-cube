@@ -38,6 +38,10 @@ func serviceRunner() coremgr.Runner {
 // pickRunner sets the runner the settings ask for: through the helper in
 // service mode if it answers, else as a child. Called before a start.
 func (b *Backend) pickRunner() {
+	if b.CoreService != nil {
+		b.core.SetRunner(b.CoreService)
+		return
+	}
 	if settings.Load().ServiceMode {
 		if running, current := freshHelper(); running {
 			if !current {

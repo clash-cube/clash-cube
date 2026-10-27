@@ -6,7 +6,7 @@ import { Segmented } from "./components/Segmented";
 import { Gear, Globe, Shield, SidebarIcon } from "./components/Icons";
 import { Brand, calm, Sidebar, sideFit } from "./components/Sidebar";
 import { crumb, pageOf, pages } from "./nav";
-import { isWindows } from "./platform";
+import { isWindows, isWeb } from "./platform";
 import { Popover, Menu, type MenuItem } from "./components/Popover";
 import { copyCommand, coreLabel, coreTone, openSettings, restartCore, setSystemProxy, setTun, startCore, stopCore } from "./actions";
 import { speed } from "./format";
@@ -189,7 +189,7 @@ export function MainWindow() {
         )}
         <div className="actions">
           {running && view !== "overview" && level < 1 && <span className="hdr-speed num">↑ {speed(traffic.up)}  ↓ {speed(traffic.down)}</span>}
-          {running ? <>
+          {running && !isWeb ? <>
             <button className="pill-status mode" onClick={(e) => setMenu(menu?.kind === "proxy" ? null : { kind: "proxy", at: e.currentTarget })}
               title={state?.proxyLost ? t("Taken by another app") : t("System Proxy")}>
               <span className={"cdot " + (pending === "proxy" ? "ok testing" : state?.proxyLost ? "ok" : state?.systemProxy ? "good" : "none")} />

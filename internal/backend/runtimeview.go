@@ -68,7 +68,7 @@ func (b *Backend) layers() []runtimecfg.Layer {
 	if err != nil {
 		return nil
 	}
-	l, _ := runtimecfg.Layers(p.ID, body, s, b.core.Controller(), b.rules(), modules.List())
+	l, _ := runtimecfg.Layers(p.ID, body, s, b.core.Controller(), b.rules(), modules.List(), b.runtimeOverlays()...)
 	return l
 }
 

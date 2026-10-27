@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+[ -z "${IPKG_INSTROOT:-}" ] || exit 0
+rm -rf /tmp/clashcube-assets-backup
+if [ -d /www/luci-static/resources/clashcube/assets ]; then
+    mkdir -p /tmp/clashcube-assets-backup
+    cp -R /www/luci-static/resources/clashcube/assets /tmp/clashcube-assets-backup/assets
+fi

@@ -16,7 +16,6 @@ export type {
     App,
     Group,
     Hotkey,
-    Member,
     Patch,
     Provider,
     Recommended,

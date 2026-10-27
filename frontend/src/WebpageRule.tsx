@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Window } from "@wailsio/runtime";
+import { Window } from "./api";
 import { App, Proxy, type UserRule } from "./api";
 import { useT } from "./i18n";
 import { useStore } from "./store";

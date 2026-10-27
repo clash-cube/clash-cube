@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+[ -z "${IPKG_INSTROOT:-}" ] || exit 0
+[ "${1:-}" != upgrade ] || exit 0
+rm -rf /www/luci-static/resources/clashcube /tmp/clashcube-assets-backup
+rm -f /usr/share/clashcube/assets.current /usr/share/clashcube/assets.previous

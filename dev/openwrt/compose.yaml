@@ -1,0 +1,75 @@
+name: clashcube-openwrt
+
+services:
+  router:
+    # The publisher labels this image amd64, but its ELF binaries are AArch64.
+    image: coolsnowwolf/qwrt:arm64-latest@sha256:b6197c0bb344959641101cd68e64d263d3c807d5c1ddad60b4eab53d1143e0e7
+    platform: linux/amd64
+    hostname: clashcube-qwrt
+    entrypoint: ["/bin/sh", "/lab/init.sh"]
+    cap_add:
+      - NET_ADMIN
+    sysctls:
+      net.ipv4.ip_forward: "1"
+    ports:
+      - "127.0.0.1:18080:80"
+      - "127.0.0.1:10022:22"
+    volumes:
+      - ./init.sh:/lab/init.sh:ro
+      - ./configure.sh:/lab/configure.sh:ro
+      - ../../:/workspace/clash-cube:ro
+      - data:/var/lib/clashcube
+    secrets:
+      - root_password
+    networks:
+      wan:
+        interface_name: eth0
+        ipv4_address: 172.30.76.2
+        gw_priority: 1
+      lan:
+        interface_name: eth1
+        ipv4_address: 172.30.77.2
+    healthcheck:
+      # This LuCI version returns HTTP 403 with its unauthenticated login form.
+      test: ["CMD-SHELL", "test -f /etc/clashcube-lab-configured && ubus call system board >/dev/null && curl -sS --max-time 2 http://127.0.0.1/cgi-bin/luci/ | grep -q 'name=\"luci_password\"'"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+
+  client:
+    image: coolsnowwolf/qwrt:arm64-latest@sha256:b6197c0bb344959641101cd68e64d263d3c807d5c1ddad60b4eab53d1143e0e7
+    platform: linux/amd64
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        ip route replace default via 172.30.77.2
+        printf 'nameserver 172.30.77.2\n' > /etc/resolv.conf
+        exec sleep infinity
+    cap_add:
+      - NET_ADMIN
+    dns: [172.30.77.2]
+    depends_on:
+      router:
+        condition: service_healthy
+    networks:
+      lan:
+        ipv4_address: 172.30.77.3
+
+networks:
+  wan:
+    ipam:
+      config:
+        - subnet: 172.30.76.0/24
+  lan:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.77.0/24
+
+volumes:
+  data:
+
+secrets:
+  root_password:
+    file: ./root-password

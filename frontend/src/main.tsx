@@ -8,11 +8,12 @@ import { MainWindow } from "./MainWindow";
 import { Panel } from "./Panel";
 import { WebpageRule } from "./WebpageRule";
 import { Toasts } from "./components/Toast";
-import { isWindows } from "./platform";
+import { isWindows, isWeb } from "./platform";
 
-document.documentElement.dataset.platform = isWindows ? "windows" : "macos";
+document.documentElement.dataset.platform = isWeb ? "web" : isWindows ? "windows" : "macos";
+if (isWeb) { document.documentElement.classList.remove("is-panel"); document.documentElement.classList.add("is-window"); }
 
-const mode = new URLSearchParams(location.search).get("mode");
+const mode = isWeb ? null : new URLSearchParams(location.search).get("mode");
 
 boot().finally(() => {
   ReactDOM.createRoot(document.getElementById("root")!).render(

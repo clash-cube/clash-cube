@@ -1,3 +1,4 @@
+import { isWeb } from "../platform";
 import { useState, type ReactNode } from "react";
 import { App } from "../api";
 import { useStore } from "../store";
@@ -120,6 +121,7 @@ export function Overview() {
             options={[{ value: "rule", label: t("Rule") }, { value: "global", label: t("Global") }, { value: "direct", label: t("Direct") }]}
           />
         </div>
+        {!isWeb && <>
         <div className="row">
           <span className={"ic" + (state?.systemProxy ? " on" : "")}><Globe /></span>
           <div className="who"><div className="name">{t("System Proxy")}</div><div className="sub">{t("Route apps that respect the macOS proxy settings")} · 127.0.0.1:{state?.mixedPort}</div></div>
@@ -130,6 +132,7 @@ export function Overview() {
           <div className="who"><div className="name">{t("Enhanced Mode")}</div><div className="sub">{state?.serviceMode ? t("TUN: capture all traffic, including terminals and games") : t("Installs a privileged helper on first use")}</div></div>
           <Switch on={!!state?.tun} onChange={setTun} label={t("Enhanced Mode")} />
         </div>
+        </>}
         <button className="row click" style={{ width: "100%", textAlign: "left" }} onClick={() => setView("profiles")}>
           <span className="ic"><File /></span>
           <div className="who"><div className="name">{state?.profileName}</div><div className="sub">{t("Current profile")}</div></div>

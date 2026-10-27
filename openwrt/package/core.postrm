@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+[ -z "${IPKG_INSTROOT:-}" ] || exit 0
+[ "${1:-}" != upgrade ] || exit 0
+uci -q delete firewall.clashcube || true
+uci commit firewall
+# User data and DNS recovery state are deliberately retained on removal.

@@ -22,6 +22,7 @@ code, .mono { font-family: var(--code); font-size: 11.5px; }
 .top { display: flex; align-items: center; gap: 8px; height: 50px; padding: 2px 12px 0 96px; flex: none; position: relative; --wails-draggable: drag; }
 .top .seg, .top button, .top .pill-status { --wails-draggable: no-drag; }
 [data-platform="windows"] .top { padding-left: 12px; }
+[data-platform="web"] .top, [data-platform="web"] .side-top { padding-left: 12px; }
 .brand { display: flex; align-items: center; gap: 7px; font-weight: 600; letter-spacing: .01em; }
 [data-platform="windows"] .top .brand { display: none; }
 .brand .logo { width: 18px; height: 18px; color: var(--fg); display: inline-flex; }
@@ -247,6 +248,10 @@ body.side-drag, body.side-drag * { cursor: col-resize !important; user-select: n
 .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
 .input.num { width: 84px; font-variant-numeric: tabular-nums; }
 textarea.input { height: auto; padding: 7px 10px; resize: vertical; line-height: 1.5; font-family: var(--code); font-size: 12px; }
+.router-editor { display: grid; gap: 12px; padding: 12px 16px; }
+.router-editor label { display: grid; gap: 6px; font-size: 12px; color: var(--muted); }
+.router-editor .input { width: 100%; }
+.router-editor .end { justify-content: flex-end; }
 .search { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); color: var(--faint); min-width: 200px; transition: border-color .12s, box-shadow .12s; }
 .search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
 .search input { flex: 1; border: 0; outline: none; background: none; height: 100%; min-width: 0; }

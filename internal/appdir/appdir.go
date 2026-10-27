@@ -12,6 +12,13 @@ func Root() string {
 	if d := os.Getenv("CLASHCUBE_HOME"); d != "" {
 		return d
 	}
+	if runtime.GOOS == "linux" {
+		d, err := os.UserConfigDir()
+		if err == nil {
+			return filepath.Join(d, "clashcube")
+		}
+		return filepath.Join(os.TempDir(), "clashcube")
+	}
 	if runtime.GOOS == "windows" {
 		d, err := os.UserConfigDir()
 		if err == nil {
@@ -24,12 +31,26 @@ func Root() string {
 	return filepath.Join(home, "Library", "Application Support", "ClashCube")
 }
 
-func Settings() string      { return filepath.Join(Root(), "settings.json") }
-func Profiles() string      { return filepath.Join(Root(), "profiles") }
-func CoreHome() string      { return filepath.Join(Root(), "core") }
-func RuntimeConfig() string { return filepath.Join(CoreHome(), "runtime.yaml") }
-func Logs() string          { return filepath.Join(Root(), "logs") }
-func Usage() string         { return filepath.Join(Root(), "usage") }
+func Settings() string { return filepath.Join(Root(), "settings.json") }
+func Profiles() string { return filepath.Join(Root(), "profiles") }
+
+// CoreHome may be volatile or external on a router. Runtime configuration and
+// app preferences remain in Root so a reboot can restore the validated state.
+func CoreHome() string {
+	if d := os.Getenv("CLASHCUBE_CORE_HOME"); d != "" {
+		return d
+	}
+	return filepath.Join(Root(), "core")
+}
+func RuntimeConfig() string { return filepath.Join(Root(), "core", "runtime.yaml") }
+func CacheHome() string {
+	if d := os.Getenv("CLASHCUBE_CACHE_HOME"); d != "" {
+		return d
+	}
+	return Root()
+}
+func Logs() string  { return filepath.Join(CacheHome(), "logs") }
+func Usage() string { return filepath.Join(CacheHome(), "usage") }
 
 // Ensure creates the directories the app writes to.
 func Ensure() error {

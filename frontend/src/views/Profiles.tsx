@@ -1,3 +1,4 @@
+import { isWeb } from "../platform";
 import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n";
 import { useStore } from "../store";
@@ -116,7 +117,7 @@ function ProfileRow({ p, current, flash, onFlash, onCopied }: { p: Profile; curr
   const openInEditor = async () => {
     try {
       await P.OpenInEditor(p.id);
-      if (p.url) toast(t("Edits here are lost at the next update. Make an editable copy, or use a module."), "", 5000);
+      if (p.url && !isWeb) toast(t("Edits here are lost at the next update. Make an editable copy, or use a module."), "", 5000);
     } catch (e) { toastError(e); }
   };
   const remove = async () => {
@@ -166,9 +167,9 @@ function ProfileRow({ p, current, flash, onFlash, onCopied }: { p: Profile; curr
           ...(!current ? [{ label: t("Use"), onClick: use }] : []),
           ...(p.url ? [{ label: t("Copy URL"), onClick: () => { App.CopyText(p.url!); toast(t("Copied")); } }] : []),
           { label: t("Rename"), onClick: () => setRenaming(true) },
-          ...(p.url ? [{ label: t("Make an editable copy"), onClick: duplicate }] : []),
-          { label: t("Open in editor"), onClick: openInEditor },
-          { label: t("Show in Finder"), onClick: () => P.Reveal(p.id).catch(toastError) },
+          ...(p.url ? [{ label: t(isWeb ? "Duplicate" : "Make an editable copy"), onClick: duplicate }] : []),
+          { label: t(isWeb ? "Download configuration" : "Open in editor"), onClick: openInEditor },
+          ...(!isWeb ? [{ label: t("Show in Finder"), onClick: () => P.Reveal(p.id).catch(toastError) }] : []),
           ...(!current ? ["sep" as const, { label: t("Remove"), danger: true, onClick: remove }] : []),
         ]} />
       </Popover>

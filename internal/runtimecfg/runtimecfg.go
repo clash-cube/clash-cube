@@ -17,6 +17,13 @@ import (
 	"github.com/localhost-copilot/clashcube/internal/userrules"
 )
 
+// Overlay is an app-owned final configuration layer, such as router listeners.
+// Apply must not retain m and must be safe to call concurrently.
+type Overlay struct {
+	Source string
+	Apply  func(map[string]any) error
+}
+
 // Controller is where the core's API listens and the secret it takes.
 type Controller struct {
 	Addr   string
@@ -25,16 +32,17 @@ type Controller struct {
 
 // Build is profile (of that ID) with the enabled modules merged over it,
 // the global ones then its own (modules.For), then s and ctl, which win
-// over both, and the user's rules ahead of all others.
-func Build(id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module) ([]byte, error) {
-	return buildSteps(id, profile, s, ctl, user, mods, func(string, map[string]any) {})
+// over both, and the user's rules ahead of all others. Optional app-owned
+// overlays run last in the supplied order, before the result is serialized.
+func Build(id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module, overlays ...Overlay) ([]byte, error) {
+	return buildSteps(id, profile, s, ctl, user, mods, func(string, map[string]any) {}, overlays...)
 }
 
 // Layer is the configuration as Build has it after one source is laid
 // over it. Source is "" for the profile itself, "module:<name>" for a
 // module, "settings" for the user's settings, "app" for what the app
 // itself requires (the controller, nodes hidden behind a chain) and
-// "rules" for the user's rules.
+// "rules" for the user's rules. Final overlays use their supplied Source.
 type Layer struct {
 	Source string
 	Body   []byte
@@ -43,7 +51,7 @@ type Layer struct {
 // Layers is Build taken a source at a time, for telling what each one
 // made of the profile: the first is the profile as Build reads it, the
 // last what Build gives.
-func Layers(id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module) ([]Layer, error) {
+func Layers(id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module, overlays ...Overlay) ([]Layer, error) {
 	var out []Layer
 	var err error
 	_, berr := buildSteps(id, profile, s, ctl, user, mods, func(src string, m map[string]any) {
@@ -53,7 +61,7 @@ func Layers(id string, profile []byte, s settings.Settings, ctl Controller, user
 		var b []byte
 		b, err = yaml.Marshal(m)
 		out = append(out, Layer{src, b})
-	})
+	}, overlays...)
 	if berr != nil {
 		return nil, berr
 	}
@@ -61,7 +69,7 @@ func Layers(id string, profile []byte, s settings.Settings, ctl Controller, user
 }
 
 // buildSteps is Build, telling step what the configuration is after each source.
-func buildSteps(id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module, step func(source string, m map[string]any)) ([]byte, error) {
+func buildSteps(id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module, step func(source string, m map[string]any), overlays ...Overlay) ([]byte, error) {
 	var m map[string]any
 	if err := yaml.Unmarshal(profile, &m); err != nil {
 		return nil, fmt.Errorf("profile: %w", err)
@@ -159,6 +167,12 @@ func buildSteps(id string, profile []byte, s settings.Settings, ctl Controller, 
 		m["rules"] = append(guards, own...)
 		step("settings", m)
 	}
+	for _, overlay := range overlays {
+		if err := overlay.Apply(m); err != nil {
+			return nil, fmt.Errorf("%s: %w", overlay.Source, err)
+		}
+		step(overlay.Source, m)
+	}
 	return yaml.Marshal(m)
 }
 
@@ -245,8 +259,8 @@ func setDefault(m map[string]any, k string, v any) {
 
 // Write builds the configuration and writes it to path, readable by the
 // user only (it holds the secret).
-func Write(path, id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module) error {
-	b, err := Build(id, profile, s, ctl, user, mods)
+func Write(path, id string, profile []byte, s settings.Settings, ctl Controller, user []userrules.Rule, mods []modules.Module, overlays ...Overlay) error {
+	b, err := Build(id, profile, s, ctl, user, mods, overlays...)
 	if err != nil {
 		return err
 	}

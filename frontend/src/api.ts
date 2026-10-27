@@ -1,9 +1,7 @@
 // The Go services, re-exported under short names.
-export * as App from "../bindings/github.com/localhost-copilot/clashcube/internal/gui/appservice";
-export * as Proxy from "../bindings/github.com/localhost-copilot/clashcube/internal/gui/proxyservice";
-export * as Profiles from "../bindings/github.com/localhost-copilot/clashcube/internal/gui/profileservice";
-export * as Settings from "../bindings/github.com/localhost-copilot/clashcube/internal/gui/settingsservice";
-export type { App as AppInfo, Group, Member, Patch, Provider } from "../bindings/github.com/localhost-copilot/clashcube/internal/gui/models";
+export { App, Proxy, Profiles, Settings, Events, Window, Router } from "@platform";
+export type { App as AppInfo } from "../bindings/github.com/localhost-copilot/clashcube/internal/gui/models";
+export type { Group, Member, Patch, Provider } from "../bindings/github.com/localhost-copilot/clashcube/internal/backend/models";
 export type { Lookup, State, Event, HelperStatus, AppUpdate, GeoInfo, Connectivity, ClientRate, Egress, DNSEgress, ProxyEgress, Network, LatencySample, Globe, GlobeRoute, GlobeEnd, Place, CityGeoInfo, AIRoute, AIHost, AIEgress, AICheck } from "../bindings/github.com/localhost-copilot/clashcube/internal/backend/models";
 export type { NetworkRule, NetworkActions } from "../bindings/github.com/localhost-copilot/clashcube/internal/settings/models";
 export type { Profile, ImportRequest } from "../bindings/github.com/localhost-copilot/clashcube/internal/profiles/models";

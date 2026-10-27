@@ -31,17 +31,16 @@ async function mount({ hidden = false } = {}) {
   useStore.getState = () => ({ state });
   const mocks = {
     "./store": { useStore },
-    "./api": { Proxy: {
+    "./api": { Events: { On: (name, fn) => {
+      listeners.set(name, fn);
+      return () => listeners.delete(name);
+    } }, Proxy: {
       TestLatency: async () => { tests++; return { total: 1, failed: 0 }; },
       Groups: () => { requests++; return read(); },
       Providers: async () => [{ name: "provider", members: snapshot[0].members }],
     } },
     "./i18n": { useT: () => (text) => text },
     "./components/Toast": { toast() {}, toastError() {} },
-    "@wailsio/runtime": { Events: { On: (name, fn) => {
-      listeners.set(name, fn);
-      return () => listeners.delete(name);
-    } } },
   };
   const load = (name) => {
     const source = readFileSync(new URL(`../src/${name}.ts`, import.meta.url), "utf8");

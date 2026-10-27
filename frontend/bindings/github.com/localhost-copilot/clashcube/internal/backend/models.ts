@@ -428,6 +428,24 @@ export interface GlobeRoute {
 }
 
 /**
+ * Group is a proxy group with its members, in the profile's order.
+ */
+export interface Group {
+    "name": string;
+    "type": string;
+    "now": string;
+    "hidden": boolean;
+    "icon": string;
+    "testUrl": string;
+    "members": Member[] | null;
+
+    /**
+     * the ID of the module that made it
+     */
+    "module"?: string;
+}
+
+/**
  * HelperStatus is what Settings shows of service mode.
  */
 export interface HelperStatus {
@@ -546,6 +564,22 @@ export interface Lookup {
     "routeError"?: string;
 }
 
+export interface Member {
+    "name": string;
+    "type": string;
+    "udp": boolean;
+
+    /**
+     * last test, ms; 0 untested, -1 failed
+     */
+    "delay": number;
+
+    /**
+     * a group itself
+     */
+    "group": boolean;
+}
+
 /**
  * Network is the network the Mac is on and what the rules make of it
  * (docs/design.md §10.3.3).
@@ -596,6 +630,39 @@ export interface Node {
 }
 
 /**
+ * Patch is a partial update: the keys of p (as settings.json names them)
+ * that are present are changed.
+ */
+export interface Patch {
+    "mixedPort"?: number | null;
+    "allowLan"?: boolean | null;
+    "ipv6"?: boolean | null;
+    "logLevel"?: string | null;
+    "tunStack"?: string | null;
+    "icmpForwarding"?: boolean | null;
+    "guardIPv6"?: boolean | null;
+    "guardDNS"?: boolean | null;
+    "blockSTUN"?: boolean | null;
+    "blockQUIC"?: boolean | null;
+    "dnsRespectRules"?: boolean | null;
+    "unifiedDelay"?: boolean | null;
+    "bypass"?: string[] | null;
+    "autoStart"?: boolean | null;
+    "launchAtLogin"?: boolean | null;
+    "theme"?: string | null;
+    "lang"?: string | null;
+    "dock"?: string | null;
+    "testUrl"?: string | null;
+    "traySpeed"?: boolean | null;
+    "findProcess"?: boolean | null;
+    "notify"?: boolean | null;
+    "saveData"?: boolean | null;
+    "aiServices"?: string[] | null;
+    "autoUpdateApp"?: boolean | null;
+    "subscriptionUa"?: string | null;
+}
+
+/**
  * Place is a country ("JP") or a city in one ("JP/Osaka").
  */
 export interface Place {
@@ -622,6 +689,25 @@ export interface PortState {
      * the program holding a taken port, when known
      */
     "holder"?: string;
+}
+
+/**
+ * Provider is a proxy provider with its nodes, as the profile lists them.
+ */
+export interface Provider {
+    "name": string;
+
+    /**
+     * HTTP | File | Inline
+     */
+    "vehicleType": string;
+    "testUrl": string;
+    "updatedAt": string;
+    "upload": number;
+    "download": number;
+    "total": number;
+    "expire": number;
+    "members": Member[] | null;
 }
 
 /**

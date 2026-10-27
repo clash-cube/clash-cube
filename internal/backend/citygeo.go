@@ -56,7 +56,7 @@ type CityGeoInfo struct {
 	Error       string `json:"error"`
 }
 
-func cityPath() string { return filepath.Join(appdir.Root(), "geo", "dbip-city-lite.mmdb") }
+func cityPath() string { return filepath.Join(appdir.CacheHome(), "geo", "dbip-city-lite.mmdb") }
 
 func (b *Backend) CityGeoInfo() CityGeoInfo {
 	city.mu.Lock()

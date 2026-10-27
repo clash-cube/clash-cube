@@ -1,4 +1,5 @@
 import type { SettingsTab, View } from "./store";
+import { isWeb } from "./platform";
 
 // The window's pages and their own tabs: the header's tabs and the sidebar
 // list the same ones, and the pages' tab strips switch them.
@@ -13,13 +14,13 @@ export const overviewTabs = (t: T): Tab<View>[] => [
   { value: "globe", label: t("Global connections") },
 ];
 export const logsTabs = (t: T): Tab<View>[] => [{ value: "logs", label: t("Logs") }, { value: "events", label: t("Events") }];
-export const settingsTabs = (t: T): Tab<SettingsTab>[] => [
+export const settingsTabs = (t: T): Tab<SettingsTab>[] => ([
   { value: "general", label: t("General") },
   { value: "network", label: t("Network") },
   { value: "rules", label: t("Network rules") },
   { value: "tun", label: t("Enhanced Mode") },
   { value: "core", label: t("Core") },
-];
+] as Tab<SettingsTab>[]).filter((tab) => !isWeb || (tab.value !== "rules" && tab.value !== "tun"));
 
 // in the header's order
 export const pages = (t: T): Page[] => [

@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+[ -z "${IPKG_INSTROOT:-}" ] || exit 0
+uci set firewall.clashcube=include
+uci set firewall.clashcube.type=script
+uci set firewall.clashcube.path=/usr/share/clashcube/firewall.sh
+uci set firewall.clashcube.reload=1
+uci commit firewall
+/etc/init.d/clashcube-core enable
+/etc/init.d/clashcube-core start

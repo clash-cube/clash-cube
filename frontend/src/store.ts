@@ -1,5 +1,6 @@
+import { isWeb } from "./platform";
 import { create } from "zustand";
-import { Events } from "@wailsio/runtime";
+import { Events } from "./api";
 import { App, Profiles, Settings, type State, type Profile, type ImportRequest, type SettingsT, type Log, type Event, type LatencySample } from "./api";
 import type { Module } from "../bindings/github.com/localhost-copilot/clashcube/internal/modules/models";
 import { translate as t } from "./i18n";
@@ -14,8 +15,8 @@ export const isSettingsTab = (v: unknown): v is SettingsTab => SETTINGS_TABS.inc
 // the tab ?view=settings#<tab> names, else the one last open
 function firstSettingsTab(): SettingsTab {
   const h = location.hash.slice(1);
-  if (isSettingsTab(h)) return h;
-  try { const v = localStorage.getItem("settings.tab"); if (isSettingsTab(v)) return v; } catch {}
+  if (isSettingsTab(h) && (!isWeb || (h !== "tun" && h !== "rules"))) return h;
+  try { const v = localStorage.getItem("settings.tab"); if (isSettingsTab(v) && (!isWeb || (v !== "tun" && v !== "rules"))) return v; } catch {}
   return "general";
 }
 
@@ -167,8 +168,9 @@ export async function boot() {
       return { logs };
     });
   });
-  // settings changed in the other window
-  window.addEventListener("focus", () => useStore.getState().refreshSettings());
+  // Preserve the last settings if management is briefly offline. A later
+  // focus or reconnected event stream refreshes them again.
+  window.addEventListener("focus", () => { void useStore.getState().refreshSettings().catch(() => {}); });
 }
 
 export function applyTheme(theme: string) {
