@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+[ -z "${IPKG_INSTROOT:-}" ] || exit 0
+/etc/init.d/clashcube-guard enable
+/etc/init.d/clashcube-guard start

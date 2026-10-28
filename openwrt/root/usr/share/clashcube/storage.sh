@@ -32,6 +32,8 @@ $CLASHCUBE_HOME/profiles/
 $CLASHCUBE_HOME/modules.json
 $CLASHCUBE_HOME/rules.json
 $CLASHCUBE_HOME/router.json
+$CLASHCUBE_HOME/devices.json
+$CLASHCUBE_HOME/device-guard.nft
 $CLASHCUBE_HOME/router-maintenance.json
 $CLASHCUBE_HOME/geo-schedule.json
 $CLASHCUBE_HOME/core-service.json

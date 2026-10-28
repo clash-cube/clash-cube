@@ -32,6 +32,11 @@ Only loopback ports are published. The lab does not change the Mac's system
 proxy, routes, TUN or installed ClashCube helper. Containers have `NET_ADMIN`
 within their own network namespaces; neither privileged mode nor host
 networking is used.
+The router uses `systempaths=unconfined` so OpenWrt can write its namespace's
+network sysctls; NET_ADMIN is still the only added capability. Both IP forwarding flags start at
+zero. Because Docker assigns addresses before PID 1, `init.sh` loads persistent
+device restrictions before enabling forwarding and starting procd. Without this
+barrier, container cold starts could briefly route directly before START=18.
 
 ## Test network
 
@@ -66,6 +71,7 @@ The repository is mounted read-only at `/workspace/clash-cube`. Plugin data
 is stored at `/etc/clashcube`, linked in the lab to `/var/lib/clashcube` and
 backed by the named `data` volume. On actual routers `/etc/clashcube` is
 persistent; `/var` is normally a RAM filesystem.
+The separate `guard` volume preserves `/etc/clashcube-guard` boot intent/rules.
 
 ## Verify and manage
 
@@ -95,16 +101,16 @@ generation, subscriptions, package installation and procd service integration.
 The isolated client also supports IPv4 forwarding and firewall experiments.
 This image's initial network integration target is fw3/iptables; fw4/nftables
 requires another image or separate compatibility testing.
-The initial firewall covers IPv4 only and disables flow offloading. fw3 may
-still warn that the FLOWOFFLOAD extension is unavailable, and log failures
-to write TCP sysctls because Docker mounts `/proc/sys` read-only. The lab
-uses ordinary NAT and the host kernel's TCP settings; the connectivity
-checks pass without those features or writes.
+Ordinary transparent interception covers IPv4 TCP and DNS and disables flow
+offloading. The device protection tests enable IPv6 routing on isolated
+`fd30:76::/64` and `fd30:77::/64` networks, prove it works unprotected, then verify
+the independent nftables guard blocks it for protected clients. fw3 may still
+warn that its FLOWOFFLOAD extension is unavailable.
 
 Containers share OrbStack's Linux kernel, not the kernel in the QWRT image.
 Do not install firmware kernel modules expecting them to match the running
-kernel. Firmware boot, hardware, IPv6 and final transparent proxy/TUN
-behaviour still need a VM or real router.
+kernel. Real firmware boot, hardware/offload and other firmware/backend
+combinations still need a VM or physical router.
 
 ## ClashCube plugin development
 
@@ -150,8 +156,8 @@ python3 dev/openwrt/upgrade-smoke.py --packages
 python3 dev/openwrt/package-smoke.py
 ```
 
-The build emits `clashcube-core`, `clashcube-web` and `luci-app-clashcube` under
-`bin/openwrt/packages/`, plus a size/hash manifest. Install all three together
+The build emits `clashcube-guard`, `clashcube-core`, `clashcube-web` and
+`luci-app-clashcube` under `bin/openwrt/packages/`, plus a size/hash manifest. Install all four together
 with opkg. Their lifecycle scripts preserve independent core/management
 upgrades. Settings also supports explicit core updates from a signed feed,
 verified before installation by an independent procd worker. Management/LuCI
@@ -174,8 +180,11 @@ hashes expire so repeated development updates do not grow storage indefinitely.
 The current prototype supports core start/stop/restart, profile uploads and
 subscriptions, policy selection, modes, modules, rules, connections, logs and
 traffic. It reuses the desktop backend and React pages, with native desktop
-controls hidden. Profile files can be downloaded; an in-browser profile text
-editor is not included. The mixed proxy listens on the router's LAN at port
+controls hidden. Profile files can be downloaded or edited in the embedded
+YAML editor, with highlighting, line numbers, live syntax checks and inline
+diff. Subscriptions offer read-only viewing and editable copies. See the
+[measured editor package sizes](../../docs/editor-size.md).
+The mixed proxy listens on the router's LAN at port
 7897 by default, with loopback retained for local backend requests. Top-level
 proxy ports do not bind the WAN interface. It is not published as a host port.
 Test it from the client:

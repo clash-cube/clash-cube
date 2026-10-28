@@ -58,7 +58,7 @@ export function RouterPanel() {
         <div className="end"><span className={"cdot " + (state?.active ? "good" : "none")} />
           {t(state?.active ? "Active" : state?.enabled ? "Waiting for core" : "Off")}</div>
       </div>
-      {state && <RouterAccess state={state} onChange={(next) => { revision.current++; setState(next); }} />}
+      {state && <RouterAccess state={state} onManageDevices={()=>useStore.getState().setView("devices")} onChange={(next) => { revision.current++; setState(next); }} />}
     </div>
     <RouterMaintenance />
     <RouterDiagnostics />

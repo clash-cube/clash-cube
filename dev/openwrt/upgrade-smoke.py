@@ -38,6 +38,7 @@ def main():
         subprocess.run(["python3", "openwrt/package.py", "--skip-build", "--version", version, "--output", str(destination)], cwd=ROOT, check=True, capture_output=True)
         manifest = json.loads((destination / "packages.json").read_text())
         package_paths = {p["name"]: "/workspace/clash-cube/" + (destination / p["file"]).relative_to(ROOT).as_posix() for p in manifest["packages"]}
+        command("router", "opkg", "install", package_paths["clashcube-guard"])
 
     def deploy_component(component):
         if options.packages:

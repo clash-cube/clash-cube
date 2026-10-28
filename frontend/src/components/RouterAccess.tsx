@@ -6,7 +6,7 @@ import { Fold } from "./Fold";
 import { Segmented } from "./Segmented";
 import { toastError } from "./Toast";
 
-export function RouterAccess({ state, onChange }: { state: RouterState; onChange: (state: RouterState) => void }) {
+export function RouterAccess({ state, onChange, onManageDevices }: { state: RouterState; onChange: (state: RouterState) => void; onManageDevices?: () => void }) {
   const t = useT();
   const policy = state.access ?? { mode: "all", addresses: [], macs: [] };
   const [editing, setEditing] = useState(false);
@@ -33,6 +33,7 @@ export function RouterAccess({ state, onChange }: { state: RouterState; onChange
     finally { setBusy(false); }
   };
   return <>
+    {onManageDevices && <div className="row"><div className="who"><div className="name">{t("Fixed device egress")}</div><div className="sub wrap">{t("Choose a node per device and block direct fallback during stops.")}</div></div><div className="end"><button className="btn small" onClick={onManageDevices}>{t("Manage devices")}</button></div></div>}
     <div className="row">
       <div className="who"><div className="name">{t("Device access")}</div>
         <div className="sub wrap">{modes.find((m) => m.value === policy.mode)?.label}</div>

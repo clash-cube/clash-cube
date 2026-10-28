@@ -1,6 +1,14 @@
 #!/bin/sh
 set -eu
 
+# Docker assigns both interface addresses before PID 1 starts, unlike a normal
+# OpenWrt kernel boot. Its namespace starts with forwarding disabled. Restore
+# persistent restrictions before allowing any LAN packet to cross this router.
+if [ -f /etc/clashcube-guard/intent.json ] || [ -f /etc/clashcube-guard/guard.nft ]; then
+    sh /workspace/clash-cube/openwrt/root/usr/share/clashcube/device-guard.sh
+fi
+sysctl -w net.ipv4.ip_forward=1 net.ipv6.conf.all.forwarding=1 >/dev/null
+
 if [ ! -f /etc/clashcube-lab-configured ]; then
     # Limit the bundled services on first boot, then preserve services added
     # during plugin development across subsequent restarts.

@@ -1,8 +1,8 @@
 import { isWeb } from "../platform";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useT } from "../i18n";
 import { useStore } from "../store";
-import { Profiles as P, App, type Profile, type ImportRequest } from "../api";
+import { Profiles as P, App, ProfileFiles, type Profile, type ImportRequest } from "../api";
 import { Popover, Menu } from "../components/Popover";
 import { toast, toastError } from "../components/Toast";
 import { Globe, File, More, Plus, Refresh } from "../components/Icons";
@@ -10,6 +10,7 @@ import { ago, bytes } from "../format";
 import { Segmented } from "../components/Segmented";
 import { Modules } from "../components/modules";
 import { RefusalBanner, RuntimeConfig } from "../components/RuntimeConfig";
+const ProfileEditor = lazy(() => import("../components/ProfileEditor").then((m) => ({ default: m.ProfileEditor })));
 
 const TABS = ["profiles", "modules", "merged"] as const;
 type Tab = typeof TABS[number];
@@ -24,6 +25,7 @@ export function Profiles() {
   const [activeImport, setActiveImport] = useState<ImportRequest | null>(null);
   const [updatingAll, setUpdatingAll] = useState(false);
   const [flash, setFlash] = useState("");
+  const [editing, setEditing] = useState<Profile | null>(null);
   const [tab, setTab] = useState<Tab>(TABS.find((x) => "#" + x === location.hash) ?? "profiles");
   // bumped by the banner's Show, to open the refusal again
   const [focus, setFocus] = useState(0);
@@ -45,6 +47,14 @@ export function Profiles() {
   };
 
   const flashRow = (id: string) => { setFlash(id); setTimeout(() => setFlash(""), 900); };
+  const copyProfile = async (p: Profile) => {
+    const cp = await P.Duplicate(p.id, t("{name} (copy)", { name: p.name }));
+    if (p.id === current) { await P.Use(cp.id); toast(t("Now using {name}, which you can edit", { name: cp.name })); }
+    else toast(t("Made {name}", { name: cp.name }));
+    flashRow(cp.id);
+    return cp;
+  };
+  const activeProfile = profiles.find((p) => p.id === current);
 
   const updateAll = async () => {
     setUpdatingAll(true);
@@ -65,21 +75,23 @@ export function Profiles() {
         ]} />
         <div className="view-tools">
           {tab === "profiles" && <>
+          {ProfileFiles && activeProfile && <button className="btn small" onClick={() => setEditing(activeProfile)}>{t(activeProfile.url ? "View configuration" : "Edit configuration")}</button>}
           <button className="btn small" disabled={updatingAll} onClick={updateAll}><Refresh size={13} />{updatingAll ? t("Updating…") : t("Update all")}</button>
           <button ref={importButton} className="btn small primary" onClick={(e) => { if (!importAt) setImportAt(e.currentTarget); }}><Plus size={13} />{t("Import")}</button>
           </>}
         </div>
       </div>
-      <RefusalBanner onShow={tab === "merged" ? undefined : () => { setTab("merged"); setFocus((n) => n + 1); }} />
+      <RefusalBanner onEdit={ProfileFiles && activeProfile ? () => setEditing(activeProfile) : undefined} onShow={tab === "merged" ? undefined : () => { setTab("merged"); setFocus((n) => n + 1); }} />
+      {editing && ProfileFiles && <Suspense fallback={<p role="status">{t("Loading…")}</p>}><ProfileEditor key={editing.id} profile={editing} active={editing.id === current} onClose={() => setEditing(null)} onCopy={async () => { setEditing(await copyProfile(editing)); }} /></Suspense>}
       <ImportPopover key={activeImport ? JSON.stringify(activeImport) : "manual"} request={activeImport} anchor={importAt} onClose={closeImport} onDone={(p) => { closeImport(); flashRow(p.id); }} />
       {tab === "merged" ? <RuntimeConfig focus={focus} /> : tab === "modules" ? <Modules /> : <div className="list">
-        {profiles.map((p) => <ProfileRow key={p.id} p={p} current={p.id === current} flash={flash === p.id} onFlash={() => flashRow(p.id)} onCopied={flashRow} />)}
+        {profiles.map((p) => <ProfileRow key={p.id} p={p} current={p.id === current} flash={flash === p.id} onFlash={() => flashRow(p.id)} onEdit={() => setEditing(p)} onCopy={() => copyProfile(p).then(() => {})} />)}
       </div>}
     </div>
   );
 }
 
-function ProfileRow({ p, current, flash, onFlash, onCopied }: { p: Profile; current: boolean; flash: boolean; onFlash: () => void; onCopied: (id: string) => void }) {
+function ProfileRow({ p, current, flash, onFlash, onEdit, onCopy }: { p: Profile; current: boolean; flash: boolean; onFlash: () => void; onEdit: () => void; onCopy: () => Promise<void> }) {
   const t = useT();
   const [menuAt, setMenuAt] = useState<HTMLElement | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -103,16 +115,6 @@ function ProfileRow({ p, current, flash, onFlash, onCopied }: { p: Profile; curr
     setUpdating(true);
     try { await P.Update(p.id); toast(t("Updated {name}", { name: p.name })); onFlash(); } catch (e) { toastError(e); }
     setUpdating(false);
-  };
-  // a subscription's file is replaced on every update: its copy is the
-  // user's. Copying the one in use moves to the copy, so editing it counts.
-  const duplicate = async () => {
-    try {
-      const cp = await P.Duplicate(p.id, t("{name} (copy)", { name: p.name }));
-      if (current) { await P.Use(cp.id); toast(t("Now using {name}, which you can edit", { name: cp.name })); }
-      else toast(t("Made {name}", { name: cp.name }));
-      onCopied(cp.id);
-    } catch (e) { toastError(e); }
   };
   const openInEditor = async () => {
     try {
@@ -159,7 +161,7 @@ function ProfileRow({ p, current, flash, onFlash, onCopied }: { p: Profile; curr
       <div className="end" onClick={(e) => e.stopPropagation()}>
         {current && busy === "reloading" && <span className="sub">{t("Reloading…")}</span>}
         {p.url && <button className={"icon" + (updating ? " spin" : "")} title={t("Update")} onClick={update} disabled={updating}><Refresh size={14} /></button>}
-        <button className={"icon" + (menuAt ? " on" : "")} onClick={(e) => setMenuAt(menuAt ? null : e.currentTarget)}><More size={14} /></button>
+        <button className={"icon" + (menuAt ? " on" : "")} aria-label={t("Profile actions")} onClick={(e) => setMenuAt(menuAt ? null : e.currentTarget)}><More size={14} /></button>
         {armed && <button className="btn small danger armed" onClick={remove}>{mods ? t("Click again to remove, with its {n} modules", { n: mods }) : t("Click again to remove")}</button>}
       </div>
       <Popover anchor={menuAt} open={!!menuAt} onClose={() => setMenuAt(null)} align="end">
@@ -167,7 +169,8 @@ function ProfileRow({ p, current, flash, onFlash, onCopied }: { p: Profile; curr
           ...(!current ? [{ label: t("Use"), onClick: use }] : []),
           ...(p.url ? [{ label: t("Copy URL"), onClick: () => { App.CopyText(p.url!); toast(t("Copied")); } }] : []),
           { label: t("Rename"), onClick: () => setRenaming(true) },
-          ...(p.url ? [{ label: t(isWeb ? "Duplicate" : "Make an editable copy"), onClick: duplicate }] : []),
+          ...(ProfileFiles ? [{ label: t(p.url ? "View configuration" : "Edit configuration"), onClick: onEdit }] : []),
+          ...(p.url ? [{ label: t("Make an editable copy"), onClick: () => { void onCopy().catch(toastError); } }] : []),
           { label: t(isWeb ? "Download configuration" : "Open in editor"), onClick: openInEditor },
           ...(!isWeb ? [{ label: t("Show in Finder"), onClick: () => P.Reveal(p.id).catch(toastError) }] : []),
           ...(!current ? ["sep" as const, { label: t("Remove"), danger: true, onClick: remove }] : []),

@@ -75,6 +75,9 @@ type Backend struct {
 	// RuntimeOverlay adds app-owned platform configuration after the user's
 	// modules and settings. Set it before Init; desktop applications leave it nil.
 	RuntimeOverlay *runtimecfg.Overlay
+	// AfterRuntimeReload expires platform-owned sessions after listeners change.
+	// Configure before Init. It must not call another backend mutation.
+	AfterRuntimeReload func() error
 	// CoreService is an independently supervised runner. Configure before Init.
 	// Shutdown detaches from it; explicit Stop and Restart still control it.
 	CoreService coremgr.Runner
@@ -469,6 +472,9 @@ func (b *Backend) reload() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	err := c.ReloadConfigs(ctx, appdir.RuntimeConfig())
+	if err == nil && b.AfterRuntimeReload != nil {
+		err = b.AfterRuntimeReload()
+	}
 	if err == nil {
 		b.aiEgress.clear()
 		b.watchPorts()

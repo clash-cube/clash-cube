@@ -28,6 +28,12 @@ if [ ! -f /etc/config/clashcube ]; then
 fi
 cp "$source/openwrt/root/usr/share/clashcube/storage.sh" /usr/share/clashcube/storage.sh
 mkdir -p /lib/upgrade/keep.d
+cp "$source/openwrt/root/etc/init.d/clashcube-guard" /etc/init.d/clashcube-guard
+cp "$source/openwrt/root/usr/share/clashcube/device-guard.sh" /usr/share/clashcube/device-guard.sh
+cp "$source/openwrt/root/lib/upgrade/keep.d/clashcube-guard" /lib/upgrade/keep.d/clashcube-guard
+chmod 755 /etc/init.d/clashcube-guard /usr/share/clashcube/device-guard.sh
+/etc/init.d/clashcube-guard enable
+/etc/init.d/clashcube-guard start
 cp "$source/openwrt/root/lib/upgrade/keep.d/clashcube" /lib/upgrade/keep.d/clashcube
 if [ "$mode" != management ] || [ "$bootstrap" = 1 ]; then
     if [ -x /etc/init.d/clashcube-core ]; then /etc/init.d/clashcube-core stop; fi

@@ -19,6 +19,7 @@ import { Rules } from "./views/Rules";
 import { Logs } from "./views/Logs";
 import { Events } from "./views/Events";
 import { Settings } from "./views/Settings";
+import { Devices } from "./views/Devices";
 import { Prewarm } from "./components/Prewarm";
 import { useConnectionFeed } from "./connectionStore";
 
@@ -29,6 +30,7 @@ const GlobeView = lazy(() => loadGlobe().then((m) => ({ default: m.GlobeView }))
 const OVERVIEW_TABS = new Set<View>(["overview", "usage", "globe"]);
 
 const VIEWS: Record<View, ComponentType> = {
+  devices: Devices,
   overview: Overview, usage: Usage, globe: GlobeView, proxies: Proxies, profiles: Profiles, connections: Connections, rules: Rules, logs: Logs, events: Events, settings: Settings,
 };
 

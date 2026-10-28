@@ -33,7 +33,7 @@ end
 
 fail = function(code, message)
     local http = require "luci.http"
-    http.status(code)
+    http.status(code, require("luci.http.protocol").statusmsg[code] or "Error")
     http.prepare_content("application/json")
     http.write_json({error = message})
 end
@@ -66,8 +66,24 @@ function api(...)
     if (tonumber(http.getenv("CONTENT_LENGTH")) or 0) > 4194304 then
         return fail(413, "Request too large")
     end
-    local body = http.content() or ""
-    if #body > 4194304 then return fail(413, "Request too large") end
+    -- Legacy LuCI's http.content() silently truncates raw JSON at 8 KiB.
+    -- A file handler receives the unbuffered body instead, while our own bound
+    -- applies to this authenticated bridge without changing LuCI's global limit.
+    local body_chunks, body_size, too_large = {}, 0, false
+    http.setfilehandler(function(_, chunk)
+        if chunk then
+            body_size = body_size + #chunk
+            if body_size > 4194304 then
+                too_large = true
+                return nil, "Request too large"
+            end
+            body_chunks[#body_chunks + 1] = chunk
+        end
+        return true
+    end)
+    http.content()
+    if too_large then return fail(413, "Request too large") end
+    local body = table.concat(body_chunks)
     local sock = require("nixio").socket("unix", "stream")
     if not sock then return fail(503, "Socket unavailable") end
     sock:setsockopt("socket", "rcvtimeo", 180)
@@ -91,7 +107,7 @@ function api(...)
     local status = tonumber(response:match("^HTTP/1%.[01] (%d%d%d)"))
     local boundary = response:find("\r\n\r\n", 1, true)
     if not status or not boundary then return fail(502, "Invalid bridge response") end
-    http.status(status)
+    http.status(status, require("luci.http.protocol").statusmsg[status] or "Error")
     http.header("Cache-Control", "no-store")
     http.prepare_content("application/json")
     http.write(response:sub(boundary + 4))

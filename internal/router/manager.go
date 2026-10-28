@@ -12,8 +12,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/localhost-copilot/clashcube/internal/appdir"
 	"github.com/localhost-copilot/clashcube/internal/backend"
+	"github.com/localhost-copilot/clashcube/internal/devicepolicy"
 	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
+	"github.com/localhost-copilot/clashcube/internal/settings"
 )
 
 type Status struct {
@@ -43,6 +46,7 @@ func New(b *backend.Backend, home string, guard FirewallControl) (*Manager, erro
 	}
 	m.enabled.Store(p.Enabled)
 	b.RuntimeOverlay = &runtimecfg.Overlay{Source: "router", Apply: m.overlay}
+	b.AfterRuntimeReload = m.expireDeviceSessions
 	return m, nil
 }
 
@@ -127,6 +131,17 @@ func (m *Manager) SetEnabled(on bool) (Status, error) {
 }
 
 func (m *Manager) overlay(config map[string]any) error {
+	if err := m.overlayLAN(config); err != nil {
+		return err
+	}
+	c, err := devicepolicy.Load(filepath.Dir(m.path))
+	if err != nil {
+		return err
+	}
+	return devicepolicy.Overlay(config, c, settings.Load().Profile, appdir.CoreHome())
+}
+
+func (m *Manager) overlayLAN(config map[string]any) error {
 	allowLAN, _ := config["allow-lan"].(bool)
 	if !m.enabled.Load() && !allowLAN {
 		return nil

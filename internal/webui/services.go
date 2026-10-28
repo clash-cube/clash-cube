@@ -388,6 +388,8 @@ func NewHandler(b *backend.Backend, events *Broker, routers ...*router.Manager) 
 			return p, err
 		},
 		"Profiles/Read":               func(id string) (string, error) { return readProfile(id) },
+		"Profiles/ReadDocument":       profiles.ReadDocument,
+		"Profiles/SaveContent":        b.SaveProfileContent,
 		"Profiles/TakeImportRequests": func() []profiles.ImportRequest { return []profiles.ImportRequest{} },
 		"Settings/Get":                settings.Load,
 		"Settings/DefaultUserAgent":   b.DefaultUserAgent,
@@ -400,6 +402,10 @@ func NewHandler(b *backend.Backend, events *Broker, routers ...*router.Manager) 
 	}
 	if len(routers) > 0 && routers[0] != nil {
 		r := routers[0]
+		methods["Router/Devices"] = r.Devices
+		methods["Router/ApplyDevice"] = r.ApplyDevice
+		methods["Router/PauseDevice"] = r.PauseDevice
+		methods["Router/ReleaseDevice"] = r.ReleaseDevice
 		methods["Router/Get"] = r.Get
 		methods["Router/SetEnabled"] = r.SetEnabled
 		methods["Router/SetAccess"] = r.SetAccess

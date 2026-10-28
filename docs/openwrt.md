@@ -61,6 +61,12 @@ core's private controller credentials are redacted from configuration previews.
 This is an admin interface: imported configurations and subscriptions remain
 trusted inputs capable of configuring mihomo.
 
+The authenticated bridge reads JSON with a bounded raw-body handler, avoiding
+legacy LuCI's 8 KiB `http.content()` buffering limit. Requests remain capped at
+4 MiB, including JSON encoding overhead; larger uploads return a JSON 413 error.
+This does not change the global LuCI body limit. HTTP errors carry an error
+reason phrase rather than legacy LuCI's default `OK`.
+
 The menu entry renders the normal LuCI header and footer, with the React app
 in a same-origin iframe inside its content area. Internal navigation stays in
 that frame; entering ClashCube does not open another window. A separate
@@ -72,6 +78,43 @@ the desktop Wails bindings or the browser RPC transport. Event subscriptions
 use a bounded history with independent cursors and long polling. A stream ID
 detects daemon restarts; stale cursors recover from state/profile snapshots.
 No Wails runtime is needed in the browser bundle.
+
+### Editing source configurations
+
+In LuCI → ClashCube → Profiles, **Edit configuration** opens the active local
+profile in an embedded YAML editor. The row's action menu also opens any local
+profile. The editor supports YAML highlighting, line numbers, two-space Tab /
+Shift-Tab indentation, undo/redo, Ctrl/⌘S, line/column position, copy, reload
+and confirmation before discarding unsaved changes. Inline diff marks deleted
+and inserted text against the last acknowledged save/reload; **Show changes**
+toggles it without changing the draft or undo history. Previous/next buttons
+navigate changed chunks.
+
+CodeMirror 6 renders the visible portion of the document. A browser worker
+checks YAML syntax and duplicate keys after a 250ms debounce, with markers
+and a clickable line/column error. Pending or syntax-invalid drafts cannot
+save; stale worker responses cannot enable a changed draft. This local check
+does not replace backend/mihomo validation. If the worker is unavailable, the
+editor reports that fact and saving still uses the backend validator. All
+editor/parser assets are packaged locally and loaded on demand, without CDN
+requests or configuration uploads for linting. The existing merged configuration
+remains a read-only view; settings and modules still apply over the source.
+See [the measured package-size comparison](editor-size.md).
+
+Subscriptions open read-only with **Make an editable copy**, preserving the
+managed source and its automatic updates. A copy of the selected subscription
+becomes selected, following the existing copy behavior. Native desktop editor
+integration is unchanged.
+
+`Profiles/ReadDocument` returns source text, a SHA-256 content revision and the
+read-only flag. `Profiles/SaveContent` accepts an indexed profile ID, revision
+and text, never a server path. It refuses subscription writes, invalid YAML and
+stale revisions. Local sources are replaced with private, atomic-renamed files.
+The backend serializes saves with core changes; the selected profile is tested
+and reloaded while running, or tested without starting a stopped core. A
+rejected edit restores source, revision and runtime and retains the UI draft.
+Unselected configurations receive YAML validation and full core validation
+when selected. Read/save use the same authenticated, bounded LuCI bridge.
 
 ## Shared behavior and platform limits
 
@@ -162,6 +205,69 @@ It does not restrict explicit proxy access. Clients choosing the router as
 their DNS server still share its dnsmasq upstream, including bypassed clients.
 Use proxy authentication and profile source-IP restrictions for explicit access.
 
+The ordinary Device access list does not bind nodes or provide disconnect
+protection. Use the separate Devices page described below for those guarantees.
+
+## Device fixed egress and persistent protection
+
+LuCI → ClashCube → Devices selects a discovered LAN client or a manually entered
+MAC/IPv4 identity and a concrete remote node. Save and protect optionally creates
+a DHCP reservation after checking leases/reservations. Use a static address when
+unchecked. Changing an existing policy's MAC/IP requires explicitly releasing it
+first; release retains DHCP reservations. At most 32 devices are supported.
+Choosing or changing a fixed node currently requires a running core, so the
+catalog comes from a successfully built runtime. Once saved, stopping that core
+keeps protection active; pause/resume does not start it automatically.
+
+Each device has a private IPv4 TCP redirect listener and a cloned fixed adapter.
+The listener's `proxy` bypasses rule/global/direct mode. Identity includes profile,
+provider and a hash of the complete adapter; names alone cannot retarget it.
+Provider refresh cannot mutate the clone. Subsequent runtime rebuilds reject
+missing/changed identities. Groups, DIRECT and dialer chains are excluded.
+Ports 18101–18132, 18201–18232, 18301–18332 and listener/proxy names beginning
+`CLASHCUBE-DEVICE-` are reserved. Administration ports 22/80/443 cannot host shared
+core listeners while protection is enabled.
+
+`clashcube-guard` is a separate small package, enabled at START=18 before OpenWrt
+network setup. Its independent `inet clashcube_guard` nftables table remains when
+management or the core stops, crashes, updates or is removed. Stopping the guard
+service is intentionally a no-op; removing its package is refused while policies
+exist. Only Release protection removes a device's restriction. Software/hardware
+flow offloading must be disabled. Missing nftables JSON/NAT support, flock or an
+enabled guard service prevents activation.
+
+Matching either saved MAC or IPv4 blocks ordinary forwarding/shared proxy access.
+Private listeners require both identities and the expected NAT redirect. TCP
+outside the actual LAN subnet uses the selected adapter; other WAN UDP/ICMP and
+IPv6 are blocked. Router IPv4 SSH/LuCI, DHCP, neighbour discovery and local LAN
+access remain available. Existing conntrack decisions and core streams are
+expired; remembered IPv6 destinations also block replies to older direct flows.
+
+UDP/TCP port 53, including DNS addressed to the router, goes to a per-device relay
+in the supervisor. Local DHCP/hosts names are answered locally, public AAAA
+answers are suppressed, and public queries use DNS over TCP through the device's
+fixed proxy tunnel to 1.1.1.1:53. There is no shared dnsmasq/direct public fallback.
+Paused/Pending/stopped devices get SERVFAIL; an offline supervisor leaves port 53
+blocked. Router control-plane resolution for the proxy hostname stays separate.
+Local host discovery is cached outside the query path.
+
+`devices.json` stores policies in the configured data directory. A second durable
+intent and compiled rules reside under `/etc/clashcube-guard/`, included in
+sysupgrade backups even with external data storage. Transactions fsync/rename
+intent, install a Pending deny gate, expire old flows, reload listeners, then open
+the gate. Rejected changes stay blocked. Mismatched boot intent recovers the
+authoritative identities as Pending; corrupt/incomplete caches install emergency
+forwarding/DNS restrictions until reviewed. The Go writer and init loader share
+a kernel lock so a concurrent reload cannot reinstall obsolete rules.
+
+The page checks actual nft expressions/hooks/verdicts and policy revision against
+the verified snapshot. Modified/unavailable state shows Unknown. Protection is
+separate from networking: a protected device can be offline. “Fixed node
+configured” does not assert node health or a verified external IP. Identification
+covers this router's traffic matching MAC/IP; changing both, using another gateway
+or a LAN relay requires stronger SSID/VLAN isolation. See the
+[design](device-egress-design.md) for scope and future phases.
+
 ## Independent deployment
 
 `sh dev/openwrt/deploy.sh` updates management by default. It builds and
@@ -185,13 +291,15 @@ python3 openwrt/package.py --version 0.2.0-3
 # Outputs: bin/openwrt/packages/*.ipk and packages.json (sizes + SHA-256).
 ```
 
-Install the generated packages together on the target router, or core → web →
-LuCI in that order. `clashcube-core` contains mihomo, its supervisor, fw3 and
+Install the four generated packages together on the target router, or guard →
+core → web → LuCI in that order. `clashcube-guard` owns early boot/persistent
+device protection. `clashcube-core` contains mihomo, its supervisor, fw3 and
 storage integration; `clashcube-web` contains management and browser assets;
 `luci-app-clashcube` supplies the embedded menu entry. Management package
 upgrades stop only management and retain the previous frontend assets for open
-tabs. Core package upgrades restart only the core. Core removal restores DNS
-and firewall state; removing packages preserves user configuration.
+tabs. Core package upgrades restart only the core. Core removal restores ordinary
+DNS/interception; protected devices retain their separate restriction. Removing
+packages preserves user configuration.
 
 Dependencies are resolved by the router's existing opkg feeds. Packages target
 `aarch64_generic` and legacy Lua LuCI/fw3, as verified in the pinned QWRT lab;
@@ -256,9 +364,9 @@ Linux environment rather than a physical router.
 
 ### Publishing a router release
 
-`sh scripts/release-openwrt.sh 0.2.0-4` builds the three IPKs with UPX LZMA,
+`sh scripts/release-openwrt.sh 0.3.0-1` builds the four IPKs with UPX LZMA,
 embeds the package version in management, signs `router-update.json` and emits
-`SHA256SUMS` under `bin/openwrt/release/openwrt-v0.2.0-4`. Run it from the
+`SHA256SUMS` under `bin/openwrt/release/openwrt-v0.3.0-1`. Run it from the
 verified source commit with the existing release key available. Router tags
 use `openwrt-v…` separately from the desktop's `v…` release workflow.
 
@@ -270,6 +378,12 @@ and push main to advance the channel. Do not advance the channel before the
 referenced assets are available or replace published IPKs in place. Subsequent
 releases repeat these steps with a strictly higher opkg version. The feed is
 public verification material; the private key never belongs in the repository.
+
+The first upgrade from the three-package 0.2 series must install all four IPKs,
+including `clashcube-guard`. The independent core updater downloads only the core
+IPK and cannot bootstrap that new dependency; use opkg with the complete package
+set before enabling device protection. This implementation has not advanced the
+public update channel.
 
 ## Persistent configuration and storage modes
 
@@ -413,7 +527,7 @@ its retry loop from starting the core after the configuration is repaired.
 `python3 dev/openwrt/storage-test.py` uses a temporary mounted Docker volume to
 verify external storage, identity separation, sysupgrade backup selection and
 data surviving container replacement. It removes its test volume afterwards.
-`python3 dev/openwrt/package-smoke.py` removes all three installed packages with
+`python3 dev/openwrt/package-smoke.py` removes all four installed packages with
 interception active, checks DNS/firewall cleanup and persistent data, then
 reinstalls the packages listed in `bin/openwrt/packages/packages.json` and
 verifies the selected profile is retained.
@@ -439,6 +553,54 @@ core PID. These tests restore their preferences and remove network fixtures.
 `node dev/openwrt/ui-smoke.mjs` verifies embedded browser interactions and the
 diagnostic download; `CLASHCUBE_PLAYWRIGHT_MODULE` and
 `CLASHCUBE_BROWSER_PATH` can select an existing Playwright installation/browser.
+`node dev/openwrt/profile-upload-smoke.mjs` exercises real file-picker uploads
+above 8 KiB, Unicode/multiline byte preservation, the exact 4 MiB JSON boundary,
+oversized rejection and retry. It removes its own profiles and does not switch
+the active configuration.
+`node dev/openwrt/profile-editor-smoke.mjs` verifies real embedded editing,
+core reload and rollback, draft/discard handling, concurrent-save conflicts,
+stopped-core saves, read-only subscriptions and editable copies. Desktop,
+dark and 390px screenshots are written to `bin/openwrt/profile-editor-*.png`.
+
+Device protection uses local fixtures with two distinguishable HTTP proxy
+sources and a deterministic DNS answer, so direct traffic cannot pass as proxy
+success. Start them with:
+
+```sh
+docker compose -f dev/openwrt/egress/compose.yaml up -d --build
+python3 dev/openwrt/device-egress-smoke.py
+# For real opkg replacement/removal tests in Docker only:
+python3 dev/openwrt/install-lab-capabilities.py
+python3 openwrt/package.py --skip-build --version 0.3.0-dev.1
+# Install the four generated packages with opkg, then:
+python3 dev/openwrt/device-egress-smoke.py --packages
+node dev/openwrt/device-egress-ui.mjs --fresh
+```
+
+The lab capability marker declares verified OrbStack-kernel NAT support and
+the existing BusyBox flock to the firmware's opkg database. It installs no
+kernel module, is stored separately under `bin/openwrt/lab/`, and must never be
+published or installed on a real router. Real firmware must provide the actual
+`nftables-json`, `kmod-nft-nat` and `flock` dependencies.
+
+The device harness tests existing/direct/proxy streams, fixed A/B selection,
+global/direct/rule modes, DNS through the selected node, UDP/IPv6 blocking,
+shared/private listener bypass attempts, pause/stop/restart, fw3 reload, killed
+core/supervisor, management downtime, complete QWRT container restart without
+management, changed MAC/IP and node identity, structural firewall drift,
+interrupted caches/settings, stale writers and explicit release. `--packages`
+also verifies protected guard/web/core replacement, component removal,
+guard-removal refusal and reinstall. Fixtures are isolated; no host routes,
+proxy settings or native helper are changed. Results are written to
+`bin/openwrt/device-egress-report.json`.
+
+The browser harness exercises the real embedded form, DHCP reservation,
+pause/resume, node changes and release confirmation/cancel. It saves desktop,
+dark and 390px screenshots under `bin/openwrt/device-egress-*.png` and checks for
+overflow, JavaScript errors and extra windows. These are Docker userspace/kernel
+integration tests, not a physical-router or hardware-offload certification.
+Recorded results and package sizes are in
+[device-egress-verification.md](device-egress-verification.md).
 
 Next work includes hardware validation, additional architectures and fw4
 support. Do not implement router interception by enabling the desktop

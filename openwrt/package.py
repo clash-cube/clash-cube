@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build installable ARM64/fw3 IPKs from the existing cross-compiled binaries.
 
-No firmware build or SDK is required. The three packages have independent
+No firmware build or SDK is required. The four packages have independent
 lifecycle scripts: replacing management never stops the core service.
 """
 import argparse
@@ -42,8 +42,14 @@ def archive(files):
 def build_packages(version, destination):
     destination.mkdir(parents=True, exist_ok=True)
     specs = {
+        "clashcube-guard": {
+            "arch": "all", "depends": "nftables-json, kmod-nft-nat, jsonfilter, flock",
+            "description": "Persistent fail-closed device firewall independent of mihomo and management",
+            "files": ["etc/init.d/clashcube-guard", "usr/share/clashcube/device-guard.sh", "lib/upgrade/keep.d/clashcube-guard"],
+            "hooks": "guard",
+        },
         "clashcube-core": {
-            "arch": "aarch64_generic", "depends": "libc, ca-bundle, dnsmasq, iptables, kmod-ipt-nat, ip-full, procd, ubus, rpcd",
+            "arch": "aarch64_generic", "depends": "libc, ca-bundle, dnsmasq, iptables, kmod-ipt-nat, ip-full, procd, ubus, rpcd, clashcube-guard",
             "description": "ClashCube mihomo core service, fw3 and storage integration",
             "files": ["etc/init.d/clashcube-core", "etc/config/clashcube", "lib/upgrade/keep.d/clashcube",
                       "usr/share/clashcube/storage.sh", "usr/share/clashcube/firewall.sh"],

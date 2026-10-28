@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Remove/reinstall the three IPKs and verify DNS cleanup and data retention."""
+"""Remove/reinstall the IPKs with no device policies; verify cleanup/retention."""
 import json
 import time
 
@@ -12,6 +12,7 @@ def main():
     manifest = json.loads((destination / "packages.json").read_text())
     paths = ["/workspace/clash-cube/" + (destination / p["file"]).relative_to(ROOT).as_posix() for p in manifest["packages"]]
     lab = Lab()
+    assert not lab.rpc("Router/Devices")["policies"], "release lab device policies before testing complete package removal"
     initial = lab.rpc("App/State")
     enabled = lab.rpc("Router/Get")["enabled"]
     lab.rpc("Router/SetEnabled", False)
@@ -20,7 +21,7 @@ def main():
     command("router", "touch", marker)
     try:
         lab.rpc("Router/SetEnabled", True)
-        for name in ("luci-app-clashcube", "clashcube-web", "clashcube-core"):
+        for name in ("luci-app-clashcube", "clashcube-web", "clashcube-core", "clashcube-guard"):
             command("router", "opkg", "remove", name)
         assert command("router", "pgrep", "-f", r"^/usr/bin/clashcube-(core|web)( |$)", check=False).returncode != 0
         assert command("router", "iptables", "-t", "nat", "-S", "CLASHCUBE_LAN", check=False).returncode != 0

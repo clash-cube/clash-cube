@@ -1,0 +1,34 @@
+name: clashcube-egress-tests
+services:
+  origin:
+    build: .
+    image: clashcube-egress-peer:dev
+    command: [server]
+    cap_add: [NET_ADMIN]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "0"
+      net.ipv6.conf.default.disable_ipv6: "0"
+    networks:
+      wan:
+        ipv4_address: 172.30.76.10
+        ipv6_address: fd30:76::10
+  peer:
+    image: clashcube-egress-peer:dev
+    mac_address: "02:cc:77:00:00:04"
+    entrypoint: [/bin/sh, -ec]
+    command: ["ip route replace default via 172.30.77.2; exec python3 /lab/peer.py client"]
+    cap_add: [NET_ADMIN]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "0"
+      net.ipv6.conf.default.disable_ipv6: "0"
+    networks:
+      lan:
+        ipv4_address: 172.30.77.4
+        ipv6_address: fd30:77::4
+networks:
+  wan:
+    external: true
+    name: clashcube-openwrt_wan
+  lan:
+    external: true
+    name: clashcube-openwrt_lan

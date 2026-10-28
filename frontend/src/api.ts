@@ -1,5 +1,5 @@
 // The Go services, re-exported under short names.
-export { App, Proxy, Profiles, Settings, Events, Window, Router } from "@platform";
+export { App, Proxy, Profiles, Settings, Events, Window, Router, ProfileFiles } from "@platform";
 export type { App as AppInfo } from "../bindings/github.com/localhost-copilot/clashcube/internal/gui/models";
 export type { Group, Member, Patch, Provider } from "../bindings/github.com/localhost-copilot/clashcube/internal/backend/models";
 export type { Lookup, State, Event, HelperStatus, AppUpdate, GeoInfo, Connectivity, ClientRate, Egress, DNSEgress, ProxyEgress, Network, LatencySample, Globe, GlobeRoute, GlobeEnd, Place, CityGeoInfo, AIRoute, AIHost, AIEgress, AICheck } from "../bindings/github.com/localhost-copilot/clashcube/internal/backend/models";

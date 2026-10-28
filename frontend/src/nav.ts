@@ -26,6 +26,7 @@ export const settingsTabs = (t: T): Tab<SettingsTab>[] => ([
 export const pages = (t: T): Page[] => [
   { view: "overview", label: t("Overview") },
   { view: "proxies", label: t("Proxies") },
+  ...(isWeb ? [{ view: "devices" as const, label: t("Devices") }] : []),
   { view: "profiles", label: t("Profiles") },
   { view: "connections", label: t("Connections") },
   { view: "rules", label: t("Rules") },
@@ -41,7 +42,7 @@ export function groups(t: T): Group[] {
   const of = (...v: View[]) => v.map((x) => by.get(x)!);
   return [
     { label: t("Activity"), pages: of("overview", "usage", "globe", "connections") },
-    { label: t("Routing"), pages: of("proxies", "profiles", "rules") },
+    { label: t("Routing"), pages: of("proxies", ...(isWeb ? ["devices" as const] : []), "profiles", "rules") },
     { label: t("Diagnostics"), pages: of("logs", "events") },
   ];
 }

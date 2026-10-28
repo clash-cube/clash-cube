@@ -151,7 +151,7 @@ function toRows(body: string, lines?: Line[] | null) {
 
 // RefusalBanner tells that the core refused a configuration, where, and
 // that the one before stays; Show opens it at that line.
-export function RefusalBanner({ onShow }: { onShow?: () => void }) {
+export function RefusalBanner({ onShow, onEdit }: { onShow?: () => void; onEdit?: () => void }) {
   const t = useT();
   const refusal = useStore((s) => s.state?.refusal);
   const profile = useStore((s) => s.state?.profile);
@@ -162,7 +162,7 @@ export function RefusalBanner({ onShow }: { onShow?: () => void }) {
         <b>{refusal.line ? t("The core refused the configuration at line {n}; the previous one stays", { n: refusal.line }) : t("The core refused the configuration; the previous one stays")}</b>
         <div className="mono">{refusal.error}</div>
       </div>
-      {refusal.source === "profile" && profile && <button className="btn small" onClick={() => P.OpenInEditor(profile).catch(toastError)}>{t("Open in editor")}</button>}
+      {refusal.source === "profile" && profile && <button className="btn small" onClick={() => onEdit ? onEdit() : P.OpenInEditor(profile).catch(toastError)}>{t("Open in editor")}</button>}
       {onShow && <button className="btn small primary" onClick={onShow}>{t("Show")}</button>}
       <button className="icon" title={t("Dismiss")} onClick={() => P.DismissRefusal()}><Close size={12} /></button>
     </div>

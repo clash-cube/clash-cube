@@ -6,6 +6,7 @@ import { coreLabel, coreTone, openSettings } from "../actions";
 import { Bars, Bell, Exchange, File, Gauge, Gear, Globe, Lines, Logo, Nodes, Route } from "./Icons";
 
 const ICONS: Partial<Record<View, ReactNode>> = {
+  devices: <Route />,
   overview: <Gauge />, usage: <Bars />, globe: <Globe />, connections: <Exchange />,
   proxies: <Nodes />, profiles: <File />, rules: <Route />,
   logs: <Lines />, events: <Bell />,

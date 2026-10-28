@@ -6,7 +6,7 @@ import type { Module } from "../bindings/github.com/localhost-copilot/clashcube/
 import { translate as t } from "./i18n";
 import { toast, toastError } from "./components/Toast";
 
-export type View = "overview" | "usage" | "globe" | "proxies" | "profiles" | "connections" | "rules" | "logs" | "events" | "settings";
+export type View = "overview" | "usage" | "globe" | "proxies" | "profiles" | "connections" | "rules" | "logs" | "events" | "settings" | "devices";
 
 export const SETTINGS_TABS = ["general", "network", "rules", "tun", "core"] as const;
 export type SettingsTab = (typeof SETTINGS_TABS)[number];

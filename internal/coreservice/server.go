@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/localhost-copilot/clashcube/internal/coremgr"
+	"github.com/localhost-copilot/clashcube/internal/devicepolicy"
 	"github.com/localhost-copilot/clashcube/internal/router"
 	"github.com/localhost-copilot/clashcube/internal/runtimecfg"
 	"github.com/localhost-copilot/clashcube/internal/settings"
@@ -53,6 +54,9 @@ type supervisor struct {
 func Serve(ctx context.Context, home, coreHome, version string) error {
 	if err := os.MkdirAll(filepath.Join(home, "core"), 0700); err != nil {
 		return err
+	}
+	if err := devicepolicy.Restore(home); err != nil {
+		return fmt.Errorf("restore device protection: %w", err)
 	}
 	s := &supervisor{path: filepath.Join(home, "core-service.json"), config: filepath.Join(home, "core/runtime.yaml"), version: version}
 	s.core = coremgr.New(&coremgr.LocalRunner{}, coreHome, s.config)
@@ -111,6 +115,7 @@ func Serve(ctx context.Context, home, coreHome, version string) error {
 	watchCtx, cancelWatch := context.WithCancel(ctx)
 	defer cancelWatch()
 	go s.guard.Watch(watchCtx)
+	go devicepolicy.RunDNS(watchCtx, home, func() bool { status, _ := s.core.Status(); return status == coremgr.Running })
 	go router.WatchGEO(watchCtx, home, s.core.Client)
 	go s.retryRestore(watchCtx)
 	server := &http.Server{Handler: webui.NewRPCHandler(map[string]any{

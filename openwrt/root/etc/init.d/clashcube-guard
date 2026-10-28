@@ -1,0 +1,12 @@
+#!/bin/sh /etc/rc.common
+# Runs before firewall/network; stopping/replacing a service never releases it.
+START=18
+STOP=99
+
+start() {
+    /usr/share/clashcube/device-guard.sh
+}
+
+stop() { :; }
+restart() { start; }
+reload() { start; }

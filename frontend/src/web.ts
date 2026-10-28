@@ -3,6 +3,7 @@
 import type * as Desktop from "./desktop";
 import { translate as t } from "./i18n";
 import type { RouterAPI } from "./routerTypes";
+import type { ProfileFilesAPI } from "./profileTypes";
 
 const endpoint = document.querySelector<HTMLMetaElement>('meta[name="clashcube-api"]')?.content ?? location.pathname.replace(/\/$/, "") + "/api/";
 const token = document.querySelector<HTMLMetaElement>('meta[name="clashcube-token"]')?.content ?? "";
@@ -95,6 +96,7 @@ export const Profiles = service<typeof Desktop.Profiles>("Profiles", {
 export const Proxy = service<typeof Desktop.Proxy>("Proxy");
 export const Settings = service<typeof Desktop.Settings>("Settings");
 export const Router = service<RouterAPI>("Router");
+export const ProfileFiles = service<ProfileFilesAPI>("Profiles");
 
 type Listener = (event: { data: any }) => void;
 const listeners = new Map<string, Set<Listener>>();

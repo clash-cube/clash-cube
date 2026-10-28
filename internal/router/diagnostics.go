@@ -67,7 +67,7 @@ func collectDiagnostics(exec command, home, coreHome, cacheHome string) Diagnost
 	if body, err := exec("opkg", "list-installed", "*clashcube*"); err == nil {
 		for _, line := range strings.Split(string(body), "\n") {
 			name, version, ok := strings.Cut(line, " - ")
-			if ok && (name == "clashcube-core" || name == "clashcube-web" || name == "luci-app-clashcube") {
+			if ok && (name == "clashcube-guard" || name == "clashcube-core" || name == "clashcube-web" || name == "luci-app-clashcube") {
 				d.Packages = append(d.Packages, PackageInfo{Name: name, Version: version})
 			}
 		}

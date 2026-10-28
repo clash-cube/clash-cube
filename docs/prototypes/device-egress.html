@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ClashCube · 设备出口交互设计</title>
+  <link rel="stylesheet" href="../../frontend/src/styles/tokens.css">
+  <style>
+    * { box-sizing:border-box } body { margin:0; font:14px/1.55 var(--font); color:var(--fg); background:var(--bg) }
+    button,input { font:inherit } button,a { -webkit-tap-highlight-color:transparent } button { cursor:pointer } button:disabled { opacity:.45;cursor:not-allowed }
+    button:focus-visible,a:focus-visible,input:focus-visible { outline:2px solid var(--accent);outline-offset:3px }
+    .demo { display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 24px;background:var(--card);border-bottom:1px solid var(--line);font-size:12px;color:var(--muted) }
+    .demo strong { color:var(--fg-2);font-weight:600 } .demo-controls { display:flex;gap:6px;flex-wrap:wrap }
+    .btn { border:0;border-radius:8px;background:var(--pill);color:var(--fg);padding:8px 13px;min-height:36px;white-space:nowrap }
+    .btn:hover { background:var(--pill-hover) } .btn.primary { background:var(--accent);color:var(--accent-fg) } .btn.danger { background:var(--red-soft);color:var(--red) }
+    .btn.small { padding:5px 10px;font-size:12px;min-height:30px } .btn.plain { background:transparent;color:var(--muted) }
+    .luci { padding:12px 24px;border-bottom:1px solid var(--line);color:var(--muted);background:var(--card);font-size:12px;display:flex;justify-content:space-between }
+    .luci b { color:var(--fg);letter-spacing:.02em }.shell { display:grid;grid-template-columns:178px minmax(0,1fr);min-height:calc(100vh - 100px) }
+    aside { padding:29px 15px;border-right:1px solid var(--line) }.brand { font-weight:650;display:flex;gap:9px;align-items:center;padding:0 12px 25px }
+    .logo { color:var(--accent);font-size:23px }.nav-title { color:var(--muted);font-size:11px;margin:23px 12px 7px }
+    .nav-item { display:flex;gap:10px;padding:9px 12px;color:var(--fg-2);border-radius:8px;margin:3px 0 }.nav-item.selected { background:var(--sel);color:var(--accent);font-weight:600 }
+    main { max-width:1240px;width:100%;padding:35px 40px 60px;margin:auto;align-self:start }.eyebrow { font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--muted) }
+    h1 { font-size:28px;letter-spacing:-.04em;margin:7px 0 5px;font-weight:650 } h2 { font-size:17px;margin:0 0 4px;font-weight:600 } p { margin:0 }
+    .muted { color:var(--muted) }.sub { font-size:12px;color:var(--muted) }.head { display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:26px }
+    .summary { display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-bottom:25px }.card { border:1px solid var(--line);border-radius:14px;background:var(--card) }
+    .summary .card { padding:21px 23px;display:flex;gap:14px;align-items:flex-start }.icon { width:33px;height:33px;display:grid;place-items:center;border-radius:8px;flex-shrink:0;background:var(--green-soft);color:var(--green) }
+    .icon.neutral { background:var(--pill);color:var(--fg-2) } .icon.unknown { background:var(--amber-soft);color:var(--amber) }.summary-title { font-weight:600;margin-bottom:4px }
+    .summary .sub { margin-top:4px }.summary .btn { margin-top:12px }.dot { display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px;vertical-align:middle }
+    .green { color:var(--green) }.amber { color:var(--amber) }.red { color:var(--red) }.toolbar { display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:12px }
+    .segments { display:flex;padding:3px;background:var(--pill);border-radius:9px;gap:3px }.segment { border:0;background:transparent;color:var(--muted);padding:6px 13px;border-radius:7px;cursor:pointer }
+    .segment[aria-selected=true] { background:var(--card);color:var(--fg);box-shadow:var(--seg-edge) }.count { color:var(--muted);font-size:11px;margin-left:5px }
+    .search { width:230px;border:1px solid var(--line);border-radius:8px;background:var(--card);padding:8px 11px;color:var(--fg) }
+    .table-head,.device { display:grid;grid-template-columns:minmax(180px,1.25fr) minmax(150px,1fr) minmax(180px,1.25fr) 104px;gap:18px;align-items:center }
+    .table-head { padding:12px 20px;color:var(--muted);font-size:11px;border-bottom:1px solid var(--line) }.device { position:relative;padding:21px 20px;min-height:112px;border-bottom:1px solid var(--line-2) }.device:last-child { border:0 }
+    .device-name { display:flex;gap:10px;align-items:center;font-weight:600;min-width:0 }.device-name span:last-child { overflow-wrap:anywhere }.device-icon { font-size:19px;color:var(--fg-2) }
+    .identity { padding-left:29px;margin-top:3px;font-size:11px;color:var(--muted) }.mono { font-family:var(--code);font-size:11px }.node { font-weight:500 }.node .arrow { color:var(--muted);margin-right:7px }
+    .node .sub { margin:3px 0 0 19px }.status { font-size:12px;font-weight:500 }.status-sub { font-size:11px;color:var(--muted);margin-top:5px;overflow-wrap:anywhere }.actions { display:flex;gap:5px;justify-content:flex-end }
+    .menu { position:absolute;right:19px;top:70px;z-index:3;box-shadow:var(--shadow);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:5px;min-width:185px }
+    .menu button { display:block;border:0;background:transparent;text-align:left;padding:10px;border-radius:6px;color:var(--fg);width:100% }.menu button:hover { background:var(--pill) }.menu .release { color:var(--red);border-top:1px solid var(--line);border-radius:0;margin-top:3px }
+    .note { display:flex;gap:9px;color:var(--muted);font-size:12px;margin:16px 3px 27px;max-width:840px }.note b { color:var(--fg-2);font-weight:500 }.activity { padding:18px 21px;margin-top:12px }
+    .activity-head { display:flex;justify-content:space-between;font-size:12px;font-weight:500;margin-bottom:12px }.event { display:flex;gap:15px;font-size:12px;color:var(--fg-2);margin:8px 0 }.event time { color:var(--muted);font:11px var(--code);padding-top:3px }
+    .empty { padding:35px;text-align:center;color:var(--muted) } dialog { color:var(--fg);background:var(--card);border:0;padding:0;box-shadow:var(--shadow) } dialog::backdrop { background:color-mix(in srgb,var(--fg) 25%,transparent) }
+    #editor { width:510px;max-width:100%;height:100dvh;max-height:100dvh;margin:0 0 0 auto;border-radius:14px 0 0 14px }
+    .sheet { height:100%;display:flex;flex-direction:column }.sheet-head { padding:26px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start }.sheet-content { padding:25px 26px;flex:1;overflow:auto }
+    .steps { display:flex;gap:19px;padding-bottom:24px;font-size:12px;color:var(--muted) }.step.active { color:var(--accent);font-weight:600 }.step-number { display:inline-grid;place-items:center;width:21px;height:21px;border:1px solid currentColor;border-radius:50%;margin-right:5px;font-size:11px }
+    .field-title { font-size:13px;font-weight:600;margin-bottom:7px }.field-note { color:var(--muted);font-size:12px;margin-bottom:16px }.full { width:100% }.choices { display:grid;gap:9px;margin:14px 0 22px }
+    .choice { display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:14px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:10px }
+    .choice[aria-pressed=true] { border-color:var(--accent);background:var(--accent-soft) }.choice .meta { margin-left:auto;font-size:11px;color:var(--muted) }.choice .sub { margin-top:3px }
+    .notice { padding:13px 15px;border-radius:10px;background:var(--pill);color:var(--fg-2);font-size:12px;margin-top:15px }.notice.warn { background:var(--amber-soft);color:var(--amber) }
+    .route-preview { text-align:center;background:var(--bg);border-radius:14px;padding:23px;margin:17px 0 }.route-preview strong { display:block;font-size:18px;margin:8px 0 }.route-preview .flow { color:var(--accent);font-size:22px }
+    .check { display:flex;gap:10px;font-size:13px;padding:12px 0;border-bottom:1px solid var(--line-2) }.check span:first-child { color:var(--green) }.check small { display:block;color:var(--muted);font-size:11px;margin-top:3px }
+    .sheet-foot { display:flex;gap:9px;justify-content:flex-end;border-top:1px solid var(--line);padding:18px 26px;background:var(--card) }.sheet-foot .btn { min-height:42px }
+    #confirm,#details { width:430px;max-width:calc(100% - 30px);border-radius:14px }.modal-content { padding:25px }.modal-content p { color:var(--fg-2);margin:12px 0 20px;font-size:13px }
+    .toast { position:fixed;bottom:25px;left:50%;transform:translateX(-50%);z-index:10;background:var(--fg);color:var(--card);padding:11px 18px;border-radius:10px;box-shadow:var(--shadow);max-width:90%;font-size:13px }
+    a { color:var(--accent);text-decoration:none } .manual { display:grid;gap:12px;margin:14px 0 }.manual label { font-size:12px }.manual input { display:block;margin-top:5px }.error { color:var(--red);font-size:12px;margin-top:12px }
+    @media(max-width:1000px) { .shell { grid-template-columns:142px minmax(0,1fr) } main { padding:28px 23px }.table-head,.device { grid-template-columns:minmax(140px,1fr) minmax(120px,1fr) minmax(145px,1.1fr) 90px;gap:9px } }
+    @media(max-width:740px) { .demo { padding:10px 14px;display:block }.demo-controls { margin-top:8px }.demo-controls .btn { min-height:36px }.luci { padding:11px 15px }.shell { display:block } aside { display:none } main { padding:24px 16px 35px }.head { gap:9px;margin-bottom:21px } h1 { font-size:25px }.head p { font-size:12px;max-width:210px }.head .btn { min-height:44px }.summary { grid-template-columns:1fr;gap:10px;margin-bottom:20px }.summary .card { padding:17px }.toolbar { flex-direction:column;align-items:stretch }.search { width:100%;min-height:44px }.segments { align-self:start }.segment { min-height:38px }.table-head { display:none }.devices { background:transparent;border:0;display:grid;gap:10px }.device { display:grid;grid-template-columns:1fr auto;border:1px solid var(--line)!important;border-radius:14px;background:var(--card);padding:18px;gap:16px 10px }.device .device-info { grid-column:1 }.device .status-cell { grid-column:1 / -1;grid-row:2 }.device .node { grid-column:1;grid-row:3 }.actions { grid-column:2;grid-row:3 }.actions .btn { min-height:44px }.node .sub { margin-left:0 }.menu { top:auto;bottom:67px;right:18px }.note { font-size:11px;margin-bottom:20px }.activity { padding:17px }.event { gap:10px;font-size:11px } #editor { width:100%;border-radius:0 }.sheet-head { padding:20px }.sheet-content { padding:20px }.sheet-foot { padding:15px 20px }.sheet-foot .btn { flex:1;min-height:46px }.choice { min-height:67px } }
+  </style>
+</head>
+<body>
+  <div class="demo"><div><strong>交互设计稿</strong> · 示例数据，不修改路由器网络</div><div class="demo-controls" aria-label="状态演示"><button class="btn small" data-demo="running">正常</button><button class="btn small" data-demo="restart">模拟重启</button><button class="btn small" data-demo="stopped">模拟停止</button><button class="btn small" data-demo="missing">节点消失</button><button class="btn small" data-demo="unknown">管理失联</button><button class="btn small" id="theme">深色</button></div></div>
+  <div class="luci"><b>QWRT</b><span>服务 / ClashCube · 页面内嵌预览</span></div>
+  <div class="shell">
+    <aside><div class="brand"><span class="logo">⬡</span>ClashCube</div><div class="nav-title">活动</div><div class="nav-item">◷　概览</div><div class="nav-item">↗　流量统计</div><div class="nav-item">◎　连接</div><div class="nav-title">分流</div><div class="nav-item">⇄　代理</div><div class="nav-item selected">▣　设备</div><div class="nav-item">▤　配置</div><div class="nav-item">☷　规则</div><div class="nav-title">诊断</div><div class="nav-item">≡　日志</div><div class="nav-item">⚙　设置</div></aside>
+    <main>
+      <div class="head"><div><div class="eyebrow">CLASHCUBE / 设备</div><h1>每台设备，一个固定出口。</h1><p class="muted">指定外网出口，代理不可用时保持断网。</p></div><button class="btn primary" id="add">＋ 添加设备</button></div>
+      <section class="summary" aria-label="保护与运行状态"><div class="card"><div class="icon" id="guard-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3 4 6v6c0 4 5 7.5 8 9 3-1.5 8-5 8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg></div><div><div class="summary-title" id="guard-title"></div><div class="sub" id="guard-description"></div><div class="sub">保护会保留到你明确解除。</div></div></div><div class="card"><div class="icon neutral">⬡</div><div><div class="summary-title" id="kernel-title"></div><div class="sub" id="kernel-description"></div><button class="btn small" id="kernel-action"></button></div></div></section>
+      <div class="toolbar"><div class="segments" role="tablist" aria-label="设备筛选"><button class="segment" role="tab" data-filter="protected" aria-selected="true">已保护 <span class="count" id="protected-count"></span></button><button class="segment" role="tab" data-filter="all" aria-selected="false">全部设备 <span class="count" id="all-count"></span></button></div><input class="search" id="search" type="search" aria-label="搜索设备" placeholder="搜索名称、IP 或 MAC"></div>
+      <section class="card devices" id="devices" aria-label="设备列表"></section>
+      <div class="note"><span>ⓘ</span><div><b>当前保护范围</b> · IPv4 TCP 与公网 DNS 只经所选节点。尚未支持的 UDP / IPv6 外网流量阻断；路由器管理及允许的局域网服务保留。此处展示的是设计行为。</div></div>
+      <section class="card activity"><div class="activity-head"><span>最近的保护事件</span><span class="sub">保留原因，便于排查</span></div><div id="events"></div></section>
+    </main>
+  </div>
+  <dialog id="editor" aria-labelledby="editor-title"><div class="sheet"><div class="sheet-head"><div><h2 id="editor-title">添加设备</h2><p class="sub">固定出口与断网保护一起生效</p></div><button class="btn plain" data-close="editor" aria-label="关闭编辑">✕</button></div><div class="sheet-content"><div class="steps" id="steps"></div><div id="step-content"></div><div class="error" id="editor-error" role="alert"></div></div><div class="sheet-foot"><button class="btn" id="back">取消</button><button class="btn primary" id="next">下一步</button></div></div></dialog>
+  <dialog id="confirm" aria-labelledby="confirm-title"><div class="modal-content"><h2 id="confirm-title"></h2><p>这台设备将恢复普通上网规则，内核停止时可能直接使用宽带出口。暂停联网和停止内核都不需要解除保护。</p><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap"><button class="btn" data-close="confirm">保留保护</button><button class="btn danger" id="release">解除保护并恢复普通规则</button></div></div></dialog>
+  <dialog id="details" aria-labelledby="details-title"><div class="modal-content"><h2 id="details-title">设备诊断</h2><div id="detail-content"></div><button class="btn full" data-close="details" style="margin-top:20px">关闭</button></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const escape = (text) => { const span = document.createElement('span'); span.textContent = text; return span.innerHTML; };
+    const devices = [
+      { id:'mac', name:'MacBook Pro', ip:'192.168.77.20', mac:'02:1A:44:82:10:20', fixed:true, protected:true, paused:false, target:'东京 02', online:true },
+      { id:'tv', name:'客厅电视', ip:'192.168.77.30', mac:'10:22:44:82:10:30', fixed:true, protected:true, paused:false, target:'香港 03', missing:true, online:true },
+      { id:'phone', name:'工作手机', ip:'192.168.77.40', mac:'02:1A:44:82:10:40', fixed:true, protected:true, paused:true, target:'新加坡 01', online:false },
+      { id:'tablet', name:'iPad', ip:'192.168.77.50', mac:'02:1A:44:82:10:50', fixed:false, protected:false, paused:false, target:'', online:true },
+    ];
+    const nodes = [{name:'东京 02',protocol:'Trojan',delay:'86 ms'},{name:'香港 01',protocol:'Shadowsocks',delay:'42 ms'},{name:'新加坡 01',protocol:'VLESS',delay:'105 ms'}];
+    const state = { kernel:'running', unknown:false, missing:false, filter:'protected', menu:null, events:[['12:41:08','工作手机已暂停联网，断网保护保留'],['12:38:12','香港 03 不在当前订阅中，客厅电视保持阻断'],['12:32:45','MacBook Pro 已绑定东京 02，出口已验证（示例）']] };
+    let draft, step = 0, editId = null, releaseId = null, transition, toastTimer, opener;
+    function toast(message) { clearTimeout(toastTimer); $('toast').textContent=message; $('toast').hidden=false; toastTimer=setTimeout(()=>{$('toast').hidden=true;},3500); }
+    function record(message) { state.events.unshift([new Date().toLocaleTimeString('zh-CN',{hour12:false}),message]); state.events=state.events.slice(0,3); }
+    function rowStatus(device) {
+      if (!device.protected) return {label:'普通规则',sub:'未指定固定出口',tone:'muted'};
+      if (state.unknown) return {label:'状态未知',sub:'管理连接中断，不能确认当前状态',tone:'muted'};
+      if (device.paused) return {label:'已暂停联网',sub:'断网保护保留',tone:'amber'};
+      if (state.kernel!=='running') return {label:'已阻断',sub:state.kernel==='restarting'?'内核正在重启，保护保持在位':'内核已停止，保护保持在位',tone:'amber'};
+      if (device.missing || (state.missing && device.id==='mac')) return {label:'已阻断',sub:'节点不在当前配置中 · 请修改出口',tone:'amber'};
+      if (!device.online) return {label:'设备离线',sub:'固定出口与保护策略保留',tone:'muted'};
+      return {label:'仅经所选节点',sub:'观测出口 198.51.100.32 · 刚刚（示例）',tone:'green'};
+    }
+    function render() {
+      const protectedDevices=devices.filter(d=>d.protected);
+      $('add').disabled=state.unknown;
+      $('guard-title').textContent=state.unknown?'保护状态未知':'断网保护已验证';
+      $('guard-icon').className='icon'+(state.unknown?' unknown':'');
+      $('guard-description').textContent=state.unknown?'无法获取新状态，已取消先前的正常标记':`${protectedDevices.length} 台设备 · 停止、重启不会放开直连`;
+      $('kernel-title').textContent=state.unknown?'管理连接中断':state.kernel==='running'?'内核运行中':state.kernel==='restarting'?'内核正在重启':'内核已停止';
+      $('kernel-description').textContent=state.unknown?'最后成功观测：刚才':state.kernel==='running'?'当前配置：主订阅 · 设备出口优先于普通规则':'受保护设备保持断网，允许的局域网访问保留';
+      $('kernel-action').textContent=state.unknown?'恢复观测':state.kernel==='running'?'停止内核并保留保护':state.kernel==='restarting'?'等待内核启动…':'启动内核';
+      $('kernel-action').disabled=state.kernel==='restarting'&&!state.unknown;
+      $('protected-count').textContent=protectedDevices.length; $('all-count').textContent=devices.length;
+      document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-selected',String(state.filter===b.dataset.filter)));
+      const query=$('search').value.toLowerCase();
+      const visible=devices.filter(d=>(state.filter==='all'||d.protected)&&[d.name,d.ip,d.mac].join(' ').toLowerCase().includes(query));
+      $('devices').innerHTML='<div class="table-head"><div>设备</div><div>固定出口</div><div>联网状态</div><div style="text-align:right">操作</div></div>'+visible.map(d=>{
+        const status=rowStatus(d);
+        return `<article class="device" data-device="${escape(d.id)}"><div class="device-info"><div class="device-name"><span class="device-icon">${d.id==='phone'?'▯':d.id==='tv'?'▭':'▣'}</span><span>${escape(d.name)}</span></div><div class="identity mono">${escape(d.ip)}</div><div class="identity">${d.fixed?'固定 IP':'动态 IP'} · ${d.online?'在线':'离线'}</div></div><div class="node"><span class="arrow">↗</span>${escape(d.protected?d.target:'跟随普通规则')}<div class="sub">${d.protected?'固定节点 · 主订阅':'尚未保护'}</div></div><div class="status-cell"><div class="status ${status.tone}"><span class="dot"></span>${status.label}</div><div class="status-sub">${status.sub}</div></div><div class="actions"><button class="btn small" data-action="edit" data-id="${d.id}" ${state.unknown?'disabled':''}>${d.protected?'编辑':'设置出口'}</button>${d.protected?`<button class="btn small" data-action="menu" data-id="${d.id}" aria-label="${escape(d.name)} 的操作" aria-expanded="${state.menu===d.id}" ${state.unknown?'disabled':''}>···</button>`:''}</div>${state.menu===d.id?`<div class="menu" role="menu"><button role="menuitem" data-action="pause" data-id="${d.id}">${d.paused?'恢复联网':'暂停联网'}</button><button role="menuitem" data-action="details" data-id="${d.id}">查看诊断</button><button role="menuitem" class="release" data-action="release" data-id="${d.id}">解除保护…</button></div>`:''}</article>`;
+      }).join('')+(visible.length?'':'<div class="empty">没有匹配的设备</div>');
+      $('events').innerHTML=state.events.map(([time,text])=>`<div class="event"><time>${escape(time)}</time><span>${escape(text)}</span></div>`).join('');
+    }
+    function scenario(kind) {
+      clearTimeout(transition); state.menu=null; state.unknown=kind==='unknown'; state.missing=kind==='missing';
+      state.kernel=kind==='stopped'?'stopped':kind==='restart'?'restarting':'running';
+      if (kind==='restart') {
+        record('内核正在重启：专属出口暂时不可用，保护规则持续保留');
+        transition=setTimeout(()=>{state.kernel='running';record('内核已恢复，已就绪的设备重新使用固定出口');render();},2200);
+      } else record(kind==='stopped'?'内核已停止：受保护设备保持断网':kind==='missing'?'东京 02 已从配置中消失，相关设备保持阻断':kind==='unknown'?'管理连接中断：页面改为未知，不沿用旧绿标':'已恢复观测，重新检查设备保护与出口状态');
+      render();
+    }
+    function openEditor(id) {
+      opener=document.activeElement; editId=id||null; step=0;
+      const device=devices.find(d=>d.id===id);
+      draft={device:device?{...device}:null,target:device?.target||'',reserve:false};
+      $('editor-title').textContent=device?'编辑设备出口':'添加设备'; renderStep(); $('editor').showModal();
+    }
+    function renderStep() {
+      $('editor-error').textContent='';
+      $('steps').innerHTML=['设备','出口','确认保护'].map((label,i)=>`<span class="step ${i===step?'active':''}"><span class="step-number">${i+1}</span>${label}</span>`).join('');
+      $('back').textContent=step?'上一步':'取消'; $('next').textContent=step===2?'保存并保护':'下一步';
+      if (step===0) {
+        const candidates=editId?devices.filter(d=>d.id===editId):devices.filter(d=>!d.protected);
+        $('step-content').innerHTML='<div class="field-title">选择设备</div><p class="field-note">通过设备名称、IP 和 MAC 确认身份。已有策略的设备直接编辑。</p><input class="search full" id="device-search" aria-label="搜索可选设备" placeholder="搜索名称、IP 或 MAC"><div class="choices" id="device-choices">'+candidates.map(d=>`<button class="choice" data-choose-device="${d.id}" aria-pressed="${draft.device?.id===d.id}"><span class="device-icon">▣</span><span><b>${escape(d.name)}</b><div class="sub">${escape(d.ip)} · ${d.fixed?'固定 IP':'动态 IP'}<br><span class="mono">${escape(d.mac)}</span></div></span><span class="meta">${d.online?'在线':'离线'}</span></button>`).join('')+'</div><button class="btn small" id="manual">手动输入离线设备</button><div id="address-note"></div>';
+        $('device-search').oninput=(event)=>{ const q=event.target.value.toLowerCase(); document.querySelectorAll('[data-choose-device]').forEach(b=>b.hidden=!b.textContent.toLowerCase().includes(q)); };
+        document.querySelectorAll('[data-choose-device]').forEach(b=>b.onclick=()=>{draft.device={...devices.find(d=>d.id===b.dataset.chooseDevice)};draft.reserve=false;renderStep();});
+        $('manual').onclick=()=>{
+          $('device-choices').innerHTML='<div class="manual"><label>设备名称<input class="search full" id="manual-name" placeholder="例如：工作电脑"></label><label>MAC 地址<input class="search full" id="manual-mac" placeholder="AA:BB:CC:DD:EE:FF"></label><label>固定 IPv4<input class="search full" id="manual-ip" placeholder="192.168.77.60"></label><button class="btn" id="use-manual">使用这台设备</button></div>';
+          $('use-manual').onclick=()=>{
+            const name=$('manual-name').value.trim(), mac=$('manual-mac').value.trim(), ip=$('manual-ip').value.trim();
+            if (!name||!/^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(mac)||!/^192\.168\.77\.(\d{1,3})$/.test(ip)||+ip.split('.').at(-1)<2||+ip.split('.').at(-1)>254) {$('editor-error').textContent='请填写名称、有效 MAC 和本 LAN 内的 IPv4。';return;}
+            if(devices.some(d=>d.mac.toLowerCase()===mac.toLowerCase()||d.ip===ip)) {$('editor-error').textContent='该 MAC 或 IP 已存在，请编辑现有设备。';return;}
+            draft.device={id:'manual-'+Date.now(),name,mac,ip,fixed:true,online:false,paused:false}; step=1;renderStep();
+          };
+        };
+        if (draft.device&&!draft.device.fixed) {
+          $('address-note').innerHTML='<div class="notice warn">当前是动态 IP。地址变化时设备会保持阻断。<br><label style="display:block;margin-top:9px"><input type="checkbox" id="reserve"> 为此设备固定当前 IP（设计演示）</label></div>';
+          $('reserve').checked=draft.reserve; $('reserve').onchange=(e)=>{draft.reserve=e.target.checked;};
+        } else if(draft.device) $('address-note').innerHTML='<div class="notice">按当前 MAC 与固定 IPv4 绑定。请确认设备在此 Wi-Fi 使用稳定的 MAC 地址。</div>';
+      } else if(step===1) {
+        $('step-content').innerHTML='<div class="field-title">选择固定节点</div><p class="field-note">来自当前配置「主订阅」。节点不可用时保持断网，不回退直连。</p><input class="search full" id="node-search" aria-label="搜索节点" placeholder="搜索节点名称"><div class="choices" id="node-choices">'+nodes.map(n=>`<button class="choice" data-choose-node="${n.name}" aria-pressed="${draft.target===n.name}"><span>↗</span><span><b>${n.name}</b><div class="sub">${n.protocol} · 主订阅</div></span><span class="meta">${n.delay}</span></button>`).join('')+'<button class="choice" disabled><span>↗</span><span>DIRECT<div class="sub">直连出口不能用于设备保护</div></span></button><button class="choice" disabled><span>⇄</span><span>自动选择<div class="sub">首版仅支持固定节点</div></span></button></div><div class="notice">订阅移除节点或切换到没有该出口的配置时，设备保持阻断，直到你明确选择新节点。</div>';
+        document.querySelectorAll('[data-choose-node]').forEach(b=>b.onclick=()=>{draft.target=b.dataset.chooseNode;renderStep();});
+        $('node-search').oninput=(e)=>{document.querySelectorAll('[data-choose-node]').forEach(b=>b.hidden=!b.textContent.toLowerCase().includes(e.target.value.toLowerCase()));};
+      } else {
+        $('step-content').innerHTML=`<div class="field-title">确认设备出口</div><div class="route-preview"><strong>${escape(draft.device.name)}</strong><div class="sub mono">${escape(draft.device.ip)}</div><div class="flow">↓</div><strong>${escape(draft.target)}</strong><div class="sub">固定节点 · 主订阅</div></div><div class="check"><span>✓</span><div>内核停止或重启时断网<small>断网保护独立保留，不恢复普通转发</small></div></div><div class="check"><span>✓</span><div>IPv4 TCP 与公网 DNS 经所选出口<small>未支持的 UDP / IPv6 外网流量阻断</small></div></div><div class="check"><span>✓</span><div>路由器管理与允许的 LAN 服务保留<small>暂停联网也不会解除保护</small></div></div><div class="notice ${state.kernel==='running'?'':'warn'}">${state.kernel==='running'?'将先安装保护，再应用并验证出口。修改现有出口时会关闭这台设备的现有连接。':'内核当前未运行。保存后这台设备保持断网，系统不会自动启动内核。'}</div>`;
+      }
+    }
+    $('next').onclick=()=>{
+      if(step===0) {if(!draft.device) {$('editor-error').textContent='请选择一台设备。';return;}if(!draft.device.fixed&&!draft.reserve) {$('editor-error').textContent='请固定当前 IP，或选择已有固定地址的设备。';return;}step++;renderStep();return;}
+      if(step===1) {if(!nodes.some(n=>n.name===draft.target)) {$('editor-error').textContent='请选择当前配置中的固定节点。';return;}step++;renderStep();return;}
+      $('next').disabled=true; $('back').disabled=true; $('next').textContent='正在安装保护…';
+      setTimeout(()=>{
+        const existing=devices.find(d=>d.id===draft.device.id);
+        const result={...draft.device,fixed:true,protected:true,target:draft.target,missing:false};
+        if(existing) Object.assign(existing,result);else devices.push(result);
+        record(`${result.name} 已保存保护，${state.kernel==='running'?'固定出口为 '+draft.target:'等待内核启动，保持断网'}`);
+        $('next').disabled=false;$('back').disabled=false;closeDialog('editor');render();toast(state.kernel==='running'?'已保存并保护，设备仅经所选节点':'保护已保存，设备保持断网');
+      },650);
+    };
+    $('back').onclick=()=>{if(step){step--;renderStep();}else closeDialog('editor');};
+    function restoreFocus() {
+      if(opener?.isConnected) opener.focus();
+      else if(opener?.dataset.id) document.querySelector(`[data-action="edit"][data-id="${CSS.escape(opener.dataset.id)}"]`)?.focus();
+      else $('add').focus();
+    }
+    function closeDialog(id) {$(id).close();restoreFocus();}
+    document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('close',restoreFocus));
+    document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeDialog(b.dataset.close));
+    $('devices').onclick=(event)=>{
+      const button=event.target.closest('[data-action]');if(!button)return;
+      const device=devices.find(d=>d.id===button.dataset.id);const action=button.dataset.action;
+      if(action==='menu'){state.menu=state.menu===device.id?null:device.id;render();return;}
+      state.menu=null;
+      if(action==='edit')openEditor(device.id);
+      if(action==='pause'){device.paused=!device.paused;record(`${device.name}${device.paused?'已暂停联网，保护保留':'已恢复固定出口策略，保护保留'}`);toast(device.paused?'已暂停联网，不会恢复直连':state.kernel==='running'?'已恢复设备策略':'已恢复设备策略，等待内核启动');}
+      if(action==='release'){opener=button;releaseId=device.id;$('confirm-title').textContent=`解除 ${device.name} 的保护？`;$('confirm').showModal();}
+      if(action==='details'){opener=button;$('detail-content').innerHTML=`<p>${escape(device.name)}<br><span class="mono">${escape(device.ip)}<br>${escape(device.mac)}</span></p><div class="check"><span>·</span><div>保护状态：${state.unknown?'未知':'规则与策略版本一致（示例）'}</div></div><div class="check"><span>·</span><div>联网状态：${escape(rowStatus(device).label)}</div></div><div class="check"><span>·</span><div>固定出口：${escape(device.target)}</div></div><div class="notice">诊断信息只展示状态与原因。图中所有结果均为交互演示，尚未执行真实防火墙检查。</div>`;$('details').showModal();}
+      render();
+    };
+    $('release').onclick=()=>{const d=devices.find(d=>d.id===releaseId);d.protected=false;d.paused=false;record(`${d.name} 的保护已被明确解除，恢复普通规则`);closeDialog('confirm');render();toast('已解除保护，设备恢复普通规则');};
+    $('add').onclick=()=>openEditor(); $('search').oninput=render;
+    document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{state.filter=b.dataset.filter;state.menu=null;render();});
+    document.querySelectorAll('[data-demo]').forEach(b=>b.onclick=()=>scenario(b.dataset.demo));
+    $('kernel-action').onclick=()=>scenario(state.unknown?'running':state.kernel==='running'?'stopped':'restart');
+    $('theme').onclick=()=>{const dark=document.documentElement.dataset.theme!=='dark';document.documentElement.dataset.theme=dark?'dark':'light';$('theme').textContent=dark?'浅色':'深色';};
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.menu){state.menu=null;render();}});
+    document.addEventListener('click',e=>{if(state.menu&&!e.target.closest('.menu')&&!e.target.closest('[data-action="menu"]')){state.menu=null;render();}});
+    render();
+  </script>
+</body>
+</html>
