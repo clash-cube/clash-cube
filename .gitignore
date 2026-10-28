@@ -1,4 +1,5 @@
 bin/
+/build/android/
 frontend/node_modules/
 internal/gui/dist/*
 !internal/gui/dist/.gitkeep
