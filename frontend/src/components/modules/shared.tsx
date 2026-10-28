@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { morph } from "../../morph";
+import { useEffect, useId, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useT } from "../../i18n";
 import { Profiles as P } from "../../api";
 import type { Module } from "../../../bindings/github.com/localhost-copilot/clashcube/internal/modules/models";
@@ -151,12 +152,13 @@ export type FormProps<F> = {
 // FormOrYAML is a kind's form, or the YAML it was taken to. Until that
 // YAML is saved, the form can be gone back to.
 export function FormOrYAML<F extends { name: string }>({ module, open, onCancel, onSave, Form }: EditorProps & { Form: ComponentType<FormProps<F>> }) {
+  const transitionName = "module-editor-" + useId().replace(/:/g, "");
   const [form, setForm] = useState<F | undefined>();
   const [yaml, setYAML] = useState<Module | null>(null);
   useEffect(() => { if (!open) { setYAML(null); setForm(undefined); } }, [open]);
-  return yaml
+  return <div className="module-editor-body" style={{ ["--module-vt" as string]: transitionName }}><div key={yaml ? "yaml" : "form"} className={form ? "motion-d-in" : undefined}>{yaml
     ? <ModuleEditor key="yaml" module={yaml} converted onCancel={onCancel} onSave={onSave}
-        onBack={(name) => { setForm((f) => f && { ...f, name }); setYAML(null); }} />
+        onBack={(name) => morph(() => { setForm((f) => f && { ...f, name }); setYAML(null); }, "module-morph")} />
     : <Form key="form" module={module} form={form} onCancel={onCancel} onSave={onSave}
-        onYAML={(m, f) => { setForm(f); setYAML(m); }} />;
+        onYAML={(m, f) => morph(() => { setForm(f); setYAML(m); }, "module-morph")} />}</div></div>;
 }

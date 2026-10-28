@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { morph } from "../morph";
 import { locale, useT } from "../i18n";
 import { useStore, type View } from "../store";
 import { App } from "../api";
@@ -34,19 +35,30 @@ export function Usage() {
   const [limit, setLimit] = useState(PAGE);
   const [armed, setArmed] = useState(false);
   const from = shift(end, 1 - SPAN[period]);
-
-  const load = () => App.Usage(from, end, hour).then(setReport).catch(toastError);
+  const selection = `${period}/${from}/${end}/${hour}`;
+  const latest = useRef(selection);
+  latest.current = selection;
+  const [committed, setCommitted] = useState(selection);
+  const initial = useRef(selection);
+  const changed = useRef(false);
+  if (committed !== initial.current) changed.current = true;
+  const load = () => App.Usage(from, end, hour).then((next) => {
+    if (latest.current !== selection) return;
+    setReport(next);
+    setCommitted(selection);
+  }).catch(toastError);
   useEffect(() => { load(); }, [from, end, hour]);
   // today's statistics grow while the page shows
   usePoll(() => { if (end === today) load(); }, 5000, [from, end, hour, today]);
   useEffect(() => setLimit(PAGE), [dim, from, end, hour]);
   useEffect(() => { if (!armed) return; const id = setTimeout(() => setArmed(false), 3000); return () => clearTimeout(id); }, [armed]);
 
-  const pick = (p: Period) => { setPeriod(p); setHour(-1); };
-  const step = (d: number) => { setHour(-1); setEnd((e) => { const n = shift(e, d * SPAN[period]); return n > today ? today : n; }); };
+  const pick = (p: Period) => morph(() => { setPeriod(p); setHour(-1); }, "usage-morph");
+  const step = (d: number) => morph(() => { setHour(-1); setEnd((e) => { const n = shift(e, d * SPAN[period]); return n > today ? today : n; }); }, "usage-morph");
+  const pickHour = (h: number) => morph(() => setHour(h), "usage-morph");
   const openBar = (b: Bar, i: number) => {
-    if (period === "day") setHour(hour === i ? -1 : i);
-    else { setPeriod("day"); setEnd(b.key); setHour(-1); }
+    if (period === "day") pickHour(hour === i ? -1 : i);
+    else morph(() => { setPeriod("day"); setEnd(b.key); setHour(-1); }, "usage-morph");
   };
   const clear = async () => {
     if (!armed) { setArmed(true); return; }
@@ -70,7 +82,7 @@ export function Usage() {
           ]} />
           <div className="usage-nav">
             <button className="icon" aria-label={t("Earlier")} onClick={() => step(-1)}><Chevron /></button>
-            <button className="btn small" disabled={end === today} onClick={() => { setEnd(today); setHour(-1); }}>{t("Today")}</button>
+            <button className="btn small" disabled={end === today} onClick={() => morph(() => { setEnd(today); setHour(-1); }, "usage-morph")}>{t("Today")}</button>
             <button className="icon next" aria-label={t("Later")} disabled={end === today} onClick={() => step(1)}><Chevron /></button>
           </div>
           <button className={"btn small" + (armed ? " danger armed" : "")} onClick={clear}>{t(armed ? "Click again to clear" : "Clear")}</button>
@@ -80,13 +92,13 @@ export function Usage() {
       <div className="card usage-card">
         <div className="usage-sum">
           <div>
-            <div className="usage-when">{title}{hour >= 0 && <button className="chip" onClick={() => setHour(-1)}>{hourLabel(hour)}<Close size={8} /></button>}</div>
-            <div className="usage-total num">{bytes(total)}</div>
+            <div className="usage-when">{title}{hour >= 0 && <button className="chip" onClick={() => pickHour(-1)}>{hourLabel(hour)}<Close size={8} /></button>}</div>
+            <div className="usage-total num"><span key={committed} className={changed.current ? "c-value-fade" : undefined}>{bytes(total)}</span></div>
           </div>
           <div className="grow" />
-          <Figure label={t("Upload")} value={bytes(report?.up ?? 0)} tone="up" />
-          <Figure label={t("Download")} value={bytes(report?.down ?? 0)} tone="down" />
-          {hour < 0 && <Figure label={t("Connections")} value={(report?.conns ?? 0).toLocaleString()} />}
+          <Figure change={committed} animate={changed.current} label={t("Upload")} value={bytes(report?.up ?? 0)} tone="up" />
+          <Figure change={committed} animate={changed.current} label={t("Download")} value={bytes(report?.down ?? 0)} tone="down" />
+          {hour < 0 && <Figure change={committed} animate={changed.current} label={t("Connections")} value={(report?.conns ?? 0).toLocaleString()} />}
         </div>
         <Bars bars={report?.bars ?? []} period={period} selected={period === "day" ? hour : -1} onPick={openBar} />
       </div>
@@ -108,11 +120,11 @@ export function Usage() {
   );
 }
 
-function Figure({ label, value, tone }: { label: string; value: string; tone?: "up" | "down" }) {
+function Figure({ label, value, tone, change, animate }: { label: string; value: string; tone?: "up" | "down"; change: string; animate: boolean }) {
   return (
     <div className={"usage-fig" + (tone ? " " + tone : "")}>
       <div className="lbl">{tone && <i />}{label}</div>
-      <div className="val num">{value}</div>
+      <div className="val num"><span key={change} className={animate ? "c-value-fade" : undefined}>{value}</span></div>
     </div>
   );
 }

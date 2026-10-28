@@ -38,6 +38,14 @@ async function mount({ ping = async () => ({ milliseconds: 12, path: "direct" })
     "./shared": { FormOrYAML: ({ Form, ...props }) => React.createElement(Form, props) },
     "../../../bindings/github.com/localhost-copilot/clashcube/internal/modules/models": {},
   };
+  // Motion hooks run normally; reduced motion keeps these behavior assertions synchronous.
+  for (const name of ["useLeaving", "useFlip"]) {
+    const source = readFileSync(new URL(`../src/${name}.ts`, import.meta.url), "utf8");
+    const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } });
+    const exports = {};
+    runInNewContext(outputText, { exports, require: (id) => id === "./components/Sidebar" ? { calm: () => true } : require(id), setTimeout, clearTimeout });
+    mocks[`../../${name}`] = exports;
+  }
   const source = readFileSync(new URL("../src/components/modules/tailscale.tsx", import.meta.url), "utf8");
   const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } });
   const exports = {};

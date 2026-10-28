@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useLeaving } from "../../useLeaving";
+import { useFlip } from "../../useFlip";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useT } from "../../i18n";
 import { Profiles as P } from "../../api";
 import type { Module } from "../../../bindings/github.com/localhost-copilot/clashcube/internal/modules/models";
@@ -8,6 +10,7 @@ import { useStore } from "../../store";
 import { Popover, Menu, type MenuItem } from "../Popover";
 import { Switch } from "../Switch";
 import { Fold } from "../Fold";
+import { calm } from "../Sidebar";
 import { Close, Grip, More, Plus } from "../Icons";
 import { toast, toastError } from "../Toast";
 import { kindOf, MENU } from "./registry";
@@ -49,7 +52,24 @@ export function Modules() {
   const sectionsNew: NewSection[] = MENU.flatMap((k) => k.useNew?.([...global, ...own]) ?? []);
   // the sections, each a list the rows are dragged in and between
   const sections = profile ? [global, own] : [global];
-  const sort = useSort(sections.map((x) => x.length), (from, to) => drop(from, to));
+  const focusAfterMove = useRef<string | null>(null);
+  const sort = useSort(sections.map((x) => x.length), (from, to, keyboard) => {
+    if (keyboard) focusAfterMove.current = sections[from.s][from.i].id;
+    drop(from, to);
+  });
+
+  const retained = useLeaving(mods ?? [], (m) => m.id);
+  const retainedSections = [retained.filter(({ item }) => !item.profile), retained.filter(({ item }) => item.profile === profile)];
+  const motionBox = useRef<HTMLDivElement>(null);
+  useFlip(motionBox, JSON.stringify([sort.dragging, retained.map(({ item, leaving }) => [item.id, item.profile, leaving])]), { selector: ".modules:not(.sorting) > [data-key]", axis: "y", enter: false });
+  useLayoutEffect(() => {
+    if (focusAfterMove.current === null) return;
+    // Moving between scopes remounts the row under another list.
+    const row = Array.from(motionBox.current?.querySelectorAll<HTMLElement>(".module[data-key]") ?? [])
+      .find((el) => el.dataset.key === focusAfterMove.current);
+    row?.querySelector<HTMLButtonElement>(".grip")?.focus();
+    focusAfterMove.current = null;
+  }, [mods]);
 
   // the core checks every change; one it refuses leaves the list as it was
   const save = async (next: Module[]) => {
@@ -100,19 +120,17 @@ export function Modules() {
   };
   const ownGroup = (m: Module) => groups?.find((g) => g.module === m.id);
   const draftIn = (to: string) => {
-    if (!draft || (draft.profile ?? "") !== to) return null;
-    const { Editor } = kindOf(draft);
-    return <div className="list modules"><Editor module={draft} open onCancel={() => setDraft(null)} onSave={add} /></div>;
+    return <DraftFold key={to} draft={draft && (draft.profile ?? "") === to ? draft : null} onCancel={() => setDraft(null)} onSave={add} />;
   };
   const replace = async (m: Module, n: Module) => save(mods.map((o) => (o.id === m.id ? n : o)));
   // a section's rows, or what it says empty, which a row can be dropped on
-  const rows = (s: number, empty: string) => sections[s].length === 0
+  const rows = (s: number, empty: string) => retainedSections[s].length === 0
     ? <div ref={sort.zone(s)} className={"list user-rules-empty" + sort.zoneClass(s)}>{empty}</div>
     : (
     <div ref={sort.zone(s)} style={sort.zoneStyle(s)} className={"list modules" + (sort.dragging ? " sorting" : "")}>
-      {sections[s].map((m, i) => (
-        <ModuleRow key={m.id} m={m} open={open === m.id} flash={flash === m.name}
-          sort={sort} s={s} i={i} profileName={profile ? profileName : ""}
+      {retainedSections[s].map(({ item: m, leaving }) => (
+        <ModuleRow key={m.id} leaving={leaving} m={m} open={open === m.id} flash={flash === m.name}
+          sort={sort} s={s} i={sections[s].findIndex((item) => item.id === m.id)} profileName={profile ? profileName : ""}
           ctx={{ profile, nodes, groups, group: ownGroup(m), open: open === m.id, onOpen: () => { setDraft(null); setOpen(open === m.id ? "" : m.id); },
             onPick: (g: Group, n: string) => select(g.name, n), onSave: (n: Module) => replace(m, n) }}
           onToggle={(on) => save(mods.map((o) => (o.id === m.id ? { ...o, enabled: on } : o)))}
@@ -132,7 +150,7 @@ export function Modules() {
   const to = newAt?.profile ?? "";
   let i = 0;
   return (
-    <>
+    <div ref={motionBox} className="modules-motion">
       <Popover anchor={newAt?.at ?? null} open={!!newAt} onClose={() => setNewAt(null)} align="end" width={340}>
         <div className="menu templates">
           {sectionsNew.filter((sec) => sec.entries.length).map((sec) => (
@@ -152,7 +170,7 @@ export function Modules() {
       </Popover>
       {head(t("Global modules"), "")}
       {draftIn("")}
-      {shown.length === 0 && !draft ? (
+      {shown.length === 0 && !retained.length && !draft ? (
         <div className="list modules-empty">
           <div className="lead">
             <b>{t("Change every profile, and keep it across updates")}</b>
@@ -171,17 +189,32 @@ export function Modules() {
           ))}
           <button className="row click blank" onClick={() => use(null, "")}>{t("Blank module…")}</button>
         </div>
-      ) : (global.length > 0 || draft?.profile !== "") && rows(0, t("Global modules are laid over every profile."))}
+      ) : (retainedSections[0].length > 0 || draft?.profile !== "") && rows(0, t("Global modules are laid over every profile."))}
       {profile && <>
         {head(t("Modules of {profile}", { profile: profileName }), profile)}
         {draftIn(profile)}
-        {(own.length > 0 || draft?.profile !== profile) && rows(1, t("Modules here are laid over this profile alone, after the global ones, so their rules go first. Each profile has its own."))}
+        {(retainedSections[1].length > 0 || draft?.profile !== profile) && rows(1, t("Modules here are laid over this profile alone, after the global ones, so their rules go first. Each profile has its own."))}
       </>}
-    </>
+    </div>
   );
 }
 
 type Sort = ReturnType<typeof useSort>;
+// Preserve the editor and its fields until Fold has finished rolling up.
+function DraftFold({ draft, onCancel, onSave }: { draft: Module | null; onCancel: () => void; onSave: (m: Module) => Promise<void> }) {
+  const last = useRef<Module | null>(null);
+  const revision = useRef(0);
+  // Starting another draft during the exit must reset the editor's local fields.
+  if (draft && draft !== last.current) { last.current = draft; revision.current++; }
+  const shown = draft ?? (calm() ? null : last.current);
+  const Editor = shown && kindOf(shown).Editor;
+  return <Fold open={!!draft} onSettled={() => { if (!draft) last.current = null; }}>
+    <div className="list modules stagger" style={{ ["--i" as string]: 0 }} ref={(el) => { if (el) el.inert = !draft; }}>
+      {shown && Editor && <Editor key={revision.current} module={shown} open onCancel={onCancel} onSave={onSave} />}
+    </div>
+  </Fold>;
+}
+
 // a row's place: its section, and where in it
 type Spot = { s: number; i: number };
 
@@ -190,7 +223,7 @@ type Spot = { s: number; i: number };
 // over another, a line shows where it lands. It lands on release. The
 // arrow keys move it a place at a time, past a section's ends into the
 // next.
-function useSort(counts: number[], onDrop: (from: Spot, to: Spot) => void) {
+function useSort(counts: number[], onDrop: (from: Spot, to: Spot, keyboard?: boolean) => void) {
   const rows = useRef<(HTMLElement | null)[][]>([]);
   const zones = useRef<(HTMLElement | null)[]>([]);
   type Box = { top: number; height: number };
@@ -242,7 +275,7 @@ function useSort(counts: number[], onDrop: (from: Spot, to: Spot) => void) {
         : d < 0 && s > 0 ? { s: s - 1, i: counts[s - 1] } : null;
       if (!to) return;
       e.preventDefault();
-      onDrop({ s, i }, to);
+      onDrop({ s, i }, to, true);
     },
   });
   const across = !!drag && drag.from.s !== drag.to.s;
@@ -269,8 +302,8 @@ function useSort(counts: number[], onDrop: (from: Spot, to: Spot) => void) {
   return { row, zone, handle, style, rowClass, zoneStyle, zoneClass, dragging: !!drag };
 }
 
-function ModuleRow({ m, ctx, open, flash, sort, s, i, profileName, onToggle, onScope, onDuplicate, onRemove, onSave }: {
-  m: Module; ctx: RowCtx; open: boolean; flash: boolean; sort: Sort; s: number; i: number; profileName: string;
+function ModuleRow({ m, leaving, ctx, open, flash, sort, s, i, profileName, onToggle, onScope, onDuplicate, onRemove, onSave }: {
+  m: Module; leaving: boolean; ctx: RowCtx; open: boolean; flash: boolean; sort: Sort; s: number; i: number; profileName: string;
   onToggle: (on: boolean) => Promise<unknown>; onScope: () => void; onDuplicate?: () => void; onRemove: () => void; onSave: (m: Module) => Promise<void>;
 }) {
   const t = useT();
@@ -284,8 +317,8 @@ function ModuleRow({ m, ctx, open, flash, sort, s, i, profileName, onToggle, onS
       : profileName ? [{ label: t("Move to {profile}", { profile: profileName }), onClick: onScope }] : []),
   ];
   return (
-    <div ref={sort.row(s, i)} style={sort.style(s, i)}
-      className={"module" + (open ? " open" : "") + (m.enabled ? "" : " off") + sort.rowClass(s, i)}>
+    <div data-key={m.id} ref={(el) => { if (!leaving) sort.row(s, i)(el); if (el) el.inert = leaving; }} style={leaving ? undefined : sort.style(s, i)}
+      className={"module" + (leaving ? " motion-d-leaving" : "") + (open ? " open" : "") + (m.enabled ? "" : " off") + sort.rowClass(s, i)}>
       <div className={"row click" + (flash ? " flash" : "")} onClick={ctx.onOpen}>
         <button className="grip" title={t("Drag to reorder")} aria-label={t("Drag to reorder")} {...sort.handle(s, i)}><Grip size={14} /></button>
         <div className="who">

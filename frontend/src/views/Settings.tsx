@@ -1,5 +1,6 @@
 import { isWindows, isWeb } from "../platform";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fold } from "../components/Fold";
 import { Hotkeys } from "../components/Hotkeys";
 import { useT } from "../i18n";
 import { applyTheme, useStore } from "../store";
@@ -69,6 +70,7 @@ export function Settings() {
         <Segmented className="track small page-tabs" value={tab} onChange={pick} options={settingsTabs(t)} />
       </div>
 
+      <div key={tab} className="page-tab-content">
       {tab === "general" && <>
         <Section title={t("General")}>
           <Row label={t(isWeb ? "Start core when the router boots" : "Start core when the app opens")}><Switch on={s.autoStart} onChange={(v) => patch({ autoStart: v })} /></Row>
@@ -202,6 +204,7 @@ export function Settings() {
         </Section>
       </>}
     </div>
+    </div>
     </Applying.Provider>
   );
 }
@@ -225,22 +228,22 @@ function CoreStatus() {
         <div className="row core-status">
           <div className="who">
             <div className="name"><span className={"cdot " + coreTone()} />{coreLabel()}</div>
-            <div className={"sub" + (core === "crashed" ? " warn" : "")}>{sub}</div>
+            <Fold open={!!sub}><div className={"sub" + (core === "crashed" ? " warn" : "")}>{sub}</div></Fold>
           </div>
-          <div className="end">
+          <div className="end c-actions"><StateFade value={`${core}/${busy}`}>
             {busy ? <button className="btn small" disabled><Spinner />{coreLabel()}</button>
               : running ? <>
                 <ActionButton label={t("Restart")} busyLabel={t("Restarting…")} onClick={restartCore} />
                 <ActionButton className="danger" label={t("Stop")} busyLabel={t("Stopping…")} onClick={stopCore} />
               </> : <ActionButton className="primary" label={t("Start")} busyLabel={t("Starting…")} onClick={startCore} />}
-          </div>
+          </StateFade></div>
         </div>
-        {core === "crashed" && state.coreError && (
+        <Fold open={!!(core === "crashed" && state.coreError)}>
           <div className="row core-error">
-            <div className="who"><div className="mono">{state.coreError}</div></div>
+            <div className="who"><RetainedError error={state.coreError} /></div>
             <div className="end"><button className="btn small" onClick={() => setView("logs")}>{t("Show logs")}</button></div>
           </div>
-        )}
+        </Fold>
       </div>
     </>
   );
@@ -405,16 +408,29 @@ function ServiceModeRow() {
   return (
     <div className="row service">
       <div className="who">
-        <div className="name">{t("Privileged helper")}<span className={"badge" + (hs?.installed && hs.current ? "" : " muted")}>{status}</span></div>
+        <div className="name">{t("Privileged helper")}<span className={"badge" + (hs?.installed && hs.current ? "" : " muted")}><StateFade value={status}>{status}</StateFade></span></div>
         <div className="sub wrap">{t(isWindows ? "TUN runs in a separate elevated process. Windows asks for permission once per app session; the helper exits with the app." : "Runs the core as root through a LaunchDaemon, which TUN needs. macOS asks for an administrator password once.")}</div>
-        {hs?.enabled && <div className="sub wrap">{hs.active ? t(isWindows ? "Core runs as administrator" : "Core runs as root") : t("Core runs as you")} · {t("The root core reads its configuration from your user folder, so programs running as you can influence it.")}</div>}
+        <Fold open={!!hs?.enabled}><div className="sub wrap">{hs?.active ? t(isWindows ? "Core runs as administrator" : "Core runs as root") : t("Core runs as you")} · {t("The root core reads its configuration from your user folder, so programs running as you can influence it.")}</div></Fold>
       </div>
-      <div className="end">
+      <div className="end c-actions"><StateFade value={`${hs?.installed}/${hs?.current}/${hs?.enabled}`}>
         {(!hs?.installed || !hs.current || !hs.enabled) && <button className="btn small primary" disabled={busy} onClick={() => act(hs?.installed && !hs.current ? App.EnableServiceMode() : App.SetTun(true))}>{hs?.installed && !hs.current ? t("Update") : t(isWindows ? "Authorize and turn on TUN" : "Install and turn on TUN")}</button>}
         {hs?.installed && <button className="btn small danger" disabled={busy} onClick={() => act(App.DisableServiceMode(true))}>{t(isWindows ? "End elevated session" : "Uninstall")}</button>}
-      </div>
+      </StateFade></div>
     </div>
   );
+}
+
+function StateFade({ value, children }: { value: string; children: ReactNode }) {
+  const initial = useRef(value);
+  const changed = useRef(false);
+  if (value !== initial.current) changed.current = true;
+  return <span key={value} className={changed.current ? "c-value-fade" : undefined}>{children}</span>;
+}
+
+function RetainedError({ error }: { error?: string }) {
+  const last = useRef(error);
+  if (error) last.current = error;
+  return <div className="mono">{last.current}</div>;
 }
 
 function Section({ title, children, id }: { title: string; children: ReactNode; id?: string }) {

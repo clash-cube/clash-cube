@@ -1,4 +1,6 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useLeaving } from "../../useLeaving";
+import { useFlip } from "../../useFlip";
 import { create } from "zustand";
 import { App } from "../../api";
 import { useStore } from "../../store";
@@ -24,7 +26,7 @@ const HOSTNAME = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
 
 function useTailnet(ts: Tailscale) {
   const status = useStore((s) => s.state?.tailscales?.find((n) => n.name === proxyName(ts)));
-  return status && { ...status, ips: status.ips ?? [], health: status.health ?? [], peers: (status.peers ?? []).map((p) => ({ ...p, ips: p.ips ?? [], routes: p.routes ?? [] })) };
+  return useMemo(() => status && { ...status, ips: status.ips ?? [], health: status.health ?? [], peers: (status.peers ?? []).map((p) => ({ ...p, ips: p.ips ?? [], routes: p.routes ?? [] })) }, [status]);
 }
 type Status = NonNullable<ReturnType<typeof useTailnet>>;
 type Peer = Status["peers"][number];
@@ -141,7 +143,7 @@ async function copyText(value: string, t: ReturnType<typeof useT>) {
 
 type Check = { ms: number; path: string };
 
-function PeerRow({ ts, peer }: { ts: Tailscale; peer: Peer }) {
+function PeerRow({ ts, peer, leaving, added }: { ts: Tailscale; peer: Peer; leaving: boolean; added: boolean }) {
   const t = useT();
   const detailsID = useId();
   const [expanded, setExpanded] = useState(false);
@@ -162,14 +164,14 @@ function PeerRow({ ts, peer }: { ts: Tailscale; peer: Peer }) {
     finally { setChecking(false); }
   };
   const path = result?.path ?? peer.path;
-  return <div className="tailscale-peer" role="listitem">
+  return <div data-key={peer.id} ref={(el) => { if (el) el.inert = leaving; }} className={"tailscale-peer" + (leaving ? " motion-d-leaving" : added ? " motion-d-row-in" : "")} role="listitem">
     <div className="row tailscale-peer-row">
       <button type="button" className="tailscale-peer-toggle" aria-expanded={expanded} aria-controls={detailsID} onClick={() => setExpanded(!expanded)}>
         <span className={"tailscale-peer-dot" + (peer.online ? " online" : "")} aria-hidden="true" />
         <span className="who"><span className="name" title={peer.name}>{peer.name}</span>
           <span className="sub mono">{primaryAddress(peer.ips) || peer.dnsName || t("No address")}</span>
         </span>
-        <span className="tailscale-peer-state">{!peer.online ? t("Offline") : t(pathText[path] ?? "Online")}</span>
+        <span className="tailscale-peer-state"><StatusText value={!peer.online ? t("Offline") : t(pathText[path] ?? "Online")} /></span>
         {result && <span className={"delay " + delayClass(result.ms)}>{result.ms} ms</span>}
         <Chevron size={10} className={"chev" + (expanded ? " open" : "")} />
       </button>
@@ -186,6 +188,13 @@ function PeerRow({ ts, peer }: { ts: Tailscale; peer: Peer }) {
   </div>;
 }
 
+function StatusText({ value }: { value: string }) {
+  const previous = useRef(value);
+  const changed = useRef(false);
+  if (previous.current !== value) { previous.current = value; changed.current = true; }
+  return <span key={value} className={changed.current ? "motion-d-value" : undefined}>{value}</span>;
+}
+
 const SEARCH_FROM = 8;
 
 function PeerList({ ts, peers }: { ts: Tailscale; peers: Peer[] }) {
@@ -194,14 +203,19 @@ function PeerList({ ts, peers }: { ts: Tailscale; peers: Peer[] }) {
   const search = peers.length > SEARCH_FROM ? query.trim().toLowerCase() : "";
   const shown = peers.filter((peer) => [peer.name, peer.dnsName, ...peer.ips].some((value) => value.toLowerCase().includes(search)))
     .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
+  const rows = useLeaving(shown, (peer) => String(peer.id));
+  const list = useRef<HTMLDivElement>(null);
+  const initialIDs = useRef(new Set(peers.map((peer) => peer.id)));
+  useEffect(() => { initialIDs.current = new Set(peers.map((peer) => peer.id)); }, [peers]);
+  useFlip(list, JSON.stringify(rows.map(({ item, leaving }) => [item.id, leaving])), { enter: false });
   return <div className="field"><span className="label">{t("Devices")}</span><div className="scope">
     <div className="tailscale-peer-toolbar">
       <span className="pick-note">{t("{online} online · {total} devices", { online: peers.filter((peer) => peer.online).length, total: peers.length })}</span>
       {peers.length > SEARCH_FROM && <label className="search"><Search size={12} /><input aria-label={t("Search devices")} placeholder={t("Search devices")} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} /></label>}
     </div>
-    <div className="tailscale-peers" role="list" aria-label={t("Devices")}>
-      {shown.map((peer) => <PeerRow key={peer.id} ts={ts} peer={peer} />)}
-      {!shown.length && <div className="tailscale-peers-empty">{t("No matching devices")}</div>}
+    <div ref={list} className="tailscale-peers" role="list" aria-label={t("Devices")}>
+      {rows.map(({ item: peer, leaving }) => <PeerRow key={peer.id} ts={ts} peer={peer} leaving={leaving} added={!initialIDs.current.has(peer.id)} />)}
+      {!rows.length && <div className="tailscale-peers-empty">{t("No matching devices")}</div>}
     </div>
   </div></div>;
 }
@@ -234,7 +248,7 @@ function Connection({ module, status }: { module: Module; status: Status | undef
     <div className="field"><span className="label">{t("Status")}</span><div className="scope">
       <div className="tailscale-actions tailscale-line">
         <span className={"tailscale-peer-dot" + (state === "Running" ? " online" : "")} aria-hidden="true" />
-        <span className={state === "Failed" ? "err" : ""}>{t(stateText[state] ?? state)}</span>
+        <span className={state === "Failed" ? "err" : ""}><StatusText value={t(stateText[state] ?? state)} /></span>
         {!!status.ips.length && <button type="button" className="tailscale-self mono" title={t("Copy {field}", { field: "IPv4" })}
           onClick={() => copyText(primaryAddress(status.ips), t)}>{primaryAddress(status.ips)}<Copy size={11} /></button>}
         <div className="grow" />

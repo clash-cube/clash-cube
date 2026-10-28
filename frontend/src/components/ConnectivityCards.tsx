@@ -5,6 +5,7 @@ import { useT } from "../i18n";
 import { delayClass, flagged } from "../format";
 import { Refresh } from "./Icons";
 import { LatencyBars } from "./LatencyBars";
+import { Fold } from "./Fold";
 
 type Item = "router" | "dns" | "internet" | "proxy";
 const items: Item[] = ["router", "dns", "internet", "proxy"];
@@ -110,6 +111,7 @@ export function ConnectivityCards() {
   }, [running, mode, profile, reset]);
 
   let internetSub: ReactNode = "DIRECT";
+  let internetExtra: ReactNode;
   let internetTitle = t("Click to show the interface and egress IP");
   if (direct.shown) {
     const egress = direct.data;
@@ -121,9 +123,8 @@ export function ConnectivityCards() {
       const overseas = flagged(egress.ip, egress.loc);
       // a different overseas address: something upstream proxies it
       const split = !!egress.domesticIp && !!egress.ip && egress.domesticIp !== egress.ip;
-      internetSub = split
-        ? <>{port} · {domestic}<br />{t("Overseas")} {overseas}</>
-        : `${port} · ${egress.domesticIp ? domestic : overseas}`;
+      internetSub = `${port} · ${egress.domesticIp ? domestic : overseas}`;
+      if (split) internetExtra = <>{t("Overseas")} {overseas}</>;
       internetTitle = [
         `${port} (${egress.interface})`,
         egress.domesticIp && `${t("Domestic")} ${domestic}`,
@@ -134,6 +135,7 @@ export function ConnectivityCards() {
   }
 
   let dnsSub: ReactNode = c.dnsVia === "system" ? t("System resolver") : c.dnsVia ? ["mihomo", c.dnsMode].filter(Boolean).join(" · ") : undefined;
+  let dnsExtra: ReactNode;
   let dnsTitle = t("Click to show the upstream and egress IP");
   if (dns.shown) {
     const e = dns.data;
@@ -143,7 +145,8 @@ export function ConnectivityCards() {
       const servers = e.servers ?? [];
       const upstream = e.via === "system" ? t("System resolver")
         : servers.length ? shortServer(servers[0]) + (servers.length > 1 ? ` +${servers.length - 1}` : "") : "mihomo";
-      dnsSub = <>{upstream}<br />{t("Egress")} {flagged(e.ip, e.loc)}</>;
+      dnsSub = upstream;
+      dnsExtra = <>{t("Egress")} {flagged(e.ip, e.loc)}</>;
       dnsTitle = [
         e.via === "system" ? t("System resolver") : `mihomo${e.mode ? ` (${e.mode})` : ""}`,
         ...servers,
@@ -156,6 +159,7 @@ export function ConnectivityCards() {
 
   // the policy the rule named, then the node it picked
   let proxySub: ReactNode = c.chain?.length ? route(c.chain) : c.via;
+  let proxyExtra: ReactNode;
   let proxyTitle = [c.chain?.length && [...c.chain].reverse().join(" → "), t("Click to show the egress IP")].filter(Boolean).join("\n");
   if (proxy.shown) {
     const e = proxy.data;
@@ -163,7 +167,8 @@ export function ConnectivityCards() {
     else if (e === "failed") proxySub = t("Failed");
     else {
       const chain = e.chain ?? [];
-      proxySub = <>{route(chain)}<br />{t("Egress")} {flagged(e.ip, e.loc)}</>;
+      proxySub = route(chain);
+      proxyExtra = <>{t("Egress")} {flagged(e.ip, e.loc)}</>;
       proxyTitle = [
         [...chain].reverse().join(" → "),
         e.ip && `${t("Egress")} ${flagged(e.ip, e.loc)}`,
@@ -173,11 +178,12 @@ export function ConnectivityCards() {
     }
   }
 
-  const cards: { key: Item; label: string; sub?: ReactNode; title?: string; onClick?: () => void; shown?: boolean }[] = [
+  const resultState = (detail: { shown: boolean; data: unknown }) => !detail.shown ? "closed" : typeof detail.data === "object" ? "result" : String(detail.data);
+  const cards: { key: Item; label: string; sub?: ReactNode; extra?: ReactNode; title?: string; onClick?: () => void; state?: string }[] = [
     { key: "router", label: t("Router"), sub: c.gateway },
-    { key: "dns", label: "DNS", sub: dnsSub, title: dnsTitle, onClick: dns.toggle, shown: dns.shown },
-    { key: "internet", label: t("Internet"), sub: internetSub, title: internetTitle, onClick: direct.toggle, shown: direct.shown },
-    { key: "proxy", label: t("Proxy"), sub: proxySub, title: proxyTitle, onClick: proxy.toggle, shown: proxy.shown },
+    { key: "dns", label: "DNS", sub: dnsSub, extra: dnsExtra, title: dnsTitle, onClick: dns.toggle, state: resultState(dns) },
+    { key: "internet", label: t("Internet"), sub: internetSub, extra: internetExtra, title: internetTitle, onClick: direct.toggle, state: resultState(direct) },
+    { key: "proxy", label: t("Proxy"), sub: proxySub, extra: proxyExtra, title: proxyTitle, onClick: proxy.toggle, state: resultState(proxy) },
   ];
   return (
     <>
@@ -186,7 +192,7 @@ export function ConnectivityCards() {
         <button className={"icon" + (busy ? " spin" : "")} title={t("Test")} disabled={!running} onClick={measure}><Refresh size={13} /></button>
       </div>
       <div className="conn-cards">
-        {cards.map(({ key, label, sub, title, onClick, shown }) => {
+        {cards.map(({ key, label, sub, extra, title, onClick, state }) => {
           // until this page's first measure lands, the last one made
           const h = latency[key];
           const v = c[key] ?? (running && h?.length ? h[h.length - 1].ms : 0);
@@ -208,11 +214,24 @@ export function ConnectivityCards() {
                 </button>
                 <LatencyBars data={latency[key] ?? []} floor={floors[key]} fmt={fmtMS} />
               </div>
-              {sub && <div className="sub" key={onClick ? String(shown) : undefined}>{sub}</div>}
+              <LookupSubtitle state={state ?? "idle"} sub={sub} extra={extra} />
             </div>
           );
         })}
       </div>
     </>
   );
+}
+
+function LookupSubtitle({ state, sub, extra }: { state: string; sub: ReactNode; extra: ReactNode }) {
+  const initial = useRef(state);
+  const changed = useRef(false);
+  if (state !== initial.current) changed.current = true;
+  const retained = useRef({ sub, extra });
+  if (sub) retained.current.sub = sub;
+  if (extra) retained.current.extra = extra;
+  return <Fold open={!!sub}><div className="sub c-lookup-sub">
+    <span key={state} className={changed.current ? "c-value-fade" : undefined}>{retained.current.sub}</span>
+    <Fold open={!!extra}><div>{retained.current.extra}</div></Fold>
+  </div></Fold>;
 }

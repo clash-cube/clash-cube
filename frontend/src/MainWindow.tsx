@@ -1,10 +1,10 @@
 import { Fragment, lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type CSSProperties } from "react";
-import { flushSync } from "react-dom";
+import { morph } from "./morph";
 import { useStore, type View } from "./store";
 import { useT } from "./i18n";
 import { Segmented } from "./components/Segmented";
 import { Gear, Globe, Shield, SidebarIcon } from "./components/Icons";
-import { Brand, calm, Sidebar, sideFit } from "./components/Sidebar";
+import { Brand, Sidebar, sideFit } from "./components/Sidebar";
 import { crumb, pageOf, pages } from "./nav";
 import { isWindows, isWeb } from "./platform";
 import { Popover, Menu, type MenuItem } from "./components/Popover";
@@ -41,21 +41,6 @@ const SIDE_AT = 820;
 const sideQuery = matchMedia(`(min-width: ${SIDE_AT}px)`);
 const read = (k: string) => { try { return localStorage.getItem(k) ?? ""; } catch { return ""; } };
 const keep = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
-
-// The two layouts trade places as one motion (app.css .nav-morph): the
-// sidebar slides in from the window's edge or back to it, each page's tab
-// flies to its place in the other, and the page moves over. A webview
-// without view transitions, or a reader who asked for less motion, has the
-// new one at once; a transition that never ends is cut short.
-function morph(change: () => void) {
-  const doc = document as Document & { startViewTransition?: (cb: () => void) => { finished: Promise<void>; skipTransition: () => void } };
-  if (calm() || !doc.startViewTransition) { change(); return; }
-  const root = document.documentElement;
-  root.classList.add("nav-morph");
-  const vt = doc.startViewTransition(() => flushSync(change));
-  const stuck = setTimeout(() => vt.skipTransition(), 1500);
-  vt.finished.finally(() => { clearTimeout(stuck); root.classList.remove("nav-morph"); });
-}
 
 export function MainWindow() {
   useConnectionFeed();

@@ -60,3 +60,5 @@ export const SidebarIcon = ({ size = 15 }: P) => (
   </svg>
 );
 export const Sort = ({ size }: P) => (<svg {...s(size)}><path d="M4 3v10M2 11l2 2 2-2M10 4h4M10 8h3M10 12h2" /></svg>);
+export const FoldAll = ({ size }: P) => (<svg {...s(size)}><path d="m4 3 4 3 4-3M4 13l4-3 4 3" /></svg>);
+export const UnfoldAll = ({ size }: P) => (<svg {...s(size)}><path d="m4 6 4-3 4 3M4 10l4 3 4-3" /></svg>);

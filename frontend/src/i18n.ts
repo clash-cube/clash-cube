@@ -3,6 +3,7 @@ import { useStore } from "./store";
 // Chinese, keyed by the English: a missing entry shows the
 // English rather than a key.
 const zh: Record<string, string> = {
+  "{a} reachable · {b} timed out · {c} untested": "{a} 可用 · {b} 超时 · {c} 未测",
   "Configuration editor": "配置编辑器",
   "Show changes": "显示改动",
   "{n} changes": "{n} 处改动",
@@ -278,6 +279,8 @@ const zh: Record<string, string> = {
   "Testing {done}/{total}": "测速中 {done}/{total}",
   "Tested {total}: {success} succeeded, {failed} failed": "已测 {total} 个：成功 {success}，失败 {failed}",
   "Test": "测速", "Testing…": "测速中…", "Test all": "全部测速", "Sort by latency": "按延迟排序", "Default order": "默认顺序", "One column": "单栏", "Search groups and nodes": "搜索代理组或节点", "No matches": "没有匹配", "Nothing is named like “{q}”.": "没有名称包含“{q}”的代理组或节点。", "Two columns": "双栏",
+  "Collapse all": "全部收起", "Expand all": "全部展开", "Hide timed-out nodes": "隐藏超时节点",
+  "{n} timed-out nodes hidden": "已隐藏 {n} 个超时节点", "Filter {n} nodes": "筛选 {n} 个节点",
   "Core is not running": "内核未运行", "Start the core to see proxies.": "启动内核后即可查看代理。",
   "No proxy groups": "没有代理组", "This profile has no proxy groups.": "此配置没有代理组。",
   "Import": "导入", "Import from URL": "从 URL 导入", "Import a file…": "导入本地文件…", "Subscription URL": "订阅链接", "Name (optional)": "名称（可选）",

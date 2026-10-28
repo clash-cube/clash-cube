@@ -9,6 +9,8 @@ import { Globe, File, More, Plus, Refresh } from "../components/Icons";
 import { ago, bytes } from "../format";
 import { Segmented } from "../components/Segmented";
 import { Modules } from "../components/modules";
+import { useLeaving } from "../useLeaving";
+import { useFlip } from "../useFlip";
 import { RefusalBanner, RuntimeConfig } from "../components/RuntimeConfig";
 const ProfileEditor = lazy(() => import("../components/ProfileEditor").then((m) => ({ default: m.ProfileEditor })));
 
@@ -27,6 +29,9 @@ export function Profiles() {
   const [flash, setFlash] = useState("");
   const [editing, setEditing] = useState<Profile | null>(null);
   const [tab, setTab] = useState<Tab>(TABS.find((x) => "#" + x === location.hash) ?? "profiles");
+  const rows = useLeaving(profiles, (p) => p.id);
+  const list = useRef<HTMLDivElement>(null);
+  useFlip(list, JSON.stringify([tab, rows.map(({ item }) => item.id)]), { axis: "y", enter: false });
   // bumped by the banner's Show, to open the refusal again
   const [focus, setFocus] = useState(0);
   const moduleDraft = useStore((s) => s.moduleDraft);
@@ -66,14 +71,14 @@ export function Profiles() {
   };
 
   return (
-    <div className="view">
+    <div className="view profiles-view">
       <div className="view-head">
         <Segmented className="track small" value={tab} onChange={setTab} options={[
           { value: "profiles", label: `${t("Profiles")} ${profiles.length}` },
           { value: "modules", label: t("Modules") },
           { value: "merged", label: t("Merged") },
         ]} />
-        <div className="view-tools">
+        <div className="view-tools page-tab-tools" key={tab}>
           {tab === "profiles" && <>
           {ProfileFiles && activeProfile && <button className="btn small" onClick={() => setEditing(activeProfile)}>{t(activeProfile.url ? "View configuration" : "Edit configuration")}</button>}
           <button className="btn small" disabled={updatingAll} onClick={updateAll}><Refresh size={13} />{updatingAll ? t("Updating…") : t("Update all")}</button>
@@ -84,9 +89,11 @@ export function Profiles() {
       <RefusalBanner onEdit={ProfileFiles && activeProfile ? () => setEditing(activeProfile) : undefined} onShow={tab === "merged" ? undefined : () => { setTab("merged"); setFocus((n) => n + 1); }} />
       {editing && ProfileFiles && <Suspense fallback={<p role="status">{t("Loading…")}</p>}><ProfileEditor key={editing.id} profile={editing} active={editing.id === current} onClose={() => setEditing(null)} onCopy={async () => { setEditing(await copyProfile(editing)); }} /></Suspense>}
       <ImportPopover key={activeImport ? JSON.stringify(activeImport) : "manual"} request={activeImport} anchor={importAt} onClose={closeImport} onDone={(p) => { closeImport(); flashRow(p.id); }} />
-      {tab === "merged" ? <RuntimeConfig focus={focus} /> : tab === "modules" ? <Modules /> : <div className="list">
-        {profiles.map((p) => <ProfileRow key={p.id} p={p} current={p.id === current} flash={flash === p.id} onFlash={() => flashRow(p.id)} onEdit={() => setEditing(p)} onCopy={() => copyProfile(p).then(() => {})} />)}
+      <div key={tab} className="page-tab-content">
+      {tab === "merged" ? <RuntimeConfig focus={focus} /> : tab === "modules" ? <Modules /> : <div className="list" ref={list}>
+        {rows.map(({ item: p, leaving }) => <div key={p.id} data-key={p.id} className={leaving ? "profile-leaving" : undefined} {...(leaving ? { inert: "" as const } : {})}><ProfileRow p={p} current={p.id === current} flash={flash === p.id} onFlash={() => flashRow(p.id)} onEdit={() => setEditing(p)} onCopy={() => copyProfile(p).then(() => {})} /></div>)}
       </div>}
+      </div>
     </div>
   );
 }

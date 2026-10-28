@@ -38,6 +38,13 @@
 .device-preview svg { width: 20px; height: 20px; flex-shrink: 0; color: var(--accent); }
 .device-preview p { margin: 0; }
 .device-error { color: var(--red); font-size: 12px; }
+.device-dialog { --pop-dy: 8px; animation: pop-fade .18s var(--ease-out), pop-in .42s var(--spring); }
+.device-dialog::backdrop { animation: pop-fade .2s var(--ease-out); }
+.device-dialog.leaving { pointer-events: none; animation: pop-out .22s cubic-bezier(.4, 0, .7, .2) forwards; }
+.device-dialog.leaving::backdrop { animation: pop-fade .22s var(--ease) reverse forwards; }
+@media (prefers-reduced-motion: reduce) {
+ .device-dialog, .device-dialog::backdrop { animation: none !important; }
+}
 @media(max-width: 680px) {
  .devices-view .view-head { flex-direction: column; align-items: stretch; }
  .device-assurance { padding: 16px; flex-wrap: wrap; }

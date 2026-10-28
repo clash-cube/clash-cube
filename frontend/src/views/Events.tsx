@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { calm } from "../components/Sidebar";
 import { useT } from "../i18n";
 import { useStore, type View } from "../store";
 import { Segmented } from "../components/Segmented";
@@ -20,6 +21,19 @@ export function Events() {
     () => events.filter((e) => filter === "all" || e.level !== "info").slice().reverse(),
     [events, filter],
   );
+  const [leaving, setLeaving] = useState<typeof shown | null>(null);
+  const painted = useRef(false);
+  useEffect(() => { painted.current = true; }, []);
+  useEffect(() => {
+    if (!leaving) return;
+    const timer = setTimeout(() => setLeaving(null), 200);
+    return () => clearTimeout(timer);
+  }, [leaving]);
+  const clearRows = () => {
+    if (!calm() && shown.length) setLeaving(shown);
+    clear();
+  };
+  const displayed = leaving ?? shown;
 
   return (
     <div className="view events-view">
@@ -27,13 +41,13 @@ export function Events() {
         <LogsTabs value="events" />
         <div className="view-tools">
           <Segmented className="track small" value={filter} onChange={setFilter} options={[{ value: "all", label: t("All") }, { value: "warning", label: t("Problems") }]} />
-          <button className="btn small" onClick={clear}>{t("Clear")}</button>
+          <button className="btn small" disabled={!!leaving} onClick={clearRows}>{t("Clear")}</button>
         </div>
       </div>
-      <div className="list eventbox">
-        {shown.length === 0 ? (
-          <div className="empty-state"><b>{t("No events")}</b>{t("Network changes, automatic group switches and errors appear here.")}</div>
-        ) : shown.map((e) => (
+      <div className={"list eventbox" + (leaving ? " c-clearing" : "")}>
+        {displayed.length === 0 ? (
+          <div className={"empty-state" + (painted.current ? " c-empty-in" : "")}><b>{t("No events")}</b>{t("Network changes, automatic group switches and errors appear here.")}</div>
+        ) : displayed.map((e) => (
           <div className={"event " + e.level} key={e.id}>
             <span className="dot" />
             <div>

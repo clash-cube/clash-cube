@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "../i18n";
 import { useStore } from "../store";
 import { Proxy, type Rule, type RuleProvider, type UserRule } from "../api";
@@ -15,6 +15,9 @@ import { ago, nodeLabel } from "../format";
 import { useGroups } from "../useGroups";
 import { routeOf } from "../components/RouteChain";
 import { reveal } from "../reveal";
+import { useFlip } from "../useFlip";
+import { useLeaving } from "../useLeaving";
+import { Fold } from "../components/Fold";
 
 type Tab = "rules" | "providers" | "lookup";
 
@@ -38,6 +41,9 @@ export function Rules() {
   const loadProviders = () => { if (running && !busy) Proxy.RuleProviders().then((p) => setProviders(p ?? [])).catch(() => {}); };
   useEffect(loadProviders, [running, profile, busy]);
   const [mine, setMine] = useState<UserRule[]>([]);
+  const mineRows = useLeaving(mine, ruleKey);
+  const listRef = useRef<HTMLDivElement>(null);
+  useFlip(listRef, JSON.stringify([tab, mineRows.map(({ item: rule, leaving }) => [ruleKey(rule), leaving])]), { enter: false });
   const [addAt, setAddAt] = useState<HTMLElement | null>(null);
   const [editing, setEditing] = useState<{ i: number; at: HTMLElement } | null>(null);
   // rules added for now only (from the tray's "Add Rule for Current
@@ -118,11 +124,12 @@ export function Rules() {
           { value: "providers", label: `${t("Providers")} ${providers.length}` },
           { value: "lookup", label: t("Lookup") },
         ]} />
-        <div className="view-tools">
+        <div className="view-tools page-tab-tools" key={tab}>
           {tab === "rules" && <Segmented className="track small" value={order} onChange={setOrder} options={[{ value: "profile", label: t("Profile order") }, { value: "hits", label: t("Most hits") }]} />}
           {tab !== "lookup" && <label className="search"><Search /><input placeholder={t("Search")} value={q} onChange={(e) => { setQ(e.target.value); setLimit(300); }} /></label>}
         </div>
       </div>
+      <div key={tab} className="page-tab-content">
       {tab === "lookup" ? <HostLookup running={running} /> : tab === "providers" ? <RuleProviders providers={providers} rules={rules} q={q} reload={loadProviders} /> : <>
       <div className="section-title user-rules-title">
         <span>{t("My rules")}</span>
@@ -143,14 +150,17 @@ export function Rules() {
           ))}
         </div>
       )}
-      {mine.length === 0 ? (
-        <div className="list user-rules-empty">{t("Rules you add here, or from a connection, go ahead of the profile's and stay across updates.")}</div>
+      {mineRows.length === 0 ? (
+        <div key="empty" className="list user-rules-empty page-tab-content">{t("Rules you add here, or from a connection, go ahead of the profile's and stay across updates.")}</div>
       ) : (
-        <div className="list table rules mine">
-          {mine.map((r, i) => (
-            <div className={"trow click" + (editing?.i === i ? " menu-on" : "")} key={r.type + r.payload} title={t("Click to edit")}
+        <div key="rules" ref={listRef} className="list table rules mine motion-mine page-tab-content">
+          {mineRows.map(({ item: r, leaving }, rowIndex) => {
+            const i = mine.findIndex((rule) => ruleKey(rule) === ruleKey(r));
+            return (
+            <div className={"trow click" + (leaving ? " leaving" : "") + (editing?.i === i ? " menu-on" : "")} key={ruleKey(r)} data-key={ruleKey(r)} title={t("Click to edit")}
+              ref={(el) => { if (el) el.inert = leaving; }}
               onClick={(e) => setEditing(editing?.i === i ? null : { i, at: e.currentTarget })}>
-              <span className="cell idx num">{i + 1}</span>
+              <span className="cell idx num">{(leaving ? rowIndex : i) + 1}</span>
               <span className="cell"><span className="rtype">{r.type}</span></span>
               <RulePayload r={r} />
               <PolicyRoute policy={r.policy} nowOf={nowOf} />
@@ -160,7 +170,7 @@ export function Rules() {
                 <button className="icon" title={t("Delete")} onClick={() => saveMine(mine.filter((_, j) => j !== i))}><Close size={12} /></button>
               </span>
             </div>
-          ))}
+          ); })}
         </div>
       )}
       <RuleEditor anchor={addAt} onClose={() => { setAddAt(null); loadMine(); }} />
@@ -187,16 +197,19 @@ export function Rules() {
                   <span className="num">{hits || ""}</span>
                 </span>
               </div>
-              {open.has(r.index) && <RuleDetail r={r} route={routeOf(r.proxy, nowOf)} />}
+              <Fold open={open.has(r.index)}><div ref={(el) => { if (el) el.inert = !open.has(r.index); }}><RuleDetail r={r} route={routeOf(r.proxy, nowOf)} /></div></Fold>
               </Fragment>
             );
           })}
         </div>
       )}
       </>}
+      </div>
     </div>
   );
 }
+
+const ruleKey = (rule: UserRule) => JSON.stringify([rule.type, rule.payload]);
 
 // The policy and the node it ends at, following each group's selection, as
 // the connections page shows a chain: groups muted, the exit as a tag.
@@ -272,7 +285,7 @@ function RuleProviders({ providers, rules, q, reload }: { providers: RuleProvide
                 )}
               </span>
             </div>
-            {open === p.name && <div className="rule-detail provider-detail"><EntryList kind="ruleset" name={p.name} version={String(p.updatedAt)} /></div>}
+            <Fold open={open === p.name}><div className="rule-detail provider-detail" ref={(el) => { if (el) el.inert = open !== p.name; }}><EntryList kind="ruleset" name={p.name} version={String(p.updatedAt)} /></div></Fold>
             </Fragment>
           );
         })}

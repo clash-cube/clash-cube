@@ -22,6 +22,8 @@ import { RuleEditor, suggestions } from "../components/RuleEditor";
 import { GroupPicker, RouteChain, routeGroups } from "../components/RouteChain";
 import { useGroups } from "../useGroups";
 import type { Group } from "../api";
+import { calm } from "../components/Sidebar";
+import { morph } from "../morph";
 
 const ROW = 44, HEAD = 34;
 
@@ -32,6 +34,8 @@ export function Connections() {
   const { snapshot: live, closing, error } = useConnectionStore();
   const [frozen, setFrozen] = useState<ConnectionSnapshot | null>(null);
   const snapshot = frozen ?? live;
+  const notice = useRef({ error, frozen: !!frozen });
+  if (error || frozen) notice.current = { error, frozen: !!frozen };
   const [tab, setTab] = useState<ConnectionTab>("active");
   const [q, setQ] = useState("");
   const search = useRef<HTMLInputElement>(null);
@@ -43,8 +47,27 @@ export function Connections() {
     "--conn-grid": sizes.map((width, i) => i === 0 && columnWidths.host === undefined ? `minmax(${width}px, 1fr)` : `${width}px`).join(" ") + " 36px",
     width: `max(100%, ${sizes.reduce((a, b) => a + b, 0) + 36}px)`,
   } as CSSProperties;
-  const selectSort = (id: ConnectionColumn) => update({ sort: id, ascending: sort === id ? !ascending : isTextColumn(id) });
+  const selectSort = (id: ConnectionColumn) => morph(() => update({ sort: id, ascending: sort === id ? !ascending : isTextColumn(id) }), "conn-morph");
   const [folded, setFolded] = useState<Record<string, boolean>>({});
+  const [folding, setFolding] = useState<Set<string>>(new Set());
+  const foldTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  useEffect(() => () => foldTimers.current.forEach(clearTimeout), []);
+  const toggleGroup = (key: string, virtual: boolean) => {
+    const timer = foldTimers.current.get(key);
+    if (timer) {
+      clearTimeout(timer); foldTimers.current.delete(key);
+      setFolding((s) => { const next = new Set(s); next.delete(key); return next; });
+      return;
+    }
+    if (!folded[key] && virtual && !calm()) {
+      setFolding((s) => new Set(s).add(key));
+      foldTimers.current.set(key, setTimeout(() => {
+        foldTimers.current.delete(key);
+        setFolding((s) => { const next = new Set(s); next.delete(key); return next; });
+        setFolded((f) => ({ ...f, [key]: true }));
+      }, 200));
+    } else setFolded((f) => ({ ...f, [key]: !f[key] }));
+  };
   const [sel, setSel] = useState<Conn | null>(null);
   const [reveal, setReveal] = useState<{ key: string } | null>(null);
   const [sources, setSources] = useState(new Set<string>());
@@ -237,7 +260,7 @@ export function Connections() {
     const icon = g.list[0].metadata;
     const n = closeable(g.list).length;
     const name = by === "source" ? [labels[g.name], g.name || t("No source address")].filter(Boolean).join(" · ") : g.name;
-    return <div className="cghead" onClick={() => setFolded((f) => ({ ...f, [by + g.name]: open }))}>
+    return <div className="cghead" onClick={() => toggleGroup(by + g.name, shown.length > 200)}>
       <Chevron className={"chev" + (open ? " open" : "")} />
       {by === "process" && <AppIcon path={icon.processPath} core={icon.type === "Inner"} />}
       {by === "source" && <AppIcon path="" />}
@@ -249,11 +272,11 @@ export function Connections() {
   };
   const virtualRows: VirtualRow[] = [];
   if (shown.length > 200) {
-    const add = (c: Conn) => virtualRows.push({ key: c.id, height: ROW, render: () => row(c) });
+    const add = (c: Conn, leaving = false) => virtualRows.push({ key: c.id, height: ROW, render: () => <div className={leaving ? "motion-d-group-out" : undefined} ref={(el) => { if (el) el.inert = leaving; }}>{row(c)}</div> });
     if (sections) for (const g of sections) {
       virtualRows.push({ key: "group:" + g.name, height: HEAD, render: () => groupHead(g) });
-      if (!folded[by + g.name]) g.list.forEach(add);
-    } else shown.forEach(add);
+      if (!folded[by + g.name]) g.list.forEach((c) => add(c, folding.has(by + g.name)));
+    } else shown.forEach((c) => add(c));
   }
 
   const empty = !running && !conns.length ? <div className="empty-state">
@@ -272,18 +295,18 @@ export function Connections() {
         <div className="view-tools">
           <label className="search"><Search /><input ref={search} aria-label={t("Search connections")} placeholder={t("Search connections")} value={q} onChange={(e) => setQ(e.target.value)} />
             {q && <button className="icon clear" aria-label={t("Clear")} onClick={() => { setQ(""); search.current?.focus(); }}><Close size={10} /></button>}</label>
-          <Segmented className="track small" value={tab} onChange={setTab} options={[
+          <Segmented className="track small" value={tab} onChange={(tab) => morph(() => setTab(tab), "conn-morph")} options={[
             { value: "active", label: t("Active") }, { value: "closed", label: t("Closed") }, { value: "all", label: t("All") },
           ]} />
           <ConnectionFilter net={net} onNet={(net) => update({ net })} connections={conns} selected={sources} onChange={setSources} labels={labels} onSave={save} />
-          <ConnectionViewMenu by={by} onBy={(by) => update({ by })} selected={columns} onChange={(columns) => update({ columns })}
-            onReset={() => { setResizing({}); update({ columns: defaultColumns, widths: {} }); }} />
+          <ConnectionViewMenu by={by} onBy={(by) => morph(() => update({ by }), "conn-morph")} selected={columns} onChange={(columns) => morph(() => update({ columns }), "conn-morph")}
+            onReset={() => morph(() => { setResizing({}); update({ columns: defaultColumns, widths: {} }); }, "conn-morph")} />
           <button className={"btn small" + (frozen ? " on" : "")} aria-pressed={!!frozen} onClick={() => setFrozen(frozen ? null : live)}>{t(frozen ? "Resume" : "Pause")}</button>
           <button className={"btn small num" + (armed ? " danger armed" : "")} disabled={!targets.length} onClick={closeMatching}>
             {t(armed ? "Click again to close {n}" : "Close {n} matching", { n: targets.length })}</button>
         </div>
       </div>
-      {(error || frozen) && <div className="conn-notice" role="status">{error ? t("Refresh failed. Showing the last successful snapshot.") : t("Paused. History collection continues.")} {error && <span>{error}</span>}</div>}
+      <Fold open={!!(error || frozen)}><div key={notice.current.error || "paused"} className="conn-notice motion-d-in" role="status">{notice.current.error ? t("Refresh failed. Showing the last successful snapshot.") : t("Paused. History collection continues.")} {notice.current.error && <span>{notice.current.error}</span>}</div></Fold>
       <div className="conns-body">
         <div className="conn-table-scroll" onPointerEnter={() => setHold(true)} onPointerLeave={() => setHold(false)}>
           <div className="conn-table-content" style={tableStyle}>

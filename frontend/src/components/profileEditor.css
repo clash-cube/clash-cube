@@ -1,5 +1,17 @@
 .profile-editor { position: fixed; inset: 0; margin: auto; box-sizing: border-box; width: min(1120px, calc(100vw - 48px)); height: min(calc(100dvh - 48px), 900px); max-width: none; max-height: none; padding: 0; border: 1px solid var(--line); border-radius: 12px; color: var(--fg); background: var(--card); box-shadow: var(--shadow); overflow: hidden; }
 .profile-editor::backdrop { background: color-mix(in srgb, var(--fg) 30%, transparent); }
+.profile-editor[data-motion="true"] { --pop-dy: 8px; animation: pop-fade .18s ease-out, pop-in .42s var(--spring); }
+.profile-editor[data-motion="true"]::backdrop { animation: pop-fade .2s ease-out; }
+.profile-editor[data-motion="true"].leaving { pointer-events: none; animation: pop-out .22s cubic-bezier(.4, 0, .7, .2) forwards; }
+.profile-editor[data-motion="true"].leaving::backdrop { animation: pop-fade .2s ease-out reverse forwards; }
+.profile-editor[data-motion="true"] :is(.profile-editor-foot, .profile-editor-pill, .yaml-toolbar > .muted, .yaml-toolbar > .profile-editor-icon:not(.yaml-copy), .yaml-error-link, .yaml-error-message) { animation: pop-fade .2s ease-out; }
+.profile-editor[data-motion="true"] .profile-editor-error { animation: view-in .24s var(--ease); }
+.profile-editor[data-motion="true"] .profile-editor-pill { transition: background-color .2s var(--ease), color .2s var(--ease); }
+.profile-editor[data-motion="true"] .yaml-check-dot { transition: background-color .2s var(--ease); }
+.profile-editor[data-motion="false"] *, .profile-editor[data-motion="false"] *::before, .profile-editor[data-motion="false"] *::after { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .profile-editor, .profile-editor::backdrop, .profile-editor *, .profile-editor *::before, .profile-editor *::after { animation: none !important; transition: none !important; }
+}
 .profile-editor form { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .profile-editor-head { display: flex; align-items: flex-start; gap: 12px; padding: 16px 20px; flex-shrink: 0; }
 .profile-editor-heading { min-width: 0; flex: 1; }

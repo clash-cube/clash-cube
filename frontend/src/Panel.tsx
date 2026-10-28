@@ -14,6 +14,7 @@ import { AppIcon } from "./components/AppIcon";
 import { coreLabel, coreTone, restartCore, setMode, setSystemProxy, setTun, startCore } from "./actions";
 import { speed, delayClass, fmtDelay, nodeLabel } from "./format";
 import { useGroups } from "./useGroups";
+import { useFlip } from "./useFlip";
 import { matchName } from "./components/NetworkRules";
 import { toast, toastError } from "./components/Toast";
 
@@ -124,6 +125,7 @@ export function Panel() {
             )}
           </div>
 
+          <div key={running ? "running" : state?.busy || core === "starting" ? "starting" : "stopped"} className="panel-core-content">
           {running ? (
             <>
               <div className="pchart">
@@ -191,6 +193,7 @@ export function Panel() {
               )}
             </div>
           )}
+          </div>
         </div>
       </div>
 
@@ -209,14 +212,18 @@ export function Panel() {
 // from, as Surge's menu does: each one's icon, name and speed now.
 function TopClients({ clients }: { clients: ClientRate[] | null }) {
   const t = useT();
+  const box = useRef<HTMLDivElement>(null);
+  const painted = useRef(false);
+  useEffect(() => { painted.current = true; }, []);
+  useFlip(box, JSON.stringify(clients?.map((c) => [c.path, c.name])), { axis: "y", enter: false });
   if (!clients) return null;
   return (
-    <div className="pclients">
+    <div ref={box} key={clients.length ? "list" : "empty"} className={"pclients" + (painted.current ? " pclients-change" : "")}>
       {clients.length > 0 && <div className="pclients-head">{t("Top Clients")}</div>}
       {clients.length === 0 ? (
         <div className="pclient none">{t("No active apps")}</div>
       ) : clients.map((c) => (
-        <button className="pclient" key={c.path + "\0" + c.name} onClick={() => App.ShowMain("connections")}>
+        <button className="pclient" data-key={c.path + "\0" + c.name} key={c.path + "\0" + c.name} onClick={() => App.ShowMain("connections")}>
           <AppIcon path={c.path} />
           <span className="pcname">{c.name}</span>
           <span className="pcspeed num">{speed(c.up + c.down)}</span>

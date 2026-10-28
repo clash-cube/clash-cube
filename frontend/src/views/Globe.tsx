@@ -1,4 +1,6 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLeaving } from "../useLeaving";
+import { useFlip } from "../useFlip";
 import { Proxy, type Globe, type GlobeRoute } from "../api";
 import { useStore } from "../store";
 import { locale, useT } from "../i18n";
@@ -58,9 +60,9 @@ export function GlobeView() {
     () => (globe?.routes ?? []).filter((r) => filter === "all" || (filter === "direct") === r.direct),
     [globe, filter],
   );
-  const listed = useSteady(routes);
+  const listed = useLeaving(useSteady(routes), routeKey);
   const list = useRef<HTMLDivElement>(null);
-  useFlip(list, listed.map(routeKey).join(","));
+  useFlip(list, JSON.stringify(listed.map(({ item, leaving }) => [routeKey(item), leaving])), { enter: false });
 
   useEffect(() => {
     if (!running || !host.current) return;
@@ -133,11 +135,11 @@ export function GlobeView() {
           </div>
 
           <div className="list globe-list" ref={list}>
-            {listed.map((r) => (
-              <RouteRow key={routeKey(r)} r={r} lit={lit === routeKey(r)} name={name} place={place}
+            {listed.map(({ item: r, leaving }) => (
+              <RouteRow key={routeKey(r)} leaving={leaving} r={r} lit={lit === routeKey(r)} name={name} place={place}
                 onEnter={() => setLit(routeKey(r))} onLeave={() => setLit(null)} onClick={() => earth.current?.focus(r.ends?.[0]?.at ?? r.to)} />
             ))}
-            {!routes.length && <div className="globe-list-empty">{t("No connections")}</div>}
+            {!listed.length && <div className="globe-list-empty">{t("No connections")}</div>}
           </div>
         </div>
       )}
@@ -167,37 +169,14 @@ function useSteady(routes: GlobeRoute[]) {
   }, [routes]);
 }
 
-// useFlip slides a list's rows (children with data-key) from where they
-// were to where they are when their order changes, and fades new ones in.
-// Transforms leave the layout alone, so the list never overflows midway.
-function useFlip(box: RefObject<HTMLElement>, order: string) {
-  const tops = useRef(new Map<string, number>());
-  useLayoutEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const easing = getComputedStyle(el).getPropertyValue("--ease-out").trim() || "ease-out";
-    const first = tops.current.size === 0;
-    const next = new Map<string, number>();
-    el.querySelectorAll<HTMLElement>(":scope > [data-key]").forEach((row, i) => {
-      const key = row.dataset.key!, top = row.offsetTop, was = tops.current.get(key);
-      next.set(key, top);
-      if (still) return;
-      if (was === undefined) row.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280, easing, delay: first ? Math.min(i, 10) * 25 : 0, fill: "backwards" });
-      else if (was !== top) row.animate([{ transform: `translateY(${was - top}px)` }, { transform: "none" }], { duration: 420, easing });
-    });
-    tops.current = next;
-  }, [order]);
-}
-
-function RouteRow({ r, lit, name, place, onEnter, onLeave, onClick }: {
-  r: GlobeRoute; lit: boolean; name: (cc: string) => string; place: (cc: string) => string;
+function RouteRow({ r, leaving, lit, name, place, onEnter, onLeave, onClick }: {
+  r: GlobeRoute; leaving: boolean; lit: boolean; name: (cc: string) => string; place: (cc: string) => string;
   onEnter: () => void; onLeave: () => void; onClick: () => void;
 }) {
   const t = useT();
   const host = r.hosts?.[0]?.host;
   return (
-    <button className={"row click" + (lit ? " on" : "")} data-key={routeKey(r)}
+    <button ref={(el) => { if (el) el.inert = leaving; }} className={"row click" + (lit ? " on" : "") + (leaving ? " motion-d-leaving" : "")} data-key={routeKey(r)}
       onMouseEnter={onEnter} onMouseLeave={onLeave} onClick={onClick}>
       <span className="ic flag">{flag(r.to)}</span>
       <div className="who">

@@ -4,6 +4,7 @@ import { useStore } from "../store";
 import { Search } from "../components/Icons";
 import { Segmented } from "../components/Segmented";
 import { LogsTabs } from "./Events";
+import { calm } from "../components/Sidebar";
 
 const LEVELS = ["debug", "info", "warning", "error"] as const;
 type Level = (typeof LEVELS)[number] | "all";
@@ -22,6 +23,19 @@ export function Logs() {
     const min = level === "all" ? -1 : LEVELS.indexOf(level);
     return logs.filter((l) => LEVELS.indexOf(l.type as (typeof LEVELS)[number]) >= min && (!s || l.payload.toLowerCase().includes(s)));
   }, [logs, level, q]);
+  const [leaving, setLeaving] = useState<typeof shown | null>(null);
+  const painted = useRef(false);
+  useEffect(() => { painted.current = true; }, []);
+  useEffect(() => {
+    if (!leaving) return;
+    const timer = setTimeout(() => setLeaving(null), 200);
+    return () => clearTimeout(timer);
+  }, [leaving]);
+  const clearRows = () => {
+    if (!calm() && shown.length) setLeaving(shown);
+    clear();
+  };
+  const displayed = leaving ?? shown;
 
   useLayoutEffect(() => {
     if (follow && box.current) box.current.scrollTop = box.current.scrollHeight;
@@ -36,16 +50,16 @@ export function Logs() {
         <div className="view-tools">
           <Segmented className="track small" value={level} onChange={setLevel} options={[{ value: "all", label: "All" }, { value: "info", label: "Info" }, { value: "warning", label: "Warn" }, { value: "error", label: "Error" }]} />
           <label className="search"><Search /><input placeholder={t("Search")} value={q} onChange={(e) => setQ(e.target.value)} /></label>
-          <button className="btn small" onClick={clear}>{t("Clear")}</button>
+          <button className="btn small" disabled={!!leaving} onClick={clearRows}>{t("Clear")}</button>
         </div>
       </div>
-      <div className="list logbox" ref={box} onScroll={(e) => {
+      <div className={"list logbox" + (leaving ? " c-clearing" : "")} ref={box} onScroll={(e) => {
         const el = e.currentTarget;
         setFollow(el.scrollTop + el.clientHeight >= el.scrollHeight - 8);
       }}>
-        {shown.length === 0 ? (
-          <div className="empty-state"><b>{t("No logs yet")}</b>{t("Logs appear here as the core writes them.")}</div>
-        ) : shown.map((l) => (
+        {displayed.length === 0 ? (
+          <div className={"empty-state" + (painted.current ? " c-empty-in" : "")}><b>{t("No logs yet")}</b>{t("Logs appear here as the core writes them.")}</div>
+        ) : displayed.map((l) => (
           <div className={"logline " + l.type} key={l.id}>
             <span className="at">{new Date(l.at).toLocaleTimeString([], { hour12: false })}</span>
             <span className="lv">{l.type.slice(0, 4)}</span>

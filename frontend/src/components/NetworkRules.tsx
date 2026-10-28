@@ -50,6 +50,9 @@ export function NetworkRules({ settings }: { settings: SettingsT }) {
   const net = useStore((s) => s.state?.network);
   const rules = settings.networkRules?.length ? settings.networkRules : [{ match: "other", actions: {} }];
   const [editing, setEditing] = useState<{ anchor: HTMLElement; rule?: NetworkRule; ssid?: string } | null>(null);
+  // Keep the editor's identity and draft while its Popover plays the exit.
+  const editorKey = useRef(0);
+  const edit = (value: NonNullable<typeof editing>) => { editorKey.current++; setEditing(value); };
   const [busy, setBusy] = useState(false);
 
   const act = async <R,>(p: Promise<R>) => {
@@ -98,11 +101,11 @@ export function NetworkRules({ settings }: { settings: SettingsT }) {
           {manual.length > 0 && <button className="btn small" disabled={busy} onClick={() => act(Settings.ResumeNetworkAuto())}>{t("Resume rule")}</button>}
           {wifi?.state === "permission" && <button className="btn small" onClick={() => Settings.RequestWiFiPermission().catch(toastError)}>{t("Allow access…")}</button>}
           {wifi?.state === "denied" && <button className="btn small" onClick={() => App.OpenURL("x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices").catch(toastError)}>{t("Open Location Settings…")}</button>}
-          {canAddHere && <button className="btn small" onClick={(e) => setEditing({ anchor: e.currentTarget, ssid })}>{t("Add a rule for this network…")}</button>}
+          {canAddHere && <button className="btn small" onClick={(e) => edit({ anchor: e.currentTarget, ssid })}>{t("Add a rule for this network…")}</button>}
         </div>
       </div>
       {rules.map((r) => (
-        <div key={keyOf(r)} className={"row click network-rule" + (settings.networkAuto ? "" : " off")} onClick={(e) => setEditing({ anchor: e.currentTarget, rule: r })}>
+        <div key={keyOf(r)} className={"row click network-rule" + (settings.networkAuto ? "" : " off")} onClick={(e) => edit({ anchor: e.currentTarget, rule: r })}>
           <div className="who">
             <div className="name">{ruleName(r, t)}{keyOf(r) === current && <span className="badge net">{t("In effect")}</span>}</div>
             <div className="sub">{summary(r.actions, profiles, t)}</div>
@@ -113,10 +116,10 @@ export function NetworkRules({ settings }: { settings: SettingsT }) {
         </div>
       ))}
       <div className="row">
-        <button className="btn small" onClick={(e) => setEditing({ anchor: e.currentTarget })}><Plus size={12} />{t("Add network…")}</button>
+        <button className="btn small" onClick={(e) => edit({ anchor: e.currentTarget })}><Plus size={12} />{t("Add network…")}</button>
       </div>
     </div>
-    <RuleEditor key={editing ? keyOf(editing.rule ?? { match: "new", actions: {} }) + (editing.ssid ?? "") : "closed"}
+    <RuleEditor key={editorKey.current}
       open={editing} rules={rules} onClose={() => setEditing(null)} />
   </>;
 }
@@ -131,7 +134,7 @@ function RuleEditor({ open, rules, onClose }: {
   const t = useT();
   const profiles = useStore((s) => s.profiles);
   const { groups } = useGroups();
-  const initial = open?.rule;
+  const initial = useRef(open?.rule).current;
   const [rule, setRule] = useState<NetworkRule>(() => initial
     ? { ...initial, actions: { ...initial.actions, groups: { ...initial.actions.groups } } }
     : { match: "ssid", ssid: open?.ssid ?? "", actions: {} });

@@ -1,5 +1,6 @@
 import { isWeb } from "../platform";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fold } from "../components/Fold";
 import { App } from "../api";
 import { useStore } from "../store";
 import { usePoll } from "../usePoll";
@@ -34,24 +35,26 @@ export function Overview() {
   const running = state?.core === "running";
   const mode = state?.mode ?? "rule";
   const today = useToday();
+  const crash = useRef(state);
+  if (state?.core === "crashed") crash.current = state;
 
   return (
     <div className="view overview">
       <div className="view-head"><OverviewTabs value="overview" /></div>
-      {state?.core === "crashed" && (
+      <Fold open={state?.core === "crashed"}>
         <div className="banner err">
           <div className="grow">
             <b>{t("Core stopped with an error")}</b>
-            <div className="mono">{state.coreError}</div>
+            <div className="mono">{crash.current?.coreError}</div>
           </div>
-          {state.refusal
+          {crash.current?.refusal
             ? <button className="btn small" onClick={() => { location.hash = "merged"; setView("profiles"); }}>{t("Show")}</button>
             : <button className="btn small" onClick={() => setView("logs")}>{t("Show logs")}</button>}
           <button className="btn small primary" onClick={restartCore}>{t("Restart")}</button>
         </div>
-      )}
+      </Fold>
 
-      {running && state?.proxyLost && (
+      <Fold open={!!(running && state?.proxyLost)}>
         <div className="banner warn">
           <div className="grow">
             <b>{t("Another app changed the system proxy")}</b>
@@ -59,7 +62,7 @@ export function Overview() {
           </div>
           <button className="btn small primary" onClick={() => setSystemProxy(true)}>{t("Take it back")}</button>
         </div>
-      )}
+      </Fold>
 
       <div className="card traffic-card">
         <div className="traffic-main">
@@ -150,16 +153,24 @@ export function Overview() {
 function Stat({ label, value, sub, ring, onClick, title }: {
   label: string; value?: string; sub?: ReactNode; ring?: number; onClick?: () => void; title?: string;
 }) {
+  const painted = useRef(false);
+  const available = useRef(value !== undefined);
+  const initiallyMissing = useRef(value === undefined);
+  useEffect(() => { painted.current = true; });
+  // Once a figure arrives, subsequent polling and core restarts keep its key.
+  if (value !== undefined) available.current = true;
+  const retainedSub = useRef(sub);
+  if (sub) retainedSub.current = sub;
   // "51.7 MB" → 51.7 and a small MB; "23%" → 23 and a small %
   const m = value?.match(/^([<>]?[\d.,]+)\s*(.*)$/);
   const body = (
     <>
       <div className="lbl">{label}{onClick && <Chevron size={10} className="go" />}</div>
       <div className="val num">
-        <span>{m ? <>{m[1]}{m[2] && <small>{m[2] === "%" ? "%" : " " + m[2]}</small>}</> : value ?? "—"}</span>
+        <span key={String(available.current)} className={initiallyMissing.current && painted.current && available.current ? "c-value-fade" : undefined}>{m ? <>{m[1]}{m[2] && <small>{m[2] === "%" ? "%" : " " + m[2]}</small>}</> : value ?? "—"}</span>
         {ring !== undefined && <Ring share={ring} />}
       </div>
-      <div className="tsub num">{sub}</div>
+      <Fold open={!!sub}><div className="tsub num">{retainedSub.current}</div></Fold>
     </>
   );
   return onClick

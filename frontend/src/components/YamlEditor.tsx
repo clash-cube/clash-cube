@@ -153,7 +153,7 @@ export function YamlEditor(props: Props) {
         <button type="button" className="yaml-error-link" onClick={() => {
           editor.current?.dispatch({ selection: { anchor: problem.from }, scrollIntoView: true }); editor.current?.focus();
         }}>{t("{n} YAML errors", { n: check.problems.length })} · {t("Line {line}, column {column}", { line: problem.line, column: problem.column })}</button>
-        <span className="yaml-error-message" title={t(problem.message)}>{t(problem.message)}</span>
+        <span key={problem.message} className="yaml-error-message" title={t(problem.message)}>{t(problem.message)}</span>
       </> : t("YAML syntax valid")}
       </div>
       <span className="yaml-cursor">{t("Line {line}, column {column}", props.cursor)} · {t("{n} lines", { n: props.lines })}</span>

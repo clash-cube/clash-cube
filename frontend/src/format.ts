@@ -8,6 +8,15 @@ export function bytes(n: number, digits = 1): string {
 
 export const speed = (n: number) => bytes(n) + "/s";
 
+export function shortType(type: string): string {
+  const names: Record<string, string> = {
+    Shadowsocks: "SS", ShadowsocksR: "SSR", Vmess: "VMess", Vless: "VLESS",
+    Hysteria: "Hy", Hysteria2: "Hy2", Tuic: "TUIC", WireGuard: "WG",
+    Socks5: "SOCKS5", Http: "HTTP", Ssh: "SSH",
+  };
+  return Object.prototype.hasOwnProperty.call(names, type) ? names[type] : type;
+}
+
 // Private route copies keep the source name in the UI; actions use the full ID.
 export const nodeLabel = (name: string) => name.replace(/^ClashCube chain\/[^/]+\/nodes\//, "");
 

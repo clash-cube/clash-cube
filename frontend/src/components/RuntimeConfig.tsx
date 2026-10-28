@@ -6,6 +6,7 @@ import { useStore } from "../store";
 import { errText, toast, toastError } from "./Toast";
 import { Arrow, Close, Search } from "./Icons";
 import { Segmented } from "./Segmented";
+import { Fold } from "./Fold";
 
 // RuntimeConfig shows, read only, what the core was last given: the profile
 // with the modules, user rules and settings merged in, for seeing what a
@@ -118,11 +119,11 @@ export function RuntimeConfig({ focus }: { focus: number }) {
         <label className="search"><Search size={13} /><input ref={search} placeholder={t("Search")} value={query} onChange={(e) => setQuery(e.target.value)} /></label>
         <button className="btn small" disabled={!body} onClick={() => { App.CopyText(body!); toast(t("Copied")); }}>{t("Copy")}</button>
       </div>
-      {body !== null && <pre ref={pre} className={"runtime-yaml mono" + (hunks ? " diff" : "")}>{rows.map((r, i) => r.hunk
+      {body !== null && <div className="runtime-loaded"><pre key={String(refused)} ref={pre} className={"runtime-yaml mono c-value-fade" + (hunks ? " diff" : "")}>{rows.map((r, i) => r.hunk
         ? <div key={i} className="hunk"><span className="ln" /><span className="sg" />{label(r.hunk)}<span className="counts">{r.add ? ` +${r.add}` : ""}{r.del ? ` −${r.del}` : ""}</span></div>
         : <div key={i} className={r.n === mark && mark ? "bad" : r.op === "+" ? "add" : r.op === "-" ? "del" : undefined}>
           <span className="ln">{r.n ?? ""}</span>{hunks > 0 && <span className="sg">{r.op ?? ""}</span>}{paint(r.text, q.length, byRow.get(i), now?.row === i ? now.at : -1)}
-        </div>)}</pre>}
+        </div>)}</pre></div>}
     </div>
   );
 }
@@ -155,17 +156,22 @@ export function RefusalBanner({ onShow, onEdit }: { onShow?: () => void; onEdit?
   const t = useT();
   const refusal = useStore((s) => s.state?.refusal);
   const profile = useStore((s) => s.state?.profile);
-  if (!refusal) return null;
+  const retained = useRef(refusal);
+  if (refusal) retained.current = refusal;
+  const shown = retained.current;
   return (
+    <Fold open={!!refusal}>
+    {shown &&
     <div className="banner err">
       <div className="grow">
-        <b>{refusal.line ? t("The core refused the configuration at line {n}; the previous one stays", { n: refusal.line }) : t("The core refused the configuration; the previous one stays")}</b>
-        <div className="mono">{refusal.error}</div>
+        <b>{shown.line ? t("The core refused the configuration at line {n}; the previous one stays", { n: shown.line }) : t("The core refused the configuration; the previous one stays")}</b>
+        <div className="mono">{shown.error}</div>
       </div>
-      {refusal.source === "profile" && profile && <button className="btn small" onClick={() => onEdit ? onEdit() : P.OpenInEditor(profile).catch(toastError)}>{t("Open in editor")}</button>}
+      {shown.source === "profile" && profile && <button className="btn small" onClick={() => onEdit ? onEdit() : P.OpenInEditor(profile).catch(toastError)}>{t("Open in editor")}</button>}
       {onShow && <button className="btn small primary" onClick={onShow}>{t("Show")}</button>}
       <button className="icon" title={t("Dismiss")} onClick={() => P.DismissRefusal()}><Close size={12} /></button>
-    </div>
+    </div>}
+    </Fold>
   );
 }
 

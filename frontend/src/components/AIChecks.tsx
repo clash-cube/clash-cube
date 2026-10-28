@@ -129,6 +129,12 @@ function ServiceRow({ service, r, running, open, onOpen, hidden, onCheck }: {
 }) {
   const t = useT();
   const done = typeof r === "object";
+  // Detail folds keep the last successful result while a refresh closes them.
+  const retained = useRef<AICheck | undefined>(done ? r : undefined);
+  if (done) retained.current = r;
+  const initialStatus = useRef(done ? r.status : "");
+  const changed = useRef(false);
+  if (done && r.status !== initialStatus.current) changed.current = true;
   const result = done ? r.route : undefined;
   const egress = done ? r.egress ?? [] : [];
   const hosts = result?.hosts ?? [];
@@ -177,21 +183,21 @@ function ServiceRow({ service, r, running, open, onOpen, hidden, onCheck }: {
         <div className="who">
           <div className="name"><AIServiceName service={service} /></div>
           <div className={"sub" + (warn ? " warn" : "")}>{sub}</div>
-          {egress.length > 0 && <div className="ai-egress">
-            {egress.map((e) => <EgressChip key={e.node} e={e} service={service} multi={egress.length > 1} hidden={hidden} />)}
-            {unsupported && <span className="err">{t("{service} doesn't serve this region", { service })}</span>}
-          </div>}
+          <Fold open={egress.length > 0}><div className="ai-egress">
+            {(done ? egress : retained.current?.egress ?? []).map((e, _, all) => <EgressChip key={e.node} e={e} service={service} multi={all.length > 1} hidden={hidden} />)}
+            {(done ? unsupported : retained.current?.egress?.some((e) => e.unsupported)) && <span className="err">{t("{service} doesn't serve this region", { service })}</span>}
+          </div></Fold>
         </div>
         <div className="end" onClick={(ev) => ev.stopPropagation()}>
           {auto.length > 0 && <span className="badge muted" title={t("{groups} pick a node by themselves; the route may change", { groups: auto.join(", ") })}>{t("Auto")}</span>}
           {done
-            ? <span className={"badge " + (r.level || "muted")}>{t(statusLabel[status] ?? status)}</span>
+            ? <span className={"badge " + (r.level || "muted")}><span key={status} className={changed.current ? "c-value-fade" : undefined}>{t(statusLabel[status] ?? status)}</span></span>
             : r === undefined && running && <button className="btn small" onClick={onCheck}>{t("Check now")}</button>}
         </div>
       </div>
       <Fold open={open && done}>
-        {done && <EgressDetails egress={egress} hidden={hidden} />}
-        {result && <AIRouteDetails result={result} />}
+        {retained.current && <EgressDetails egress={retained.current.egress ?? []} hidden={hidden} />}
+        {retained.current?.route && <AIRouteDetails result={retained.current.route} />}
         <div className="ai-hosts">
           <div className="note stagger" style={{ ["--i" as string]: hosts.length }}>
             {t("Routes are analyzed without connecting to AI domains. Each node's exit IP is queried from Cloudflare and shared across services for three minutes. Destination-based routing may use another exit IP. App process rules and service availability are not tested.")}

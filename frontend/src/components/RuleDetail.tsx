@@ -5,6 +5,7 @@ import { useT } from "../i18n";
 import { ago, nodeLabel } from "../format";
 import { errText } from "./Toast";
 import { Chevron, Search } from "./Icons";
+import { Fold } from "./Fold";
 
 // The rule types whose payload names a list the core reads from a file.
 const listKind = (type: string) => ({ RuleSet: "ruleset", GeoSite: "geosite", GeoIP: "geoip", SrcGeoIP: "geoip" } as Record<string, string>)[type];
@@ -69,7 +70,7 @@ function LogicTree({ node }: { node: Cond }) {
     <div className="logic">
       <div className="logic-head"><span className="rtype">{node.type}</span><span className="muted">{joint}</span></div>
       <div className="logic-kids">
-        {(node.kids ?? []).map((k, i) => k.kids ? <LogicTree key={i} node={k} /> : <LogicLeaf key={i} c={k} />)}
+        {(node.kids ?? []).map((k, i) => <div key={i} className="stagger" style={{ ["--i" as string]: i }}>{k.kids ? <LogicTree node={k} /> : <LogicLeaf c={k} />}</div>)}
       </div>
     </div>
   );
@@ -85,7 +86,7 @@ function LogicLeaf({ c }: { c: Cond }) {
         {kind ? <Chevron size={10} className={"chev" + (open ? " open" : "")} /> : <span className="chev" />}
         <span className="rtype">{c.type}</span><span className="mono">{c.payload}</span>
       </div>
-      {open && <EntryList kind={kind!} name={c.payload} />}
+      <Fold open={open}><div className="stagger" style={{ ["--i" as string]: 0 }} ref={(el) => { if (el) el.inert = !open; }}><EntryList kind={kind!} name={c.payload} /></div></Fold>
     </div>
   );
 }
@@ -102,6 +103,8 @@ export function EntryList({ kind, name, version }: { kind: string; name: string;
   const [res, setRes] = useState<RuleEntries | null>(null);
   const [err, setErr] = useState("");
   const seq = useRef(0);
+  const appendedFrom = useRef(Infinity);
+  const retainedEntries = useRef<string[]>([]);
   useEffect(() => {
     const n = ++seq.current;
     const timer = setTimeout(() => {
@@ -112,25 +115,28 @@ export function EntryList({ kind, name, version }: { kind: string; name: string;
     return () => clearTimeout(timer);
   }, [kind, name, q, limit, version]);
 
-  if (err) return <div className="entries"><div className="err">{err}</div></div>;
-  if (!res) return <div className="entries"><div className="muted">{t("Loading…")}</div></div>;
-  const entries = res.entries ?? [];
-  const source = res.source === "inline" ? t("In the profile") : res.source;
+  const entries = res?.entries ?? [];
+  const state = err ? "error" : !res ? "loading" : res.note ? "note" : entries.length ? "grid" : "empty";
+  if (state === "grid") retainedEntries.current = entries;
+  const source = res?.source === "inline" ? t("In the profile") : res?.source;
   return (
     <div className="entries">
-      <div className="entries-bar">
+      <Fold open={!!res && !err}>{res && <div className="entries-bar">
         <span className="muted">
           {[source, res.note ? "" : q ? t("{n} of {total}", { n: res.matched, total: res.total }) : t("{n} entries", { n: res.total }),
             res.not ? t("matches everything else") : ""].filter(Boolean).join(" · ")}
         </span>
-        {!res.note && res.total > 8 && <label className="search"><Search /><input placeholder={t("Search")} value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} /></label>}
-      </div>
-      {res.note ? <div className="muted">{t(res.note)}</div>
-        : entries.length === 0 ? <div className="muted">{t("No matches")}</div>
-        : <div className="entries-scroll"><div className="entries-grid mono">{entries.map((e, i) => <span key={i} title={e}>{e}</span>)}</div></div>}
-      {res.matched > entries.length && (
-        <button className="btn small" onClick={() => setLimit(limit + PAGE * 4)}>{t("Show {n} more", { n: Math.min(PAGE * 4, res.matched - entries.length) })}</button>
-      )}
+        {!res.note && res.total > 8 && <label className="search"><Search /><input placeholder={t("Search")} value={q} onChange={(e) => { appendedFrom.current = Infinity; setQ(e.target.value); setLimit(PAGE); }} /></label>}
+      </div>}</Fold>
+      {state !== "grid" && <div key={state} className={state === "loading" ? undefined : "motion-d-fade"}>
+        <div className={err ? "err" : "muted"}>{err || (!res ? t("Loading…") : res.note ? t(res.note) : t("No matches"))}</div>
+      </div>}
+      <Fold open={state === "grid"}>
+        <div className={"entries-scroll" + (state === "grid" ? " motion-d-fade" : "")}><div className="entries-grid mono">{retainedEntries.current.map((e, i) => <span className={i >= appendedFrom.current ? "motion-d-in" : undefined} key={i} title={e}>{e}</span>)}</div></div>
+      </Fold>
+      <Fold open={!err && !!res && res.matched > entries.length}>
+        <button className="btn small" disabled={!!err || !res || res.matched <= entries.length} onClick={() => { appendedFrom.current = entries.length; setLimit(limit + PAGE * 4); }}>{t("Show {n} more", { n: Math.min(PAGE * 4, (res?.matched ?? 0) - entries.length) })}</button>
+      </Fold>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import ts from "typescript";
 
 const require = createRequire(import.meta.url);
 
-async function mount(settings, savingData = false, state = {}) {
+async function mount(settings, savingData = false, state = {}, retainClosing = false) {
   let store = { settings, state: { core: "running", mode: "rule", network: { savingData }, ...state } };
   const navigation = [];
   const useStore = (select) => select(store);
@@ -26,7 +26,11 @@ async function mount(settings, savingData = false, state = {}) {
     "../store": { useStore },
     "../i18n": { useT: () => (text, vars) => text.replace(/\{(\w+)\}/g, (m, k) => vars?.[k] ?? m) },
     "./Icons": { Refresh: () => null, Eye: () => null, Close: () => null, ExternalLink: () => null, Shield: () => null },
-    "./Fold": { Fold: ({ open, children }) => open ? children : null },
+    "./Fold": { Fold: ({ open, children }) => {
+      const mounted = React.useRef(open);
+      if (open) mounted.current = true;
+      return open || (retainClosing && mounted.current) ? children : null;
+    } },
     "./Popover": { Popover: ({ open, children }) => open ? children : null },
     "./ConnectivityCards": { route: (chain) => chain.join(" → ") },
   };
@@ -90,6 +94,19 @@ const check = (over = {}) => ({
   route: { node: "us1", verdict: "consistent", auto: [], hosts: [host("claude.ai", "us1", "AI"), host("api.anthropic.com", "us1", "AI")] },
   egress: [{ node: "us1", names: 2, ip: "203.0.113.9", loc: "US", chain: ["us1", "AI"], details: null }],
   status: "consistent", level: "good", ...over,
+});
+
+test("refresh retains egress and route details while their folds close", async () => {
+  const view = await mount({ aiServices: ["Claude"] }, false, {}, true);
+  try {
+    await act(async () => view.calls[0].resolve(check()));
+    await act(async () => view.root.root.findByProps({ className: "row click" }).props.onClick());
+    await act(async () => view.root.root.findByProps({ title: "Refresh routes, egress IP and IP attributes" }).props.onClick());
+    assert.ok(view.text().includes("Checking routes…"));
+    assert.ok(view.text().includes("203.0.113.9"));
+    assert.ok(view.text().includes("claude.ai"));
+    assert.ok(view.text().includes("api.anthropic.com"));
+  } finally { await view.close(); }
 });
 
 test("the leak shield explains and links to leak protection only with the system proxy and no TUN", async () => {
@@ -174,7 +191,10 @@ test("the badge weighs the region and shared addresses, not only the routes", as
     }));
   });
   const badges = view.root.root.findAll((n) => typeof n.props.className === "string" && n.props.className.startsWith("badge "));
-  assert.deepEqual(badges.map((b) => [b.props.className, b.props.children]), [["badge bad", "Unsupported region"], ["badge good", "Consistent"]]);
+  // Read rendered text: the keyed motion span contains React owner references,
+  // whose assertion diff is enormous if compared directly with a string.
+  const renderedText = (node) => typeof node === "string" ? node : node.children.map(renderedText).join("");
+  assert.deepEqual(badges.map((b) => [b.props.className, renderedText(b)]), [["badge bad", "Unsupported region"], ["badge good", "Consistent"]]);
   assert.ok(view.text().includes("OpenAI doesn't serve this region"));
   assert.ok(view.text().includes("2 names leave by 2 nodes that share one egress IP"));
   // several nodes are named on their addresses
